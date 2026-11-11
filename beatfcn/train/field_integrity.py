@@ -22,7 +22,10 @@ def validate(result,prediction=None):
     tape=result['tape'];base=result['arms']['base'];keys=[(r['cell'],r['rank'],r['event']['onset_us']) for r in tape]
     if len(keys)!=len(set(keys)):raise ValueError('Repeated tape member identity')
     counts=Counter(r['cell'] for r in tape)
-    if any(counts.get(c,0)!=n for c,n in enumerate(result['machine_count'])):raise ValueError('Count/tape multiplicity')
+    # Compare over the union of both domains: cells present only in the tape (>= len(machine_count))
+    # must be caught as non-zero against the absent expected count.
+    cells=set(counts)|set(range(len(result['machine_count'])))
+    if any(counts.get(c,0)!=(result['machine_count'][c] if c<len(result['machine_count']) else 0) for c in cells):raise ValueError('Count/tape multiplicity')
     if prediction is not None:
         if result['machine_count']!=prediction['count_decision']:raise ValueError('Changed machine counts')
         get=lambda e:(e['onset_us'],e['end_us'],e['type'],e.get('lane',-1))

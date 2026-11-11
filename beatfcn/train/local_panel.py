@@ -134,5 +134,8 @@ class LocalEventPanel:
             'mode':np.asarray(0 if q['mode']=='mania_4k' else 1,np.int64)},sequence=self.sequence[index])
 
     def batch(self,indices,*,controls=None,device='cpu'):
-        inp,seq=collate([self.row(i,controls=None if controls is None else controls[j]) for j,i in enumerate(indices)])
+        # A single (7,) vector applies to every row; only a per-row [n,7] array is indexed,
+        # otherwise controls[j] would hand a scalar to each row and break the 7-slot shape.
+        single=controls is not None and np.ndim(controls)==1
+        inp,seq=collate([self.row(i,None if controls is None else (controls if single else controls[j])) for j,i in enumerate(indices)])
         return ({k:v.to(device) for k,v in inp.items()},{k:v.to(device) for k,v in seq.items()})
