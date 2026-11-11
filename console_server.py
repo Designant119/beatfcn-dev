@@ -39,7 +39,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ---------------- 配置（按需改这三行） ----------------
 REPO = os.environ.get('BEATFCN_REPO') or os.path.expanduser('~/beatfcn-dev')     # 代码目录（换过路径就设 BEATFCN_REPO）
-EXPECTED_HEAD = '0c1a763'                      # 期望的 git 短提交号；空串=不校验
+EXPECTED_HEAD = ''                             # 期望的 git 短提交号；空串=不校验（只显示当前版本）。
+                                               # 别写死具体 SHA：每次提交都会变，页面会永远报"不是这一版"。
 HTML_NAMES = ('同学训练操作页.html', 'index.html')
 
 HERE = os.path.dirname(os.path.abspath(__file__))
