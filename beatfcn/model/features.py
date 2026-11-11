@@ -133,7 +133,11 @@ def target_group(g, c0, line_index, copy_list, hold_limit) -> dict:
         if e.is_hold:
             lo, hi = hold_limit(e)
             n['end_rel_us'] = e.end_us - g.time_us
-            n['end_ok_us'] = (lo - g.time_us, hi - g.time_us)  # allowed (exclusive hi) relative to onset
+            # (lo, hi) is an inclusive admissible range for the hold end: hi is the
+            # next same-lane onset or the run end, and a hold ending exactly there is
+            # legal (canonical lane_conflicts only flags b.onset < a.end), matching
+            # p1.endpoint_interval_mask which keeps hi as an admissible endpoint.
+            n['end_ok_us'] = (lo - g.time_us, hi - g.time_us)
         notes.append(n)
     copy = copy_list.index(t) if g.copy_time and t in copy_list else -1
     return {'t_rel_us': t, 'bin': t // BIN_US, 'residual': t % BIN_US // MS, 'copy': copy, 'notes': notes}
