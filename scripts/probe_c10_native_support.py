@@ -12,6 +12,7 @@ import time
 
 import numpy as np
 
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 from beatfcn.train.native_joint_support import NativeJointSupport,KINDS
 from beatfcn.train.joint_reference import joint_reference_inputs
 from beatfcn.train.reference_completion import partition
@@ -89,13 +90,15 @@ def run():
             if signature(hidden)!=signature(events) or signature(visible)!=signature(rr['visible']) or (req.start_us,req.end_us)!=(request.start_us,request.end_us):raise ValueError('Reference partition replay mismatch')
         ref,provenance=joint_reference_inputs(request,panel.records[index]['audio_sha256'],rr['visible'],regions,
             source_id=f'joint-preflight:{index}:{view}:{field}',role=rr['source_role'])
-        known=int(ref['reference'][:,14].sum());positive=int(ref['reference'][:,10].sum())
+        known=int(ref['reference'][:,REFERENCE_COLUMNS.index('known_region')].sum())
+        positive=int(ref['reference'][:,REFERENCE_COLUMNS.index('event')].sum())
         if positive!=len(rr['visible']):raise ValueError('Visible multiplicity changed')
         if regions and known!=len(regions):raise ValueError('Complete known regions lost')
         if not regions and known:raise ValueError('Sparse positive reference invents silence')
         if regions and not rr['visible']:
             known_empty.append(dict(index=index,view=view,split=split,regions=regions,
-                old_known_rows=int(rr['inputs']['reference'][:,14].sum()),new_known_rows=known))
+                old_known_rows=int(rr['inputs']['reference'][:,REFERENCE_COLUMNS.index('known_region')].sum()),
+                new_known_rows=known))
         max_reference=max(max_reference,len(ref['reference']))
         payload=dict(counts=encoded.counts.tolist(),members=[asdict(v) for v in encoded.members])
         checks.append(dict(index=index,view=view,field=field,split=split,events=len(events),

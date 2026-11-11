@@ -14,8 +14,8 @@ TAIL_BLOCKS=601
 class AnchorMarkChain(nn.Module):
     def __init__(self,d=128):
         super().__init__()
-        self.projection=nn.Linear(2*1024+128+1024+48+6,d)
-        self.reference=nn.Linear(16,d)
+        self.projection=nn.Linear(2*1024+128+1024+42+6,d)  # 42 = controls 7 槽 x 6 列（r5 后 7 字段）
+        self.reference=nn.Linear(12,d)  # REFERENCE_COLUMNS 宽度：r5 删 lane 独热后 16→12
         self.empty_reference=nn.Parameter(torch.zeros(d))
         self.types=nn.Embedding(5,16)
         self.gru=nn.GRU(d+16,d,batch_first=True)

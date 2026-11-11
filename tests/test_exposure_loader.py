@@ -9,7 +9,7 @@ from beatfcn.train.exposure_loader import ExposureDataset, build_exposure_loader
 class FakePanel:
     def __init__(self):
         self.records = [
-            dict(split='train', controls=np.ones((8, 6), np.float32),
+            dict(split='train', controls=np.ones((7, 6), np.float32),
                  audio_sha256='a', chart_id='c', chart_index=0)
             for _ in range(4)
         ]
@@ -26,7 +26,7 @@ class FakePanel:
             song=torch.ones(batch, 6, 4),
             song_times=torch.ones(batch, 6),
             song_valid=torch.ones(batch, 6, dtype=torch.bool),
-            reference=torch.ones(batch, 1, 16),
+            reference=torch.ones(batch, 1, 12),
             reference_times=torch.ones(batch, 1),
             reference_valid=torch.ones(batch, 1, dtype=torch.bool),
             controls=torch.as_tensor(np.stack(controls), dtype=torch.float32),
@@ -116,7 +116,7 @@ class CounterfactualResumeTests(unittest.TestCase):
                 self.records = [dict(split='train', request=dict(mode='mania_4k',
                     start_us=0, end_us=1000000, duration_us=1000000)) for _ in range(4)]
             def row(self, index):
-                inputs, _ = self.batch([index], controls=[np.zeros((8, 6), np.float32)], device='cpu')
+                inputs, _ = self.batch([index], controls=[np.zeros((7, 6), np.float32)], device='cpu')
                 return dict(inputs={k: v[0].numpy() for k, v in inputs.items()})
             def targets(self, index):
                 return [RhythmEvent(0, 0, 'tap', index)]

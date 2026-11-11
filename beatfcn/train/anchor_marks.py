@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 from beatfcn.model.anchor_mark_chain import KINDS,TAIL_BLOCKS
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 
 
 def nearest(times,valid,queries):
@@ -40,9 +41,9 @@ def anchor_inputs(row,heads_us,*,audio=None,reference=None,mask_reference=False,
         remaining=request.duration_us//1000-h//1000
         if not 0<=remaining<TAIL_BLOCKS*2000:raise ValueError('Full relative-tail support not representable')
     ref=row['inputs'] if reference is None else reference
-    visible=ref['reference_valid'] & (ref['reference'][:,10]>0)
+    visible=ref['reference_valid'] & (ref['reference'][:,REFERENCE_COLUMNS.index('event')]>0)
     present=bool(visible.any()) and not mask_reference
-    mean=ref['reference'][visible].mean(0) if present else np.zeros(16,np.float32)
+    mean=ref['reference'][visible].mean(0) if present else np.zeros(len(REFERENCE_COLUMNS),np.float32)
     data=dict(local=nodes,mel=mel[mi].copy(),song=song,controls=row['inputs']['controls'].reshape(-1).copy(),
         timing=np.asarray(timing,np.float32).reshape(len(heads),6),reference=mean)
     out={k:torch.from_numpy(np.asarray(v,np.float32).copy())[None] for k,v in data.items()}

@@ -22,8 +22,9 @@ app = modal.App('beatfcn-encode')
 weights = modal.Volume.from_name('beatfcn-weights', create_if_missing=True)
 data = modal.Volume.from_name('beatfcn-data', create_if_missing=True)
 
-cpu_image = (modal.Image.debian_slim(python_version='3.12').apt_install('curl')
-             .add_local_dir(REPO / 'experiments/shared_kda_s0a/teacher_fetch', '/opt/teacher_fetch', copy=True))
+# The r5 repo slimming removed experiments/shared_kda_s0a/teacher_fetch (pinned download
+# script, never committed). fetch_teacher therefore only verifies; it no longer downloads.
+cpu_image = modal.Image.debian_slim(python_version='3.12').apt_install('curl')
 gpu_image = (modal.Image.debian_slim(python_version='3.12').apt_install('ffmpeg')
              .pip_install('torch==2.7.1', index_url='https://download.pytorch.org/whl/cu126')
              .pip_install('numpy==2.2.6', 'safetensors==0.5.3', 'pyyaml==6.0.3')
@@ -41,25 +42,21 @@ def _sha256(path, chunk=16 << 20):
 
 @app.function(image=cpu_image, volumes={WEIGHTS: weights}, cpu=1.0, memory=2048, timeout=1800)
 def fetch_teacher():
-    """Pinned-revision range download inside Modal; exact SHA256 or stop."""
-    import shutil
-    import subprocess
+    """Verify the pinned teacher on the weights volume; exact SHA256 or stop.
+
+    The pinned download script (experiments/shared_kda_s0a/teacher_fetch) was never committed
+    and is gone with the r5 slimming, so this no longer downloads: stage the file on the
+    volume, or restore that directory and its add_local_dir mount to re-enable fetching.
+    """
     dest = Path(WEIGHTS) / 'teacher_encoder.safetensors'
     if dest.exists() and dest.stat().st_size == TEACHER_BYTES and _sha256(dest) == TEACHER_SHA256:
         return {'status': 'present', 'sha256': TEACHER_SHA256}
-    work = Path('/tmp/tf')
-    shutil.copytree('/opt/teacher_fetch', work, dirs_exist_ok=True)
-    (work / 'weights').mkdir(exist_ok=True)
-    t = time.time()
-    subprocess.run(['python', str(work / 'src/download_teacher.py')], check=True)
-    got = work / 'weights/teacher_encoder.safetensors'
-    digest = _sha256(got)
-    if digest != TEACHER_SHA256 or got.stat().st_size != TEACHER_BYTES:
-        raise RuntimeError(f'teacher mismatch {digest} {got.stat().st_size}; refusing')
-    shutil.copy2(got, dest)
-    shutil.copy2(work / 'reports/teacher_download_manifest.json', Path(WEIGHTS) / 'teacher_download_manifest.json')
-    weights.commit()
-    return {'status': 'downloaded', 'sha256': digest, 'seconds': round(time.time() - t, 1)}
+    got = _sha256(dest) if dest.exists() else 'missing'
+    raise RuntimeError(
+        f'teacher_encoder.safetensors missing or mismatched on the beatfcn-weights volume '
+        f'(sha256 {got}, size {dest.stat().st_size if dest.exists() else 0}); expected '
+        f'{TEACHER_SHA256}, {TEACHER_BYTES} bytes. Stage the file at {WEIGHTS}/teacher_encoder.safetensors '
+        'or restore the removed teacher_fetch fetcher.')
 
 
 def load_encoder(device='cuda'):

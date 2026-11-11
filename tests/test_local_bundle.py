@@ -22,8 +22,8 @@ class LocalBundleTests(unittest.TestCase):
             song=torch.randn(1, 10, 16), song_times=torch.arange(10)[None] * .5 + .25,
             song_valid=torch.ones(1, 10, dtype=torch.bool), mel=torch.randn(1, 32, 8),
             mel_times=torch.arange(32)[None] * .01 + .005, mel_valid=torch.ones(1, 32, dtype=torch.bool),
-            reference=torch.zeros(1, 1, 16), reference_times=torch.zeros(1, 1),
-            reference_valid=torch.ones(1, 1, dtype=torch.bool), controls=torch.zeros(1, 8, 6),
+            reference=torch.zeros(1, 1, 12), reference_times=torch.zeros(1, 1),
+            reference_valid=torch.ones(1, 1, dtype=torch.bool), controls=torch.zeros(1, 7, 6),
             mode=torch.tensor([1]), origin_s=torch.tensor([2.]), end_s=torch.tensor([4.]),
             duration_s=torch.tensor([8.]))
         self.request = EventRequest('phira', 2_000_000, 4_000_000, 8_000_000)

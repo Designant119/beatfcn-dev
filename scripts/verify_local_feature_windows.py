@@ -10,6 +10,7 @@ import torch
 from beatfcn.model.full_event_codec import EventRequest, encode_events, teacher_sequence
 from beatfcn.model.full_event_model import FullEventConfig, FullEventModel
 from beatfcn.train.event_conditions import encode_controls
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 from beatfcn.train.local_audio_audit import tensor_health
 from beatfcn.train.local_features import LocalFeatureStore
 from beatfcn.train.local_panel import collate
@@ -61,9 +62,9 @@ def main():
         start = (duration-1)//8_000_000*8_000_000
         tail = store.window(audio, start, duration)
         # Blank reference and unspecified conditions are the unchanged baseline.
-        ref = np.zeros((1, 16), np.float32)
+        ref = np.zeros((1, len(REFERENCE_COLUMNS)), np.float32)
         ref[0, 1] = (duration-start)/1_200_000_000
-        ref[0, 15] = 1
+        ref[0, REFERENCE_COLUMNS.index('unknown_region')] = 1
         inputs = dict(tail, reference=ref, reference_times=np.zeros(1, np.float32),
             reference_valid=np.ones(1, bool), controls=encode_controls('phira', {}, (start, duration), origin_us=start),
             mode=np.asarray(1, np.int64))

@@ -34,7 +34,7 @@ class FullEventConfig:
     band_slots: int = 2
     reference_dim: int = 12
     control_dim: int = 6
-    controls: int = 8
+    controls: int = 7
     dropout: float = .1
     grad_checkpointing: bool = False
     # Optional candidates; the historical Transformer configuration stays loadable.
@@ -377,8 +377,8 @@ class FullEventModel(nn.Module):
     def encode(self, inputs):
         """Only audio, authorized reference, explicit requests and mode enter here.
 
-        local [B,tap,T,band,D], song [B,S,D], reference [B,R,16],
-        controls [B,8,6]. All times are seconds relative to the requested core.
+        local [B,tap,T,band,D], song [B,S,D], reference [B,R,12],
+        controls [B,7,6]. All times are seconds relative to the requested core.
         Empty/unknown reference regions are explicit rows, never hidden events.
         """
         c = self.c

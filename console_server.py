@@ -46,7 +46,7 @@ HTML_NAMES = ('同学训练操作页.html', 'index.html')
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOKEN = ''          # 非空时所有 /api/* 需带 ?token= 或 X-Token 头
 _cache = {'env': (0.0, None), 'torch': (0.0, None), 'win': (0.0, None)}   # (时间戳, 结果)
-ENV_TTL = 5.0        # 秒：/api/env 整体缓存
+ENV_TTL = 15.0       # 秒：/api/env 整体缓存（须大于页面 12s 轮询间隔，否则每轮都冷探测）
 TORCH_TTL = 60.0     # 秒：torch 子进程检测缓存（首次 import 慢）
 WIN_TTL = 20.0       # 秒：Windows 宿主侧探测缓存（powershell 启动约 1 秒，别每轮都起）
 _PS = shutil.which('powershell.exe') or shutil.which('pwsh') or shutil.which('powershell')
@@ -324,7 +324,7 @@ def env_items():
         items.append(_item('TORCH', 'torch', '检测中', 'none', '首次 import 慢，十几秒后自动出结果', 'sw'))
         items.append(_item('CUDATORCH', 'CUDA 可用', '', 'none', '等 torch 检测完成', 'sw'))
     elif tver == '__missing__':
-        items.append(_item('TORCH', 'torch', '', 'bad', '没装：pip install -r requirements.txt', 'sw'))
+        items.append(_item('TORCH', 'torch', '', 'bad', '没装：pip install -r requirements-fc.txt', 'sw'))
         items.append(_item('CUDATORCH', 'CUDA 可用', '', 'none', '先装 torch', 'sw'))
     else:
         items.append(_item('TORCH', 'torch', tver, 'pass', '', 'sw'))

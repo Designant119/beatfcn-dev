@@ -52,8 +52,8 @@ class SyntheticDataTest(unittest.TestCase):
 
     def row(self, count):
         x = self.store.window(self.audio, 0, 1_000_000)
-        x.update(mode=np.asarray(1, np.int64), controls=np.zeros((8, 6), np.float32),
-            reference=np.zeros((1, 16), np.float32), reference_times=np.zeros(1, np.float32),
+        x.update(mode=np.asarray(1, np.int64), controls=np.zeros((7, 6), np.float32),
+            reference=np.zeros((1, 12), np.float32), reference_times=np.zeros(1, np.float32),
             reference_valid=np.ones(1, bool), copy_times_us=np.zeros(0, np.int64),
             copy_us=np.zeros(0, np.int64), known_carry_us=np.zeros((0, 4), np.int64),
             known_regions_us=np.zeros((0, 2), np.int64), head_us=np.arange(1000, dtype=np.int64)*1000,

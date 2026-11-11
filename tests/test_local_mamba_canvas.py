@@ -29,10 +29,10 @@ def synthetic_inputs():
         mel=torch.randn(1, 12, 8),
         mel_times=torch.arange(12)[None].float() * .01 + .005,
         mel_valid=torch.tensor([[True] * 10 + [False] * 2]),
-        reference=torch.randn(1, 4, 16),
+        reference=torch.randn(1, 4, 12),
         reference_times=torch.tensor([[-.2, .1, .4, .8]]),
         reference_valid=torch.tensor([[True, True, True, False]]),
-        controls=torch.zeros(1, 8, 6),
+        controls=torch.zeros(1, 7, 6),
         mode=torch.tensor([1]),
     )
     inputs.update({k: torch.from_numpy(np.asarray(v))[None]

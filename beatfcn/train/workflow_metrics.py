@@ -362,6 +362,16 @@ def playability(events, mode, *, min_gap_us=40_000, chord_us=1000, max_stack=4):
     notes = sorted(as_notes(events, mode))
     n = len(notes)
     if mode == 'mania_4k':
+        bad_lane = sum(1 for x in notes if x[3] != -1 and not 0 <= x[3] < 4)  # -1 合法（lane-free）
+        if notes and all(x[3] == -1 for x in notes):
+            # r5 lane-free 草稿没有轨道决策：同键判定（叠音/jack/压头/放键间隔）无从谈起，
+            # 记 None 而不是把整首塞进一个伪键里虚报（2026-11-11 修正）。
+            return dict(notes=n, lane_blind=True, bad_lane=bad_lane,
+                        same_lane_overlap=None, hold_covers_head=None, jack_lt_40ms=None,
+                        same_lane_overlap_rate=None, hold_covers_head_rate=None, jack_lt_40ms_rate=None,
+                        jack_lt_100ms=None, jack_lt_100ms_rate=None,
+                        hold_release_lt_40ms=None, hold_release_lt_40ms_rate=None,
+                        any_violation_rate=_rate(bad_lane, n), any_violation_v2_rate=_rate(bad_lane, n))
         dup = covered = jack = jack100 = release = 0
         by_lane = defaultdict(list)
         for x in notes:
@@ -386,8 +396,7 @@ def playability(events, mode, *, min_gap_us=40_000, chord_us=1000, max_stack=4):
                     covered += 1
                 if x[2] == 'hold':
                     holds.append(x)
-        bad_lane = sum(1 for x in notes if x[3] != -1 and not 0 <= x[3] < 4)  # -1 合法（lane-free）
-        return dict(notes=n, same_lane_overlap=dup, hold_covers_head=covered, jack_lt_40ms=jack,
+        return dict(notes=n, lane_blind=False, same_lane_overlap=dup, hold_covers_head=covered, jack_lt_40ms=jack,
                     bad_lane=bad_lane, same_lane_overlap_rate=_rate(dup, n), hold_covers_head_rate=_rate(covered, n),
                     jack_lt_40ms_rate=_rate(jack, n), jack_lt_100ms=jack100, jack_lt_100ms_rate=_rate(jack100, n),
                     hold_release_lt_40ms=release, hold_release_lt_40ms_rate=_rate(release, n),
@@ -704,9 +713,11 @@ def pattern_profile(notes, mode, *, grid=None, start_us=0, duration_us=None):
         start_us, duration_us = lo, max(hi-lo, 1)
     prof['span_us'] = int(duration_us)
     if mode == 'mania_4k':
+        prof['lane_blind'] = bool(notes) and all(n[3] < 0 for n in notes)
         lanes = defaultdict(list)
         for n in notes:
-            lanes[n[3]].append(n[0])
+            if n[3] >= 0:  # -1: lane-free 草稿，不是第 -1 条轨道，不进同键统计
+                lanes[n[3]].append(n[0])
         prof['lane_counts'] = [len(lanes.get(lane, [])) for lane in range(4)]
         pairs = jacks = 0
         for times in lanes.values():
@@ -843,9 +854,13 @@ def compare_profiles(draft, ref):
         raise ValueError('profiles must share the mode')
     a, b = profile_values(draft), profile_values(ref)
     beats = draft['ioi_beat'] is not None and ref['ioi_beat'] is not None
+    # r5 lane-free 草稿没有轨道决策：轨道分布类指标不比（jack 等标量会因分母为 0 自然 None）。
+    lane_blind_skip = {'lane_balance', 'lane_transition'} if draft.get('lane_blind') else set()
     out = {}
     for name, key, dist, _ in PROFILE_METRICS[draft['mode']]:
         if name == 'ioi_beat' and not beats:
+            continue
+        if name in lane_blind_skip:
             continue
         da, db = a[key], b[key]
         entry = dict(draft=da, reference=db, abs_diff=abs(da-db) if da is not None and db is not None else None)

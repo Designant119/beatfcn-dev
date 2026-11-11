@@ -15,6 +15,7 @@ from beatfcn.events.canonical import Event, build_model_view
 from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.model.full_event_codec import EventRequest, EventState, EventVocabulary, encode_events, teacher_sequence
 from beatfcn.ingest.phira_policy import phira_stratum, screen_metadata
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 
 
 def sha(path):
@@ -83,11 +84,12 @@ def main():
         centers = np.bincount(bins, weights=np.arange(n) * .04 + .02) / count
         song_times = (centers - c0 / 1e6).astype(np.float32)
         # Explicit unknown interval: no unobserved chart events or target counts.
-        reference = np.zeros((1, 16), np.float32)
+        reference = np.zeros((1, len(REFERENCE_COLUMNS)), np.float32)
         reference[0, 1] = (request.end_us - request.start_us) / 1_200_000_000
-        reference[0, 15] = 1
-        controls = np.zeros((8, 6), np.float32)
-        applicable = [1, 1, 1, 1, 1, int(row['mode'] == 'mania_4k'), int(row['mode'] == 'phira'), int(row['mode'] == 'phira')]
+        reference[0, REFERENCE_COLUMNS.index('unknown_region')] = 1
+        controls = np.zeros((7, 6), np.float32)
+        # 槽位与 CONTROL_FIELDS 对齐：0-4 通用，5=flick_ratio(phira)，6=drag_ratio(phira)
+        applicable = [1, 1, 1, 1, 1, int(row['mode'] == 'phira'), int(row['mode'] == 'phira')]
         controls[:, 3] = applicable
         inputs = dict(local=local, local_times=local_times, local_valid=np.ones(right-left, bool),
             song=song, song_times=song_times, song_valid=np.ones(len(song), bool),

@@ -18,7 +18,7 @@ import scripts.run_workflow_benchmark as wb
 
 def fake_inputs(features, audio, request, controls, *, sources=()):
     return dict(local=np.zeros((3, 1, 8, 1024), np.float32), mode=np.asarray(1),
-                controls=controls, reference=np.zeros((1, 16), np.float32)), []
+                controls=controls, reference=np.zeros((1, 12), np.float32)), []
 
 
 def stub_generate_batch(model, inputs, requests, max_tokens, *, deadline=None, temperature=None, top_p=None,

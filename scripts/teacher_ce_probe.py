@@ -81,13 +81,17 @@ def kind_calibration(model, panel, protocol, *, device, batch_size=8, autocast=T
 
 
 def field_table(summary):
-    """{'all'|mode: {field group|joint: mean CE, real audio}} from the screen summary."""
+    """{'all'|mode: {field group|joint: mean CE, real audio}} from the screen summary.
+
+    Groups with no measured tokens in a block are omitted, so a mode never reports
+    fields outside its grammar (e.g. no 'mania' group under mania_4k)."""
     blocks = dict(all=summary['field_ce'], **{m: b['field_ce'] for m, b in summary['by_mode'].items()})
-    return {name: {g: block['real'][g]['mean'] for g in (*FIELD_GROUPS, 'joint')} for name, block in blocks.items()}
+    return {name: {g: block['real'][g]['mean'] for g in (*FIELD_GROUPS, 'joint')
+                   if block['real'][g]['mean'] is not None} for name, block in blocks.items()}
 
 
 def compare(table, baseline, kill_nats):
-    delta = {name: {g: (v-baseline[name][g]) if v is not None and baseline[name].get(g) is not None else None
+    delta = {name: {g: (v-baseline[name].get(g)) if v is not None and baseline[name].get(g) is not None else None
                     for g, v in row.items()} for name, row in table.items() if name in baseline}
     worst = max(row['joint'] for row in delta.values() if row['joint'] is not None)
     return dict(delta=delta, worst_joint_delta_nats=worst, kill_nats=kill_nats, gross_kill=bool(worst > kill_nats))

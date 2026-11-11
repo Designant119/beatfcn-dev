@@ -415,7 +415,7 @@ def reference_grad_norms(model):
 
 
 def reference_stats(reference):
-    """Row counts, role/kind counts and value stats of an encoded [R,16] reference block."""
+    """Row counts, role/kind counts and value stats of an encoded [R,12] reference block."""
     ref = np.asarray(reference)
     col = {n: i for i, n in enumerate(REFERENCE_COLUMNS)}
     out = dict(rows=len(ref), nan=int(np.isnan(ref).sum()), inf=int(np.isinf(ref).sum()),
@@ -438,7 +438,7 @@ def verify_reference_leak(reference, provenance, request, arrays, prefix_us=PREF
     exactly one of the request's authorized known_carry holds (full tail shown). The reference must hold
     exactly the chart events with onset in [start-L, start)."""
     start, end = request.start_us, request.end_us
-    carry = {(e.onset_us, e.end_us, e.lane if request.mode == 'mania_4k' else -1) for e in request.known_carry}
+    carry = {(e.onset_us, e.end_us) for e in request.known_carry}   # r5 removed lanes from the reference block
     col = {n: i for i, n in enumerate(REFERENCE_COLUMNS)}
     ref = np.asarray(reference)
     crossing, event_rows, inside = 0, 0, 0
@@ -453,12 +453,11 @@ def verify_reference_leak(reference, provenance, request, arrays, prefix_us=PREF
     on_us = np.rint(ref[is_event, 0].astype(np.float64)*TIME_SCALE_US) + start
     off_us = np.rint(ref[is_event, 1].astype(np.float64)*TIME_SCALE_US) + start
     tensor_inside = int(((on_us >= start+5) & (on_us < end)).sum())
-    lanes = ref[is_event, 6:10].argmax(1) if request.mode == 'mania_4k' else np.full(int(is_event.sum()), -1)
     tensor_crossing = 0
-    for a, b, lane in zip(on_us, off_us, lanes):
+    for a, b in zip(on_us, off_us):
         if a < start-5 and b > start+5:
             tensor_crossing += 1
-            if not any(abs(a-c0) <= 5 and abs(b-c1) <= 5 and lane == cl for c0, c1, cl in carry):
+            if not any(abs(a-c0) <= 5 and abs(b-c1) <= 5 for c0, c1 in carry):
                 raise AssertionError('reference hold crossing the window start is not an authorized carry')
     expected = int(((arrays['onset_us'] >= start-prefix_us) & (arrays['onset_us'] < start)).sum())
     if inside or tensor_inside:

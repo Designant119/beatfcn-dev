@@ -11,7 +11,7 @@ class WholeSongTests(unittest.TestCase):
     def inputs(self, features, audio, request, controls, *, sources=()):
         self.references.append(sources)
         return dict(local=np.zeros((3, 1, 8, 1024), np.float32), mode=np.asarray(1),
-                    controls=controls, reference=np.zeros((1, 16), np.float32)), []
+                    controls=controls, reference=np.zeros((1, 12), np.float32)), []
 
     def test_own_hold_crosses_core_and_partial_final_core_is_generated(self):
         self.references = []

@@ -729,8 +729,7 @@ def _generate_fast(model, inputs, requests, max_tokens, *, deadline, temperature
         explicit = []
         for row, (state, enabled) in enumerate(zip(states, active)):
             if enabled:
-                first, count, tokens = (_support_spec(filtered) if filtered is not None else
-                                        state.allowed_spec() if fast_grammar
+                first, count, tokens = (state.allowed_spec() if fast_grammar
                                         else _support_spec(state.allowed_tokens()))
                 if not count:
                     failures[row], active[row] = 'grammar_dead_end', False

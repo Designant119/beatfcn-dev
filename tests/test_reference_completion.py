@@ -5,6 +5,7 @@ import numpy as np
 
 from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.model.full_event_codec import EventRequest, encode_events
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 from beatfcn.train.reference_completion import TASKS, partition, sparse_reference
 
 
@@ -35,8 +36,8 @@ def test_sparse_reference_contains_only_visible_events_and_no_known_silence():
     visible = example()[:1]
     ref = sparse_reference(visible, request)
     assert len(ref['reference']) == 2
-    assert ref['reference'][:, 14].sum() == 0
-    assert ref['reference'][:, 15].sum() == 1
+    assert ref['reference'][:, REFERENCE_COLUMNS.index('known_region')].sum() == 0
+    assert ref['reference'][:, REFERENCE_COLUMNS.index('unknown_region')].sum() == 1
     assert ref['reference'][1, 3] == 1  # hold including authorized tail
     assert np.isclose(ref['reference_times'][1], 1.)
     assert np.array_equal(ref['reference'], sparse_reference(visible, request)['reference'])

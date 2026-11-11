@@ -18,7 +18,7 @@ class AnchorMarkTests(unittest.TestCase):
         inputs=dict(local=rng.normal(size=(2,9,1,1024)).astype(np.float32),local_times=np.arange(9)*.01,
             local_valid=np.ones(9,bool),mel=rng.normal(size=(9,128)).astype(np.float32),mel_times=np.arange(9)*.01,
             mel_valid=np.ones(9,bool),song=rng.normal(size=(3,1024)).astype(np.float32),song_valid=np.ones(3,bool),
-            reference=np.zeros((1,16),np.float32),reference_valid=np.zeros(1,bool),controls=np.zeros((8,6),np.float32))
+            reference=np.zeros((1,12),np.float32),reference_valid=np.zeros(1,bool),controls=np.zeros((7,6),np.float32))
         request=SimpleNamespace(start_us=0,end_us=80000,duration_us=100000,max_events=4096,copy_times=(1501,))
         return dict(request=request,inputs=inputs,targets=[RhythmEvent(1501,90000,'hold'),
             RhythmEvent(20000,20000,'flick'),RhythmEvent(20000,20000,'tap')])

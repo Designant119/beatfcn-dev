@@ -2,6 +2,9 @@
 chcp 65001 >nul
 setlocal
 
+rem wsl.exe 默认输出 UTF-16，findstr 匹配不到会误判"没装过"；要求 wsl 输出 UTF-8（WSL 0.64+）
+set "WSL_UTF8=1"
+
 set "NAME=beatfcn"
 set "PORT=7777"
 set "TAR=%~d0\beatfcn-train.tar"
@@ -24,8 +27,10 @@ if errorlevel 1 (
 echo [1/3] WSL 已开
 
 rem ---- 第 2 步：系统导没导进来 ----
-wsl -l -q 2>nul | findstr /i "%NAME%" >nul
-if errorlevel 1 (
+set "IMPORTED=1"
+wsl -l -q 2>nul | findstr /i "%NAME%" >nul || set "IMPORTED="
+if not defined IMPORTED if exist "%DST%\ext4.vhdx" set "IMPORTED=1"
+if not defined IMPORTED (
     if not exist "%TAR%" (
         echo [2/3] 没找到 %TAR%
         echo       训练盘没插，或者 tar 不在盘根目录。插好再双击。

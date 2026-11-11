@@ -22,6 +22,7 @@ from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.model.full_event_codec import encode_events
 from beatfcn.model.sample import match_f1
 from beatfcn.train.anchor_marks import anchor_inputs,teacher_example
+from beatfcn.train.event_reference import REFERENCE_COLUMNS as _REF_COLS
 from scripts.run_c07_count_ancestral import specs,VIEWS
 from scripts.run_local_evolution import load_data
 from scripts.run_local_portfolio_scale import sha,write,weight_digest
@@ -149,11 +150,12 @@ def evaluate(model,plan,panel,row,prior,deadline):
                     donor=row(donor_ids[component],'draft')['inputs']
                     audio=donor if condition=='audio_foreign' else {**rr['inputs'],'song':donor['song'],'song_valid':donor['song_valid']}
                 if condition=='reference_foreign':
-                    own=rr['inputs'];n=int((own['reference_valid'] & (own['reference'][:,10]>0)).sum());candidates=[]
+                    _ev=_REF_COLS.index('event')
+                    own=rr['inputs'];n=int((own['reference_valid'] & (own['reference'][:,_ev]>0)).sum());candidates=[]
                     for j in plan['indices']['dev'][::2]:
                         if panel.records[j]['component']==component:continue
-                        dr=row(j,'middle')['inputs'];m=int((dr['reference_valid'] & (dr['reference'][:,10]>0)).sum())
-                        content=dr['reference'][dr['reference_valid'] & (dr['reference'][:,10]>0)]
+                        dr=row(j,'middle')['inputs'];m=int((dr['reference_valid'] & (dr['reference'][:,_ev]>0)).sum())
+                        content=dr['reference'][dr['reference_valid'] & (dr['reference'][:,_ev]>0)]
                         starts=content[:,0]*1.2e9+rr['request'].start_us
                         ends=content[:,1]*1.2e9+rr['request'].start_us
                         legal=bool(((starts>=0)&(starts<rr['request'].duration_us)&

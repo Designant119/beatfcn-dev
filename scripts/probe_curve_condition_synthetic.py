@@ -17,6 +17,7 @@ from beatfcn.model.full_event_codec import EventRequest, encode_events, teacher_
 from beatfcn.model.full_event_model import FullEventConfig, FullEventModel, event_loss
 from beatfcn.model.full_event_generate import generate_batch
 from beatfcn.train.density_curve import requested_density_curve
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 from beatfcn.train.local_panel import collate
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,10 +61,10 @@ def make_row(rate, config):
         song=np.zeros((song_frames, 1024), np.float32),
         song_times=(np.arange(song_frames) * 500_000 / 1e6).astype(np.float32),
         song_valid=np.ones(song_frames, bool),
-        reference=np.zeros((1, 16), np.float32),
+        reference=np.zeros((1, len(REFERENCE_COLUMNS)), np.float32),
         reference_times=np.zeros(1, np.float32),
         reference_valid=np.zeros(1, bool),
-        controls=np.zeros((8, 6), np.float32),
+        controls=np.zeros((7, 6), np.float32),
         mode=np.asarray(1, np.int64),
     )
     inputs.update(curve)

@@ -10,7 +10,7 @@ from beatfcn.train.alternative_context import (ROLE, SiblingIndex, alternative_s
                                                draw_alternative, normalize_alternative_context,
                                                reference_inputs_with_alternative)
 from beatfcn.train.counterfactual_exposure import build_exposure
-from beatfcn.train.event_reference import SOURCE_COLUMN, VisibleReference, encode_reference
+from beatfcn.train.event_reference import REFERENCE_COLUMNS, SOURCE_COLUMN, VisibleReference, encode_reference
 from beatfcn.train.exposure_loader import (CounterfactualExposureDataset, build_exposure_loader,
                                            make_vocabulary, plan_loader_settings, request_sequence)
 from beatfcn.train.local_request_panel import event_request
@@ -58,7 +58,7 @@ class SiblingPanel:
                 carry = [dict(onset_us=int(a['onset_us'][i]), end_us=int(a['end_us'][i]), type='hold',
                               lane=int(a['lane'][i])) for i in np.flatnonzero(crossing)]
                 self.records.append(dict(split='train', chart_index=chart_index, chart_id=chart['chart_id'],
-                    audio_sha256=chart['audio_sha256'], mode=chart['mode'], controls=np.zeros((8, 6), np.float32),
+                    audio_sha256=chart['audio_sha256'], mode=chart['mode'], controls=np.zeros((7, 6), np.float32),
                     target_start=int(inside[0]), target_stop=int(inside[-1]) + 1,
                     request=dict(mode=chart['mode'], start_us=start, end_us=end, duration_us=DURATION,
                                  known_carry=carry)))
@@ -82,9 +82,9 @@ class SiblingPanel:
             local_valid=np.ones(local, bool), mel=np.ones((local * 4, 2), np.float32),
             mel_times=mel.astype(np.float32), mel_valid=np.ones(local * 4, bool),
             song=np.ones((6, 4), np.float32), song_times=np.zeros(6, np.float32),
-            song_valid=np.ones(6, bool), reference=np.zeros((1, 16), np.float32),
+            song_valid=np.ones(6, bool), reference=np.zeros((1, 12), np.float32),
             reference_times=np.zeros(1, np.float32), reference_valid=np.ones(1, bool),
-            controls=np.zeros((8, 6), np.float32),
+            controls=np.zeros((7, 6), np.float32),
             mode=np.asarray(0 if self.records[index]['mode'] == 'mania_4k' else 1, np.int64)), sequence=None)
 
     def sequence(self, index):
@@ -216,7 +216,7 @@ class AlternativeContextTest(unittest.TestCase):
                 self.assertNotIn(alt['sibling'], ('osu:medium', 'osu:medium-dup'))
             ref = row['inputs']['reference']
             role = ref[:, SOURCE_COLUMN[ROLE]] == 1
-            events = ref[:, 10] == 1
+            events = ref[:, REFERENCE_COLUMNS.index('event')] == 1
             rel = ref[:, 0] * 1_200_000_000 / 1e6                              # seconds from the window start
             inside = (rel >= 0) & (rel < 8)
             self.assertTrue((role & events & inside).any())                   # sibling notes inside the window

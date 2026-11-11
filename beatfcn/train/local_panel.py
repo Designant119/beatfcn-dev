@@ -12,6 +12,7 @@ import torch
 
 from beatfcn.model.full_event_codec import EventRequest, encode_events, teacher_sequence
 from beatfcn.model.event_canvas import RhythmEvent
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 
 
 ONSET_KEYS = ('onset_targets', 'onset_valid')
@@ -126,7 +127,8 @@ class LocalEventPanel:
     def row(self,index,*,controls=None):
         r=self.records[index];q=r['request']
         audio=self._audio(r['audio_sha256'],q['start_us'],q['duration_us'])
-        ref=np.zeros((1,16),np.float32);ref[0,1]=(q['end_us']-q['start_us'])/1_200_000_000;ref[0,15]=1
+        ref=np.zeros((1,len(REFERENCE_COLUMNS)),np.float32);ref[0,1]=(q['end_us']-q['start_us'])/1_200_000_000
+        ref[0,REFERENCE_COLUMNS.index('unknown_region')]=1
         return dict(inputs={**audio,'reference':ref,'reference_times':np.zeros(1,np.float32),
             'reference_valid':np.ones(1,bool),'controls':np.asarray(r['controls'] if controls is None else controls,np.float32),
             'mode':np.asarray(0 if q['mode']=='mania_4k' else 1,np.int64)},sequence=self.sequence[index])

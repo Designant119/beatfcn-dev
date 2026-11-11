@@ -70,6 +70,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from beatfcn.events.canonical import TYPES  # noqa: E402
+from beatfcn.events.osu_mania import ExportError  # noqa: E402
 from beatfcn.model.rerank import DEFAULT_WEIGHTS as RERANK_WEIGHTS  # noqa: E402
 from beatfcn.train.workflow_metrics import (CHARTER_DIVISORS, CHARTER_SNAP_MAX_US, DEFAULT_COSTS,  # noqa: E402
     DEFAULT_TOLERANCES, ON_GRID_US, PROFILE_METRICS, SNAP_DIVISORS, SNAP_MAX_US, bootstrap_mean, chart_edit_rate,
@@ -1494,7 +1495,23 @@ def consensus_evaluated(samples, songs, refs, grids, *, per_op, split, energies=
     for song in songs:
         sid = song['song_id']
         states = [smp['by_id'][sid] for smp in samples]
-        notes, info = consensus_draft([draft_tuples(song, st) for st in states], song['mode'], song['duration_us'],
+        tuplesets = [draft_tuples(song, st) for st in states]
+        lane_free = (song['mode'] == 'mania_4k'
+                     and not any(n[3] >= 0 for ts in tuplesets for n in ts)
+                     and any(n[3] == -1 for ts in tuplesets for n in ts))
+        if lane_free:
+            # Same gate as draft_song, but only for genuinely lane-free drafts: consensus
+            # voted on 4-lane patterns the grammar no longer predicts (timing-only, lane=-1).
+            drafts[sid] = dict(mode=song['mode'], audio_sha256=song['audio_sha256'],
+                               seeds=[smp['seed'] for smp in samples], complete=False,
+                               duration_us=song['duration_us'],
+                               info=dict(skipped='mania consensus voted on 4-lane patterns, which the grammar '
+                                                 'no longer predicts; use the single-sample readout'),
+                               events=[])
+            if on_song is not None:
+                on_song()
+            continue
+        notes, info = consensus_draft(tuplesets, song['mode'], song['duration_us'],
                                       min_jack_us=min_jack_us, pattern_source=pattern_source, min_votes=min_votes)
         if hold_release_us:
             from beatfcn.train.workflow_metrics import repair_hold_release
@@ -1783,27 +1800,33 @@ def build_readouts(samples, evaluated, songs, *, rerank=None, oracle=None, sampl
     if consensus is not None:
         rows, draft_rows = [], []
         for song in songs:
+            if song['song_id'] not in consensus:
+                continue  # mania_4k: consensus votes on lane patterns the grammar no longer predicts
             r, d = consensus[song['song_id']]
             rows += r
             draft_rows.append(d)
-        n = len(draft_rows[0]['seeds']) if draft_rows else 0
-        readouts[f'consensus_{n}'] = dict(label=READOUT_LABELS['consensus_N'].replace('N samples', f'{n} samples'),
-            indices=None, seeds_used={d['song_id']: d['seeds'] for d in draft_rows},
-            complete_fraction=float(np.mean([d['complete'] for d in draft_rows])),
-            aggregate=aggregate(rows, draft_rows, samples=samples_n, seed=seed), rows=rows, draft_rows=draft_rows)
+        if draft_rows:
+            n = len(draft_rows[0]['seeds'])
+            readouts[f'consensus_{n}'] = dict(label=READOUT_LABELS['consensus_N'].replace('N samples', f'{n} samples'),
+                indices=None, seeds_used={d['song_id']: d['seeds'] for d in draft_rows},
+                complete_fraction=float(np.mean([d['complete'] for d in draft_rows])),
+                aggregate=aggregate(rows, draft_rows, samples=samples_n, seed=seed), rows=rows, draft_rows=draft_rows)
     if consensus_jack is not None:
         rows, draft_rows = [], []
         for song in songs:
+            if song['song_id'] not in consensus_jack:
+                continue  # mania_4k: consensus votes on lane patterns the grammar no longer predicts
             r, d = consensus_jack[song['song_id']]
             rows += r
             draft_rows.append(d)
-        n = len(draft_rows[0]['seeds']) if draft_rows else 0
-        readouts[f'consensus_{n}_jackfree'] = dict(
-            label=READOUT_LABELS['consensus_N'].replace('N samples', f'{n} samples') +
-                  ' + no key re-pressed within --consensus-min-jack-ms (same samples as consensus_N)',
-            indices=None, seeds_used={d['song_id']: d['seeds'] for d in draft_rows},
-            complete_fraction=float(np.mean([d['complete'] for d in draft_rows])),
-            aggregate=aggregate(rows, draft_rows, samples=samples_n, seed=seed), rows=rows, draft_rows=draft_rows)
+        if draft_rows:
+            n = len(draft_rows[0]['seeds'])
+            readouts[f'consensus_{n}_jackfree'] = dict(
+                label=READOUT_LABELS['consensus_N'].replace('N samples', f'{n} samples') +
+                      ' + no key re-pressed within --consensus-min-jack-ms (same samples as consensus_N)',
+                indices=None, seeds_used={d['song_id']: d['seeds'] for d in draft_rows},
+                complete_fraction=float(np.mean([d['complete'] for d in draft_rows])),
+                aggregate=aggregate(rows, draft_rows, samples=samples_n, seed=seed), rows=rows, draft_rows=draft_rows)
     if rerank is not None and oracle is not None:
         same = [rerank[s['song_id']]['index'] == oracle[s['song_id']]['index'] for s in songs]
         readouts['best_of_N_reranked']['agreement_with_oracle'] = float(np.mean(same))

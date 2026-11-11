@@ -4,7 +4,11 @@ import unittest
 import numpy as np
 
 from beatfcn.events.canonical import Event, LaneLoc, LineLoc
-from beatfcn.train.event_reference import VisibleReference, encode_reference
+from beatfcn.train.event_reference import REFERENCE_COLUMNS, VisibleReference, encode_reference
+
+
+def _col(name):
+    return REFERENCE_COLUMNS.index(name)
 
 
 class EventReferenceTests(unittest.TestCase):
@@ -18,25 +22,25 @@ class EventReferenceTests(unittest.TestCase):
 
     def test_blank_is_exactly_the_frozen_local_loader_contract(self):
         inputs, provenance = encode_reference(**self.arguments())
-        expected = np.zeros((1, 16), np.float32)
-        expected[0, 1] = 8_000_000/1_200_000_000; expected[0, 15] = 1
+        expected = np.zeros((1, len(REFERENCE_COLUMNS)), np.float32)
+        expected[0, 1] = 8_000_000/1_200_000_000; expected[0, _col('unknown_region')] = 1
         np.testing.assert_array_equal(inputs['reference'], expected)
         np.testing.assert_array_equal(inputs['reference_times'], [0.])
         self.assertEqual(provenance[0]['role'], 'unknown')
 
     def test_known_silence_is_distinct_from_unknown(self):
         inputs, _ = encode_reference(**self.arguments(), sources=(self.source(),))
-        self.assertEqual(inputs['reference'].shape, (2, 16))
-        self.assertEqual(inputs['reference'][1, 14], 1)
-        self.assertEqual(inputs['reference'][1, 15], 0)
-        self.assertEqual(inputs['reference'][1, 11], 1)
+        self.assertEqual(inputs['reference'].shape, (2, len(REFERENCE_COLUMNS)))
+        self.assertEqual(inputs['reference'][1, _col('known_region')], 1)
+        self.assertEqual(inputs['reference'][1, _col('unknown_region')], 0)
+        self.assertEqual(inputs['reference'][1, _col('human_input')], 1)
 
     def test_visible_hold_keeps_known_tail_and_does_not_round(self):
         event = Event('hold', 7_000_123, 10_000_987, 'hold', LineLoc('1', 'above', 0.))
         inputs, provenance = encode_reference(**self.arguments(), sources=(self.source((event,)),))
         self.assertEqual(provenance[-1]['interval_us'], [7_000_123, 10_000_987])
         self.assertEqual(inputs['reference'][-1, 3], 1)
-        self.assertEqual(inputs['reference'][-1, 10], 1)
+        self.assertEqual(inputs['reference'][-1, _col('event')], 1)
 
     def test_hidden_target_and_audio_swap_are_rejected(self):
         event = Event('hidden', 9_000_000, 9_000_000, 'drag', LineLoc('1', 'above', 0.))
@@ -51,8 +55,8 @@ class EventReferenceTests(unittest.TestCase):
         event = Event('a', 7_000_000, 7_000_000, 'drag', LineLoc('1', 'above', 0.))
         source = replace(self.source((event, replace(event, event_id='b'))), role='model_history')
         inputs, provenance = encode_reference(**self.arguments(), sources=(source,))
-        self.assertEqual(int(inputs['reference'][:, 10].sum()), 2)
-        self.assertEqual(int(inputs['reference'][:, 12].sum()), 3)
+        self.assertEqual(int(inputs['reference'][:, _col('event')].sum()), 2)
+        self.assertEqual(int(inputs['reference'][:, _col('model_history')].sum()), 3)
         self.assertEqual([p['event_id'] for p in provenance[-2:]], ['a', 'b'])
 
     def test_capacity_does_not_silently_remove_reference_events(self):
@@ -64,7 +68,8 @@ class EventReferenceTests(unittest.TestCase):
         event = Event('key', 1000, 1000, 'tap', LaneLoc(3))
         source = replace(self.source((event,)), mode='mania_4k')
         inputs, _ = encode_reference(**args, sources=(source,))
-        self.assertEqual(inputs['reference'][-1, 9], 1)
+        self.assertEqual(inputs['reference'][-1, _col('event')], 1)
+        self.assertEqual(inputs['reference'][-1, _col('human_input')], 1)
         with self.assertRaisesRegex(ValueError, 'mode/region'):
             encode_reference(**args, sources=(replace(source, events=(replace(event, location=LineLoc('0', 'above', 0.)),)),))
 

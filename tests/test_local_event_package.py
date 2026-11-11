@@ -35,10 +35,10 @@ class EventPackageTests(unittest.TestCase):
             mel=torch.randn(1, 8, 8),
             mel_times=torch.arange(8)[None] * .01 + .005,
             mel_valid=torch.ones(1, 8, dtype=torch.bool),
-            reference=torch.zeros(1, 1, 16),
+            reference=torch.zeros(1, 1, 12),
             reference_times=torch.zeros(1, 1),
             reference_valid=torch.ones(1, 1, dtype=torch.bool),
-            controls=torch.zeros(1, 8, 6),
+            controls=torch.zeros(1, 7, 6),
             mode=torch.tensor([1]),
         )
         inputs.update({

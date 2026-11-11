@@ -637,10 +637,10 @@ def parse_args(argv=None):
         p.error('--model and --mode are required (or --extract-only)')
     if a.extract_only and a.features_dir is None:
         p.error('--extract-only needs --features-dir (a temporary feature dir is deleted)')
-    if a.consensus < 1:
+    if a.consensus is not None and a.consensus < 1:
         p.error('--consensus must be >= 1')
     temperature = wb.parse_temperature(a.temperature)
-    if a.consensus > 1 and temperature is None:
+    if a.consensus is not None and a.consensus > 1 and temperature is None:
         p.error('--consensus > 1 needs sampling (identical greedy samples)')
     if a.field_temperature is not None and temperature is None:
         p.error('--field-temperature needs sampling')
@@ -901,7 +901,9 @@ def main(argv=None, *, extractor=None, decoder=None):
                               codec=receipt['audio']['codec'], timings=receipt['timings']), indent=1))
     else:
         export = receipt['export']
-        print(json.dumps(dict(chart=export.get('osz') or export['chart'].get('path'), notes=receipt['draft']['notes'],
+        chart = (export.get('osz') or (export.get('chart') or {}).get('path')
+                 or export.get('skipped') or 'skipped')
+        print(json.dumps(dict(chart=chart, notes=receipt['draft']['notes'],
                               clock_shift_ms=receipt['clock']['c_ms'], receipt=str(Path(args.out_dir)/'draft-receipt.json'),
                               timings={k: round(v, 3) for k, v in receipt['timings'].items()}), indent=1))
     return receipt

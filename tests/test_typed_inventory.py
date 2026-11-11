@@ -11,6 +11,7 @@ from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.model.full_event_codec import EventRequest
 from beatfcn.model.full_event_model import FullEventConfig
 from beatfcn.model.typed_inventory import TypedInventory, count_logz, count_nll, count_log_marginals, count_modes
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 from beatfcn.train.exact_cell_support import ExactCellSupport
 from beatfcn.train.typed_inventory import carry_reference_row, run_typed_members
 
@@ -81,7 +82,7 @@ class TypedInventoryTests(unittest.TestCase):
             self.assertIs(result['request'],request)
             self.assertEqual(len(result['request'].known_carry),2)
             self.assertEqual(len(result['carry_reference_additions']),extra)
-            self.assertEqual(int(result['inputs']['reference'][:,10].sum()),2)
+            self.assertEqual(int(result['inputs']['reference'][:,REFERENCE_COLUMNS.index('event')].sum()),2)
         self.assertEqual(len(row['visible']),1)
 
     def test_type_members_keep_duplicate_short_and_fractional_cross_boundary_hold(self):

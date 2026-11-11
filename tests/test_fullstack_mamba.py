@@ -17,9 +17,9 @@ class FullStackMambaTests(unittest.TestCase):
             local_times=torch.arange(7)[None] * .04, mel=torch.randn(1, 28, 4),
             mel_valid=torch.tensor([[1] * 20 + [0] * 8], dtype=torch.bool), mel_times=torch.arange(28)[None] * .01,
             song=torch.randn(1, 11, 8), song_valid=torch.tensor([[1] * 8 + [0] * 3], dtype=torch.bool),
-            song_times=torch.arange(11)[None] * .5, reference=torch.randn(1, 3, 16),
+            song_times=torch.arange(11)[None] * .5, reference=torch.randn(1, 3, 12),
             reference_valid=torch.tensor([[1, 1, 0]], dtype=torch.bool), reference_times=torch.arange(3)[None].float(),
-            controls=torch.zeros(1, 8, 6), mode=torch.ones(1, dtype=torch.long))
+            controls=torch.zeros(1, 7, 6), mode=torch.ones(1, dtype=torch.long))
         req = EventRequest('phira', 0, 1_000_000, 2_000_000)
         values = teacher_sequence(encode_events([RhythmEvent(100_000, 300_000, 'hold', -1),
                                                 RhythmEvent(600_000, 600_000, 'flick', -1)], req), req)

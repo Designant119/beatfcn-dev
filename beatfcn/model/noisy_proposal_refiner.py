@@ -66,7 +66,7 @@ class NoisyProposalRefiner(nn.Module):
             if name.startswith(('count_','density_alpha','kind_ids','onset_ids','tail_','member_','copy_','no_tail')):p.requires_grad_(False)
         self.fine=nn.Linear(config.mel_bins,d)
         self.proposal_clock=nn.Linear(4,d)
-        self.request=nn.Sequential(nn.Linear(48,d),nn.SiLU(),nn.Linear(d,d))
+        self.request=nn.Sequential(nn.Linear(config.controls*config.control_dim,d),nn.SiLU(),nn.Linear(d,d))
         self.causal=nn.ModuleList(CausalProposalBlock(d) for _ in range(2))
         self.norm=RMSNorm(d);self.kind=nn.Linear(d,5)
         self.head=nn.Linear(d,613);self.tail_copy=nn.Linear(d,513);self.duration=nn.Linear(d,1)

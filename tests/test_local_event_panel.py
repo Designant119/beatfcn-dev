@@ -42,8 +42,8 @@ class LocalPanelTests(unittest.TestCase):
         self.assertFalse(sequence['valid'][:,max(len(r['sequence']['valid']) for r in rows):].any())
 
     def test_condition_dropout_preserves_applicability_scope_and_visible_values(self):
-        controls=np.zeros((8,6),np.float32)
-        controls[:7,:]=[.2,.4,1,1,0,.01]
+        controls=np.zeros((7,6),np.float32)
+        controls[:6,:]=[.2,.4,1,1,0,.01]
         row={'controls':controls}
         rng=random.Random(9)
         counts={}
@@ -54,7 +54,7 @@ class LocalPanelTests(unittest.TestCase):
             visible=result[:,2].astype(bool)
             np.testing.assert_array_equal(result[visible],controls[visible])
             self.assertTrue((result[~visible,:3]==0).all())
-            self.assertEqual(result[7].sum(),0)
+            self.assertEqual(result[6].sum(),0)
         self.assertEqual(set(counts),{'none','single','subset','all'})
 
 

@@ -47,9 +47,14 @@ def _regions(regions, duration_us):
     return tuple(ordered)
 
 
+_UNKNOWN_COLUMN = REFERENCE_COLUMNS.index('unknown_region')
+_KNOWN_COLUMN = REFERENCE_COLUMNS.index('known_region')
+_EVENT_COLUMN = REFERENCE_COLUMNS.index('event')
+
+
 def encode_reference(*, mode, audio_sha256, duration_us, origin_us,
                      unknown_regions, sources=(), max_rows=4096):
-    """Build the existing [R,16] input without consulting any hidden target.
+    """Build the existing [R,12] input without consulting any hidden target.
 
     Unknown and visible spans must be disjoint for same-chart roles; only a
     ``human_alternative`` source (another human chart of the same audio) may
@@ -84,7 +89,7 @@ def encode_reference(*, mode, audio_sha256, duration_us, origin_us,
                                interval_us=[start, end]))
 
     for start, end in unknown:
-        append(start, end, column=15)
+        append(start, end, column=_UNKNOWN_COLUMN)
     seen_sources = set()
     for source in sources:
         if (source.mode != mode or source.audio_sha256 != audio_sha256
@@ -101,7 +106,7 @@ def encode_reference(*, mode, audio_sha256, duration_us, origin_us,
                            and any(a < d and c < b for a, b in visible for c, d in unknown)):
             raise ValueError('Visible reference overlaps unknown target or has no authorized region')
         for start, end in visible:
-            append(start, end, column=14, source=source)
+            append(start, end, column=_KNOWN_COLUMN, source=source)
         seen_events = set()
         for event in sorted(source.events, key=lambda e: (e.onset_us, e.event_id)):
             if event.event_id in seen_events:
@@ -115,7 +120,7 @@ def encode_reference(*, mode, audio_sha256, duration_us, origin_us,
                     or event.is_hold and event.end_us <= event.onset_us
                     or not event.is_hold and event.end_us != event.onset_us):
                 raise ValueError('Reference has an invalid event duration')
-            append(event.onset_us, event.end_us, column=10, source=source, event=event)
+            append(event.onset_us, event.end_us, column=_EVENT_COLUMN, source=source, event=event)
     if not rows:
         raise ValueError('Empty reference must state an explicit unknown or known region')
     inputs = dict(reference=np.stack(rows), reference_times=np.asarray(times, np.float32),

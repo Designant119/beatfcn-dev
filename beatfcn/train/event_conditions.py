@@ -11,11 +11,16 @@ from torch.nn import functional as F
 
 from beatfcn.events import controls as C
 from beatfcn.events.canonical import MODE_TYPES
-from beatfcn.model.full_event_model import event_loss
+from beatfcn.model.full_event_model import FullEventConfig, event_loss
 
 CONTROL_FIELDS = tuple(C.BAND_EDGES)
 CONTROL_COLUMNS = ('lower', 'upper', 'specified', 'applicable', 'start', 'end')
 TIME_SCALE_US = 1_200_000_000
+# 主线控制头按 7 槽架构：r5 退役 jack_ratio 后只剩 7 个活字段（BAND_EDGES 长度 7），
+# control_ids 行数随之降到 7，参数量 250,552,323（比 8 槽少一行 embedding = 768）。
+# 重训线没有历史权重包袱，不再保留恒零的空槽。
+CONTROL_ROWS = FullEventConfig().controls
+assert CONTROL_ROWS >= len(CONTROL_FIELDS), 'model control slots must cover every live field'
 
 
 def _scope(scope):
@@ -41,8 +46,8 @@ def training_labels(mode, events, scope):
         if (event.is_hold and event.end_us <= event.onset_us) or (
                 not event.is_hold and event.end_us != event.onset_us):
             raise ValueError('Invalid target duration')
-        if mode == 'mania_4k' and getattr(event.location, 'lane', None) not in range(4):
-            raise ValueError('mania control supervision requires real lane identity')
+    # r5 removed lane identity from events (CF edits emit lane=-1); control derivation
+    # uses only onset/end/hold facts, so no lane requirement remains here.
     return C.derive_controls(mode, events, [scope])
 
 
@@ -57,7 +62,7 @@ def encode_controls(mode, bands, scope, *, origin_us):
         raise ValueError('Invalid mode or request clock origin')
     if not set(bands) <= set(C.MODE_FIELDS[mode]):
         raise ValueError('Unknown or inapplicable condition')
-    out = np.zeros((len(CONTROL_FIELDS), len(CONTROL_COLUMNS)), np.float32)
+    out = np.zeros((CONTROL_ROWS, len(CONTROL_COLUMNS)), np.float32)
     for i, field in enumerate(CONTROL_FIELDS):
         if field not in C.MODE_FIELDS[mode]:
             continue

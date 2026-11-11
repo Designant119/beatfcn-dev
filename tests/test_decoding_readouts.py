@@ -243,7 +243,7 @@ def fake_inputs_sources(seen):
     def fake(features, audio, request, controls, *, sources=()):
         seen.append((request.start_us, sources))
         return dict(local=np.zeros((3, 1, 8, 1024), np.float32), mode=np.asarray(1),
-                    controls=controls, reference=np.zeros((1, 16), np.float32)), []
+                    controls=controls, reference=np.zeros((1, 12), np.float32)), []
     return fake
 
 

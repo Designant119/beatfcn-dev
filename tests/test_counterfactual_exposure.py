@@ -207,7 +207,7 @@ class FakePanel:
                           for t in range(start, start + 8_000_000, 250_000)]
             self.events.append(events)
             self.records.append(dict(split='train', request=request, mode=mode,
-                                     chart_index=index, controls=np.zeros((8, 6), np.float32)))
+                                     chart_index=index, controls=np.zeros((7, 6), np.float32)))
 
     def targets(self, index):
         return list(self.events[index])
@@ -222,9 +222,9 @@ class FakePanel:
             local_valid=np.ones(local, bool), mel=np.ones((local * 4, 2), np.float32),
             mel_times=mel.astype(np.float32), mel_valid=np.ones(local * 4, bool),
             song=np.ones((6, 4), np.float32), song_times=np.zeros(6, np.float32),
-            song_valid=np.ones(6, bool), reference=np.zeros((1, 16), np.float32),
+            song_valid=np.ones(6, bool), reference=np.zeros((1, 12), np.float32),
             reference_times=np.zeros(1, np.float32), reference_valid=np.ones(1, bool),
-            controls=np.zeros((8, 6), np.float32), mode=np.asarray(0, np.int64)),
+            controls=np.zeros((7, 6), np.float32), mode=np.asarray(0, np.int64)),
             sequence=None, start=start)
 
     def sequence(self, index):
@@ -271,7 +271,7 @@ class CounterfactualDatasetTest(unittest.TestCase):
         self.assertGreaterEqual(len(seen), 4)
         item = dataset[0]
         ids, inputs, sequence = item['batches'][0]
-        self.assertEqual(tuple(inputs['controls'].shape), (4, 8, 6))
+        self.assertEqual(tuple(inputs['controls'].shape), (4, 7, 6))
         self.assertEqual(inputs['intensity'].shape[:2], (4, 80))
 
     def test_relative_block_vocabulary_threads_through(self):

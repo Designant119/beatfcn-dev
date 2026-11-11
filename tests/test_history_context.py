@@ -9,7 +9,7 @@ import torch
 from beatfcn.events.canonical import TYPES, Event, LaneLoc
 from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.train.counterfactual_exposure import build_exposure, exposure_summary
-from beatfcn.train.event_reference import TIME_SCALE_US, VisibleReference
+from beatfcn.train.event_reference import REFERENCE_COLUMNS, TIME_SCALE_US, VisibleReference
 from beatfcn.train.exposure_loader import (CounterfactualExposureDataset, build_exposure_loader,
                                            make_vocabulary, plan_loader_settings, request_sequence)
 from beatfcn.train.history_context import (check_no_leak, draw_history, history_sources,
@@ -56,7 +56,7 @@ class ChartPanel:
                 carry = [dict(onset_us=int(a['onset_us'][i]), end_us=int(a['end_us'][i]), type='hold',
                               lane=int(a['lane'][i])) for i in np.flatnonzero(crossing)]
                 self.records.append(dict(split='train', chart_index=chart_index, chart_id=chart['chart_id'],
-                    audio_sha256=AUDIO[chart_index], mode=chart['mode'], controls=np.zeros((8, 6), np.float32),
+                    audio_sha256=AUDIO[chart_index], mode=chart['mode'], controls=np.zeros((7, 6), np.float32),
                     target_start=int(inside[0]), target_stop=int(inside[-1]) + 1,
                     request=dict(mode=chart['mode'], start_us=start, end_us=end, duration_us=DURATION,
                                  known_carry=carry)))
@@ -80,9 +80,9 @@ class ChartPanel:
             local_valid=np.ones(local, bool), mel=np.ones((local * 4, 2), np.float32),
             mel_times=mel.astype(np.float32), mel_valid=np.ones(local * 4, bool),
             song=np.ones((6, 4), np.float32), song_times=np.zeros(6, np.float32),
-            song_valid=np.ones(6, bool), reference=np.zeros((1, 16), np.float32),
+            song_valid=np.ones(6, bool), reference=np.zeros((1, 12), np.float32),
             reference_times=np.zeros(1, np.float32), reference_valid=np.ones(1, bool),
-            controls=np.zeros((8, 6), np.float32),
+            controls=np.zeros((7, 6), np.float32),
             mode=np.asarray(0 if self.records[index]['mode'] == 'mania_4k' else 1, np.int64)), sequence=None)
 
     def sequence(self, index):
@@ -139,7 +139,7 @@ class HistoryContextTest(unittest.TestCase):
             reference = row['inputs']['reference']
             span = request.end_us - request.start_us
             carry = {(e.onset_us - request.start_us, e.end_us - request.start_us) for e in request.known_carry}
-            events = reference[reference[:, 10] == 1]
+            events = reference[reference[:, REFERENCE_COLUMNS.index('event')] == 1]
             self.assertEqual(len(events), info['prefix_events'] + info['suffix_events'])
             for event in events:
                 start_rel = float(event[0]) * TIME_SCALE_US
@@ -150,10 +150,10 @@ class HistoryContextTest(unittest.TestCase):
                     crossing += 1
                     self.assertTrue(any(abs(start_rel - a) < 5 and abs(end_rel - b) < 5 for a, b in carry))
             # Region rows are disjoint from the window; the unknown row is the window itself.
-            unknown = reference[reference[:, 15] == 1]
+            unknown = reference[reference[:, REFERENCE_COLUMNS.index('unknown_region')] == 1]
             self.assertEqual(len(unknown), 1)
             self.assertAlmostEqual(float(unknown[0, 1]) * TIME_SCALE_US, span, delta=5)
-            for region in reference[reference[:, 14] == 1]:
+            for region in reference[reference[:, REFERENCE_COLUMNS.index('known_region')] == 1]:
                 lo, hi = float(region[0]) * TIME_SCALE_US, float(region[1]) * TIME_SCALE_US
                 self.assertTrue(hi <= 5 or lo >= span - 5, (lo, hi))
             if info['prefix_region_us']:
@@ -213,9 +213,10 @@ class HistoryContextTest(unittest.TestCase):
         self.assertNotIn('history_context', plan_loader_settings(plan))
         self.assertEqual(plan_loader_settings(dict(plan, history_context=dict(p=.5)))['history_context']['p'], .5)
         # build_exposure without mode_weights is unchanged (digest frozen before this feature).
+        # Re-frozen for r5: CONTROL_FIELDS lost jack_ratio (8 -> 7 fields), which the plan embeds.
         frozen = build_exposure(list(range(8)), steps=40, seed=5)
         self.assertEqual(hashlib.sha256(json.dumps(frozen, sort_keys=True).encode()).hexdigest(),
-                         '8b4cd3f89f8661d8c27a2f401a30cbc75fe30225037e98bd22b2afbd24ad8826')
+                         'edec8a73227b9b98af7f5f3c22b9275d2fd1eb834ba763827f1f4c55617c4e5b')
         self.assertEqual(build_exposure(list(range(8)), steps=40, seed=5, mode_weights=None), frozen)
         self.assertNotIn('mode_mix', exposure_summary(frozen))
 
@@ -265,7 +266,7 @@ class HistoryContextTest(unittest.TestCase):
         modes = set()
         for item in items[:3]:
             _, inputs, sequence = item['batches'][0]
-            self.assertEqual(inputs['reference'].shape[-1], 16)
+            self.assertEqual(inputs['reference'].shape[-1], len(REFERENCE_COLUMNS))
             self.assertGreater(inputs['reference'].shape[1], 1)
             lengths = inputs['reference_valid'].sum(1)
             for row, n in enumerate(lengths.tolist()):

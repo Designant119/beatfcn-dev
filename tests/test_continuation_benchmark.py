@@ -6,7 +6,7 @@ import torch
 from beatfcn.events.canonical import TYPES
 from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.train import continuation_benchmark as cb
-from beatfcn.train.event_reference import TIME_SCALE_US
+from beatfcn.train.event_reference import REFERENCE_COLUMNS, TIME_SCALE_US
 
 AUDIO = ['%064x' % (i + 1) for i in range(4)]
 DURATION = 120_000_000
@@ -163,7 +163,7 @@ class GenerationTest(unittest.TestCase):
         self.assertTrue(all(s['complete'] for s in states))
         for request, reference in seen:
             span = request.end_us - request.start_us
-            events = reference[reference[:, 10] == 1]
+            events = reference[reference[:, REFERENCE_COLUMNS.index('event')] == 1]
             for event in events:
                 rel = float(event[0]) * TIME_SCALE_US
                 self.assertTrue(rel < -1 or rel > span - 1, rel)

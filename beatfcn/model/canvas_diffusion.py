@@ -18,6 +18,7 @@ from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.model.full_event_codec import encode_events
 from beatfcn.model.local_bundle import read_grid
 from beatfcn.model.local_typed_canvas import COPIES, FRAMES, KINDS, SLOTS, LocalTypedCanvas, best_tail
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 
 
 ABSENT = 0
@@ -127,7 +128,7 @@ class AbsorbingCanvasDiffusion(LocalTypedCanvas):
         clock = torch.stack((query / 8, (query / 8).square(), torch.sin(query * math.pi),
             torch.cos(query * math.pi)), -1)
         x = x + self.clock_read(clock) + self.mode_ids(inputs['mode'])[:, None]
-        visible = inputs['reference_valid'] & (inputs['reference'][..., 10] > 0)
+        visible = inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')] > 0)
         style = (inputs['reference'] * visible[..., None]).sum(1) / visible.sum(1, keepdim=True).clamp_min(1)
         scale, bias = self.direct(inputs['controls'].flatten(1)).chunk(2, -1)
         x = x * (1 + .1 * scale[:, None].tanh()) + bias[:, None] + self.style(style)[:, None]

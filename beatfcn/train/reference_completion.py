@@ -12,7 +12,8 @@ import numpy as np
 from beatfcn.events.canonical import TYPES
 from beatfcn.model.full_event_codec import encode_events, teacher_sequence
 from beatfcn.train.event_conditions import encode_controls
-from beatfcn.train.event_reference import TIME_SCALE_US, VisibleReference, encode_reference
+from beatfcn.train.event_reference import (REFERENCE_COLUMNS, TIME_SCALE_US, VisibleReference,
+                                           encode_reference)
 from beatfcn.train.local_request_panel import event_request, request_inputs
 from beatfcn.model.local_song_rollout import canonical
 
@@ -57,15 +58,16 @@ def partition(events, request, task, identity, seed):
 
 def sparse_reference(visible, request):
     """Encode only explicitly supplied events, with no access to hidden labels."""
-    values = np.zeros((1 + len(visible), 16), np.float32)
+    values = np.zeros((1 + len(visible), len(REFERENCE_COLUMNS)), np.float32)
     times = np.zeros(1 + len(visible), np.float32)
     values[0, 1] = (request.end_us - request.start_us) / TIME_SCALE_US
-    values[0, 15] = 1
+    values[0, REFERENCE_COLUMNS.index('unknown_region')] = 1
     for i, event in enumerate(visible, 1):
         values[i, :2] = [(event.onset_us - request.start_us) / TIME_SCALE_US,
                          (event.end_us - request.start_us) / TIME_SCALE_US]
         values[i, 2 + TYPES.index(event.type)] = 1
-        values[i, 10:12] = 1  # event and explicitly authorized human_input
+        values[i, REFERENCE_COLUMNS.index('event')] = 1  # explicitly authorized human_input row
+        values[i, REFERENCE_COLUMNS.index('human_input')] = 1
         times[i] = (event.onset_us - request.start_us) / 1e6
     return dict(reference=values, reference_times=times,
                 reference_valid=np.ones(len(values), bool))

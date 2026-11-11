@@ -28,7 +28,7 @@ def joint_reference_inputs(request, audio_sha256, visible, regions, *, source_id
             raise ValueError('Invalid sparse visible event')
         canonical(visible,request.mode)  # Validate visible event types/native adapter.
         result=sparse_reference(visible,request)
-        result['reference'][:,11:14]=0
+        result['reference'][:,sorted(SOURCE_COLUMN.values())]=0
         result['reference'][1:,SOURCE_COLUMN[role]]=1
         provenance=[dict(role='unknown',interval_us=[request.start_us,request.end_us])]+[
             dict(role=role,source_id=source_id,positive_only=True,event=asdict(e)) for e in visible]

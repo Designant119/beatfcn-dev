@@ -388,6 +388,8 @@ def run_plan(plan_rel: str) -> dict:
     plan = json.loads((ROOT / plan_rel).read_text())
     prep_start = time.monotonic()
     _prepare_root(plan)
+    # Unlike train_large_plan there is no auto-resume here: every spawn is a fresh run.
+    resume_args = []
     # Every spawn is a fresh run; a stale failed report from an earlier attempt
     # otherwise aborts the driver with FileExistsError.
     stale = REPO / plan['output']
@@ -461,7 +463,7 @@ def run_plan(plan_rel: str) -> dict:
                 prep_s=prep_s, run_s=run_s, copy_s=copy_s,
                 complete=report.get('complete'), updates=report.get('updates'),
                 latest_train_ce=report.get('latest_train_ce'),
-                stdout_tail=proc.stdout[-2500:], stderr_tail=proc.stderr[-2500:],
+                stdout_tail=''.join(lines[-80:]), stderr_tail='',
                 val=[c.get('mode_val_ce') for c in report.get('curve', [])[-3:]])
 
 

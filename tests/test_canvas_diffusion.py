@@ -7,6 +7,7 @@ from torch.nn import functional as F
 from beatfcn.model.canvas_diffusion import (
     ABSENT,
     MASK,
+    TAIL_VOCAB,
     AbsorbingCanvasDiffusion,
     ancestral_sample,
     categorical_reverse,
@@ -64,8 +65,8 @@ class CanvasDiffusionTests(unittest.TestCase):
             song=torch.randn(1, 4, 16), song_times=torch.arange(4)[None] * .5 + .25,
             song_valid=torch.ones(1, 4, dtype=torch.bool), mel=torch.randn(1, 8, 8),
             mel_times=torch.arange(8)[None] * .01 + .005, mel_valid=torch.ones(1, 8, dtype=torch.bool),
-            reference=torch.zeros(1, 1, 16), reference_times=torch.zeros(1, 1),
-            reference_valid=torch.ones(1, 1, dtype=torch.bool), controls=torch.zeros(1, 8, 6),
+            reference=torch.zeros(1, 1, 12), reference_times=torch.zeros(1, 1),
+            reference_valid=torch.ones(1, 1, dtype=torch.bool), controls=torch.zeros(1, 7, 6),
             mode=torch.tensor([1]))
         inputs.update({k: torch.from_numpy(np.asarray(v))[None] for k, v in request_layout(request).items()})
         raw = encode_canvas(events, request)
@@ -79,6 +80,12 @@ class CanvasDiffusionTests(unittest.TestCase):
             decoder_layers=0, tap_dim=16, bands=4, dropout=0., mel_bins=8)
         model = AbsorbingCanvasDiffusion(config, density_reference=4., steps=4)
         noisy = model.corrupt(target, 2)
+        # The tail heads are only supervised where a hold is corrupted; whether the sampled
+        # corruption hits the hold depends on the init RNG stream (e.g. the controls width),
+        # so force the hold channel to make the corruption deterministic.
+        noisy['offset'][:, :, 1] = MASK
+        for name, vocab in TAIL_VOCAB.items():
+            noisy[name][:] = vocab
         output = model(inputs, noisy, torch.tensor([2]))
         changed_time = model(inputs, noisy, torch.tensor([1]))
         self.assertFalse(torch.allclose(output['offset0'], changed_time['offset0']))
