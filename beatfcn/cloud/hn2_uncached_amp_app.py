@@ -1,7 +1,7 @@
 """HN2 Modal definitions; import only AFTER the local Owner/review reservation.
 
 There is deliberately no local_entrypoint and no automatic upload or spawn.
-The gated scripts/run_hn2_safe_admission.py is the sole supported launcher.
+The gated scripts/run_hn2_uncached_amp_admission.py is the sole supported launcher.
 """
 import hashlib
 import json

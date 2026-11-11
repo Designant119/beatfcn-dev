@@ -73,7 +73,7 @@ def dup_chunk(rows: list) -> list:
                     dup_sigs.append({'type': sig[0], 'mult': n})
         out = {'chart_id': r['chart_id'], 'name': r.get('title'), 'rating': r.get('rating'), 'n_heads': int(len(times)),
                'n_dup_times': int((kinds == 'dup').sum()), 'n_chord_times': int((kinds == 'chord').sum()),
-               'delta_ms': r.get('offset', {}).get('delta_ms'), 'dup_types': dup_sigs}
+               'delta_ms': (r.get('offset') or {}).get('delta_ms'), 'dup_types': dup_sigs}
         for k in ('dup', 'chord', 'single'):
             m = (kinds == k) & np.isfinite(pct)
             out[f'pct_{k}'] = float(np.median(pct[m])) if m.any() else None
@@ -105,11 +105,15 @@ def dup_onsets(manifest: str, out: str = 'reports/phira_duplicate_onsets.json'):
             and 'duplicate_object' in (r.get('quarantine_reasons') or [])]
     chunks = [rows[i:i + 20] for i in range(0, len(rows), 20)]
     res = [x for part in dup_chunk.map(chunks) for x in part]
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
     Path(out).write_text(json.dumps(res, ensure_ascii=False))
     import numpy as np
     good = [r for r in res if 'error' not in r and r.get('pct_dup') is not None]
+    def _median(k):
+        vals = [r[f'pct_{k}'] for r in good if r[f'pct_{k}'] is not None]
+        return float(np.median(vals)) if vals else None
     print(json.dumps({'charts': len(rows), 'analysed': len(good),
-                      'median_pct': {k: float(np.median([r[f'pct_{k}'] for r in good if r[f'pct_{k}'] is not None])) for k in ('dup', 'chord', 'single')}}))
+                      'median_pct': {k: _median(k) for k in ('dup', 'chord', 'single')}}))
 
 
 # ---------------------------------------------------------------- Phira type-combination statics
@@ -257,5 +261,6 @@ def phira_combos(manifest: str, out: str = 'reports/phira_type_combos.json'):
             and (r.get('kept') or dup_only(r))]
     chunks = [rows[i:i + 25] for i in range(0, len(rows), 25)]
     res = [x for part in combo_chunk.map(chunks) for x in part]
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
     Path(out).write_text(json.dumps(res))
     print(json.dumps({'charts': len(rows), 'ok': sum('error' not in r for r in res)}))

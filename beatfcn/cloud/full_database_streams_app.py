@@ -1,4 +1,8 @@
-"""Deep CUDA diagnostic: direct verified raw IO, CUDA mel and single-pass writes."""
+"""Streaming-pipeline build (production): verified raw IO, CUDA mel and single-pass writes.
+
+Unlike full_database_cuda_app (a deep diagnostic), this variant requires the run contract's
+`diagnostic_only` to be false and reports `diagnostic_only=False` in its result.
+"""
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from contextlib import ExitStack
 from pathlib import Path
