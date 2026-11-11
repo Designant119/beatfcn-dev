@@ -47,7 +47,10 @@ def errors(issues):
 
 
 def load_schema(path=SCHEMA_PATH):
-    return json.loads(Path(path).read_text())
+    p = Path(path)
+    if not p.exists():
+        return None
+    return json.loads(p.read_text())
 
 
 def schema_issues(req, schema=None):
@@ -55,7 +58,10 @@ def schema_issues(req, schema=None):
         import jsonschema
     except ImportError:
         return [issue(0, 'jsonschema_unavailable', detail='pip install jsonschema (requirements-p0.txt)')]
-    schema = schema or load_schema()
+    if schema is None:
+        schema = load_schema()
+    if schema is None:
+        return [issue(0, 'schema_unavailable', detail=f'request schema missing at {SCHEMA_PATH}', severity='warn')]
     v = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
     return [issue(0, 'schema', '/'.join(map(str, e.absolute_path)), e.message)
             for e in sorted(v.iter_errors(req), key=lambda e: list(map(str, e.absolute_path)))]
@@ -311,7 +317,11 @@ def validate_response(req, resp, scene_line_ids=None):
     runs = editable_runs(req)
     obs = [e for e in map(_ev, req.get('observed_events', [])) if e]
     obs_ids = {e.event_id for e in obs}
-    allowed = req.get('controls', {}).get('allowed_types') or MODE_TYPES.get(mode, ())
+    allowed = req.get('controls', {}).get('allowed_types')
+    if allowed is None:
+        allowed = MODE_TYPES.get(mode, ())
+    else:
+        allowed = tuple(allowed)
     adds = []
     for k, d in enumerate(resp.get('additions', [])):
         p = f'additions/{k}'

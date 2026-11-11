@@ -25,7 +25,7 @@ transforms through moving, rotating or parent lines (only line_id, side, raw nat
 speed/floorPosition/visibility semantics; attachUI lines; renderer parity golden cases.
 """
 from __future__ import annotations
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 import hashlib
 import json
@@ -85,8 +85,10 @@ def _load_json(data):
 def _offset_from_info(info_offset) -> Fraction:
     if info_offset is None:
         return Fraction(0)
-    f = Fraction(Decimal(str(info_offset)))
-    return f
+    try:
+        return Fraction(Decimal(str(info_offset)))
+    except (InvalidOperation, ValueError) as e:
+        raise UnsupportedFormat(f'info.yml offset is not a number: {info_offset!r}') from e
 
 
 def parse_phira(data, source_name: str = 'chart.json', info_offset_sec=None) -> Chart:
