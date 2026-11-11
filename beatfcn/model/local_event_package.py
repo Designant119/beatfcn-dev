@@ -158,6 +158,10 @@ class EventPackageCanvas(LocalTypedCanvas):
                 condition = self.tail_condition(torch.cat((hidden, onset_embedding), -1))
                 fields = (self.tail_block(condition), self.tail_cell(condition),
                     self.tail_ms(condition))
+                if (duration_us - base_us) // 1000 >= fields[0].shape[-1] * 2000:
+                    # same TAIL_BLOCKS domain bound as canonical_event_package.tail_law;
+                    # without it best_tail indexes its block table out of range.
+                    raise ValueError('Song exceeds represented native tail domain')
                 delta_us = best_tail(*(field.detach().float().cpu().numpy() for field in fields),
                     head - base_us, duration_us - base_us)
                 delta_ms = delta_us // 1000

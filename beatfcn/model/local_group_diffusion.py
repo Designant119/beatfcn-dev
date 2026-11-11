@@ -180,6 +180,11 @@ class GroupDiffusionCanvas(EventPackageCanvas):
                 fields = self.tail_block(condition), self.tail_cell(condition), self.tail_ms(condition)
                 lo = head // 1000 + 1 - base_ms
                 hi = request.duration_us // 1000 - base_ms
+                if hi >= fields[0].shape[-1] * 2000:
+                    # tail tables cover TAIL_BLOCKS blocks of 2000 ms; an endpoint past that
+                    # would index the sampled/nll tables out of range (IndexError, not caught
+                    # by the ValueError -> GroupSampleError wrapper above).
+                    raise ValueError('Song exceeds represented native tail domain')
                 if previous_head == head:
                     lo = max(lo, previous_tail)
                 if hi < lo:
