@@ -62,7 +62,9 @@ def legality_issues(request, additions, *, placement=False):
     if request['mode']=='mania_4k':
         for code,a,b in lane_conflicts(observed+list(additions)):
             if a not in observed_ids or b not in observed_ids:
-                add(code,b)
+                # Blame the generated side: the earlier event is not necessarily
+                # the observed one (conflicts come ordered by (onset, event_id)).
+                add(code,a if a not in observed_ids else b)
     elif placement:
         for a,b in oversized_stacks(observed+list(additions)):
             if b not in observed_ids:
