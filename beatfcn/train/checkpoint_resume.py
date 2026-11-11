@@ -67,7 +67,7 @@ def validate_resume(plan, parent, saved, *, parent_sha, checkpoint_sha):
         raise ValueError('Resume requires an exact complete optimizer boundary')
     if not saved.get('optimizer') or 'cpu_rng' not in saved:
         raise ValueError('Resume requires optimizer and RNG state, not weights only')
-    if plan.get('device') == 'cuda' and saved.get('cuda_rng') is None:
+    if isinstance(plan.get('device'), str) and plan['device'].split(':')[0] == 'cuda' and saved.get('cuda_rng') is None:
         raise ValueError('Resume checkpoint lacks CUDA RNG state')
     return step
 
@@ -78,6 +78,11 @@ def load_resume(root, plan):
     checkpoint_path = root/source['path']
     parent_sha = file_sha(parent_path)
     checkpoint_sha = file_sha(checkpoint_path)
+    # Identity first: never unpickle a path before its sha256 matches the plan. weights_only=False
+    # is required for the optimizer/RNG payload, so an unchecked load would execute arbitrary
+    # pickle content exactly in the case this validation exists to catch.
+    if source['sha256'] != checkpoint_sha:
+        raise ValueError('Resume checkpoint identity mismatch')
     parent = json.loads(parent_path.read_text())
     saved = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
     validate_resume(plan, parent, saved, parent_sha=parent_sha, checkpoint_sha=checkpoint_sha)
