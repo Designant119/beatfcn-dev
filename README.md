@@ -25,6 +25,8 @@
 | `plans/evolve/` | 11 个预注册实验计划（C1–C9 + peer RL R1） |
 | `bench/` | 评测口径与历史指标数据；`beatfcn/cloud/*` 有引用 |
 | `phira_all_charts.jsonl` | Phira 谱面目录，`beatfcn/cloud/ingest_app.py` 使用 |
+| `同学训练操作页.html` + `console_server.py` | 给同学用的一键操作台：网页看机器/环境/数据/开跑状态，后端只读探活、不 import torch |
+| `双击安装训练系统.bat` / `启动控制台.sh` | Windows 双击装 WSL 系统并起后端；Linux 侧起后端（tmux 会话 `console`） |
 
 ## r5 现状
 
@@ -46,6 +48,14 @@ python -m scripts.draft_song --audio S --out-dir D --mode phira --profile none -
 python editor/infer.py --audio song.mp3 --bpm-map bpm.json --model ckpt.pt --out-dir out/
 python editor/infer.py --audio song.mp3 --raw --model ckpt.pt --out-dir out/
 ```
+
+## 给同学用的一键操作台
+
+Windows 上双击 `双击安装训练系统.bat`：装 WSL（要重启一次）→ 从训练盘导入系统 → 起后端 → 自动打开页面。
+Linux / WSL 里手动起：`bash 启动控制台.sh`，然后开 `http://localhost:7777`（手机连同一 WiFi 用 `http://本机IP:7777`）。
+
+后端默认认 `~/beatfcn-dev` 为代码目录（换过路径设环境变量 `BEATFCN_REPO`），公网暴露时用 `--token 口令` 给 `/api/*` 加访问码。
+页面不是训练必需项：关掉后端页面就退回手动模式，训练进程不受影响。
 
 ## 环境
 

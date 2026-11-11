@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>训练机操作台 / BEATFCN R5</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230d100f'/%3E%3Crect x='6' y='8' width='20' height='3' fill='%23f0a442'/%3E%3Crect x='6' y='14' width='13' height='3' fill='%23f0a442'/%3E%3Crect x='6' y='20' width='17' height='2' fill='%236f6a5c'/%3E%3C/svg%3E">
+<style>
+  @font-face{
+    font-family:'Phigros';
+    src:url(data:font/ttf;base64,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) format('truetype');
+    font-weight:400;font-style:normal;font-display:swap;
+  }
+  :root{
+    --bg:#0d100f; --panel:#141a17; --panel2:#1a201d; --ph:#3dff7c; --phdim:#23a35a;
+    --text:#d8d2c3; --dim:#8a8477; --line:#2b322e; --ok:#9fb383; --warn:#d8b36a; --bad:#c9705d;
+    --live:#7fb6a2;
+    --ui:"Phigros","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --mono:"SFMono-Regular",Menlo,Consolas,"Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.7 var(--ui);
+    background-image:repeating-linear-gradient(180deg,rgba(255,255,255,.014) 0,rgba(255,255,255,.014) 1px,transparent 1px,transparent 3px);
+  }
+  .shell{max-width:1000px;margin:0 auto;padding:0 12px 70px}
+  .mono{font-family:var(--mono)}
+
+  /* ---------- 顶部 ---------- */
+  .top{
+    border:1px solid var(--line);background:var(--panel);position:relative;margin:12px 0 0;padding:14px 14px 12px;
+  }
+  .top::before,.top::after{content:"";position:absolute;width:10px;height:10px;border:1px solid var(--ph)}
+  .top::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .top::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+  .meta{display:flex;flex-wrap:wrap;gap:5px 14px;font-family:var(--ui);font-size:10.5px;letter-spacing:.06em;color:var(--dim);
+    border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:12px}
+  .meta b{color:var(--ph);font-weight:400}
+  h1{font-size:22px;margin:0 0 6px;font-weight:700;letter-spacing:-.01em;line-height:1.35}
+  h1 i{color:var(--ph);font-style:normal;font-family:var(--ui);font-weight:400}
+  .sub{margin:0;color:var(--dim);font-size:13.5px}
+  .bar{margin-top:12px;display:flex;gap:8px;align-items:center;font-family:var(--ui);font-size:11px;color:var(--dim)}
+  .bar .track{flex:1;height:10px;border:1px solid var(--line);background:#080b0a;padding:2px;display:flex;gap:2px}
+  .bar .track i{flex:1;background:#222a25}
+  .bar .track i.on{background:var(--ph)}
+
+  /* ---------- 模式条 ---------- */
+  .mode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);background:var(--panel2);
+    margin-top:12px;padding:8px 10px;font-family:var(--ui);font-size:11px;letter-spacing:.05em}
+  .mode .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--dim)}
+  .mode.live .dot{background:var(--live);box-shadow:0 0 7px rgba(127,182,162,.8)}
+  .mode.live{border-color:rgba(127,182,162,.5)}
+  .mode .tag{letter-spacing:.14em}
+  .mode.live .tag{color:var(--live)}
+  .mode .msg{color:var(--dim);flex:1;min-width:200px}
+  .mode button{background:transparent;border:1px solid var(--line);color:var(--dim);font-family:var(--ui);
+    font-size:10px;letter-spacing:.08em;padding:3px 9px;cursor:pointer}
+  .mode button:hover{border-color:var(--ph);color:var(--ph)}
+  @media (prefers-reduced-motion:no-preference){
+    .mode.live .dot{animation:br 2.4s ease-in-out infinite}
+    .mode.checking .dot{animation:br .7s ease-in-out infinite}
+  }
+  @keyframes br{0%,100%{opacity:.35}50%{opacity:1}}
+
+  /* ---------- 层导航 ---------- */
+  .rail{display:flex;gap:6px;overflow-x:auto;padding:12px 0 4px;scrollbar-width:thin}
+  .rail a{
+    flex:none;text-decoration:none;font-family:var(--ui);font-size:11px;letter-spacing:.05em;
+    color:var(--dim);border:1px solid var(--line);padding:7px 10px;background:var(--panel);
+  }
+  .rail a[aria-current="true"]{color:var(--bg);background:var(--ph);border-color:var(--ph)}
+  .rail a .st{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;background:#3a423d;vertical-align:1px}
+  .rail a .st.pass{background:var(--ok)} .rail a .st.warn{background:var(--warn)} .rail a .st.bad{background:var(--bad)}
+  .console{margin-top:16px;border:1px solid var(--line);background:#0a0d0c}
+  .console .h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 9px;border-bottom:1px solid var(--line);font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--phdim)}
+  .console .h .acts{display:flex;gap:6px}
+  .console .h button{background:transparent;border:1px solid var(--line);color:var(--dim);font-family:var(--ui);font-size:10px;letter-spacing:.06em;padding:2px 8px;cursor:pointer}
+  .console .h button:hover{color:var(--ph);border-color:var(--phdim)}
+  .console pre{margin:0;padding:8px 10px;max-height:230px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--dim)}
+  .console .ok{color:var(--ok)} .console .warn{color:var(--warn)} .console .bad{color:var(--bad)}
+  .console .t{color:#5c665f}
+  @media (min-width:820px){
+    .rail{display:block;overflow:visible;position:sticky;top:0;padding:12px 0;float:left;width:170px;margin-right:22px}
+    .rail a{display:block;margin-bottom:6px}
+    .shell{padding-bottom:70px}
+    .main{margin-left:192px}
+    .foot{margin-left:192px}
+  }
+
+  /* ---------- 视图 ---------- */
+  .view{display:none}
+  .view.on{display:block}
+  .vhead{display:flex;gap:10px;align-items:baseline;margin:14px 0 4px;flex-wrap:wrap}
+  .sid{font-family:var(--ui);font-size:11.5px;color:var(--bg);background:var(--ph);padding:1px 6px;flex:none}
+  h2{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .vtag{font-family:var(--ui);font-size:10.5px;color:var(--phdim)}
+  .hint{color:var(--dim);font-size:13.5px;margin:6px 0 16px;max-width:44em}
+  .hint b{color:var(--text);font-weight:600}
+  .nexthop{border:1px solid var(--line);border-left:2px solid var(--live);background:var(--panel2);
+    padding:10px 12px;margin:14px 0;font-size:13.5px}
+  .nexthop .k{display:block;font-family:var(--ui);font-size:10px;letter-spacing:.12em;color:var(--live);margin-bottom:2px}
+
+  /* ---------- 命令块 ---------- */
+  .cmd{border:1px solid var(--line);background:#080b0a;margin:8px 0 16px}
+  .cmd .h{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:4px 8px;
+    font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--phdim)}
+  .cmd .h button{background:transparent;border:1px solid var(--line);color:var(--dim);font-family:var(--ui);
+    font-size:10px;letter-spacing:.08em;padding:3px 8px;cursor:pointer}
+  .cmd .h button:hover{border-color:var(--ph);color:var(--ph)}
+  .cmd pre{margin:0;padding:10px 12px;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12px;
+    line-height:1.8;color:#cfe0d0}
+  .cmd pre s{text-decoration:none;color:var(--dim)}
+  .cmd pre b{font-weight:400}                       /* 参数自动上色 */
+  .cmd pre b.f{color:#ffd24a}                       /* 旗标 --xxx */
+  .cmd pre b.v{color:#6ee7ff}                       /* 路径/变量 */
+  .cmd pre b.n{color:#ff7edb}                       /* 数字 */
+
+  /* ---------- 输入 ---------- */
+  .paste{width:100%;min-height:110px;background:#080b0a;border:1px solid var(--line);color:var(--text);
+    font-family:var(--mono);font-size:12px;line-height:1.7;padding:10px;resize:vertical}
+  .btn{
+    font-family:var(--ui);font-size:11.5px;letter-spacing:.06em;background:var(--ph);color:#0d100f;
+    border:0;padding:9px 16px;cursor:pointer;min-height:40px;
+  }
+  .btn:hover{background:#7dffb0}
+  .btn.ghost{background:transparent;color:var(--ph);border:1px solid var(--ph)}
+  .btn.ghost:hover{background:rgba(61,255,124,.08)}
+  .btn[disabled]{background:#3a423d;color:#707a72;cursor:not-allowed}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+
+  /* ---------- 判定表 ---------- */
+  .result{border:1px solid var(--line);margin:16px 0 6px;display:none}
+  .result.on{display:block}
+  .result .rh{font-family:var(--ui);font-size:10.5px;letter-spacing:.1em;color:var(--phdim);padding:5px 8px;
+    border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .row{display:flex;gap:8px;align-items:baseline;padding:9px 10px;border-bottom:1px dotted var(--line);font-size:13px}
+  .row:last-child{border-bottom:0}
+  .row .k{flex:none;width:5.2em;color:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:.04em}
+  .row .v{flex:1;min-width:0;word-break:break-word}
+  .row .s{flex:none;font-family:var(--ui);font-size:10.5px;letter-spacing:.08em;padding:1px 6px}
+  .s.pass{color:var(--ok);border:1px solid rgba(159,179,131,.45)}
+  .s.warn{color:var(--warn);border:1px solid rgba(216,179,106,.45)}
+  .s.bad{color:var(--bad);border:1px solid rgba(201,112,93,.45)}
+  .s.none{color:var(--dim);border:1px solid var(--line)}
+  .row em{display:block;font-style:normal;color:var(--dim);font-size:12px;margin-top:2px;line-height:1.6}
+  .autofresh{font-family:var(--ui);font-size:10px;color:var(--dim);letter-spacing:.06em;margin:-8px 0 12px}
+  .autofresh b{color:var(--live);font-weight:400}
+
+  /* ---------- 勾选 ---------- */
+  .chk{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px dashed var(--line);cursor:pointer;min-height:44px}
+  .chk:first-of-type{border-top:0}
+  .chk input{appearance:none;-webkit-appearance:none;width:16px;height:16px;flex:none;margin:4px 0 0;border:1px solid var(--dim);
+    background:transparent;position:relative;cursor:pointer}
+  .chk input:checked{border-color:var(--ok)}
+  .chk input:checked::after{content:"";position:absolute;left:4px;top:0;width:6px;height:10px;border:2px solid var(--ok);
+    border-top:0;border-left:0;transform:rotate(42deg)}
+  .chk .t{flex:1;min-width:0;font-size:14px}
+  .chk .t small{display:block;color:var(--dim);font-size:12.5px;margin-top:2px;line-height:1.6}
+  .chk.done .t{color:var(--dim)}
+
+  /* ---------- 便签 / 表 ---------- */
+  .flag{border:1px solid var(--line);border-left:2px solid var(--ph);padding:9px 12px;margin:14px 0;font-size:13px}
+  .flag .k{display:block;font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--ph);margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;margin:8px 0 16px}
+  th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top;word-break:break-word}
+  th{font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--dim);font-weight:400}
+  td code{font-family:var(--mono);font-size:11.5px;color:var(--phdim)}
+
+  details{border-top:1px solid var(--line);padding:9px 0}
+  details summary{cursor:pointer;font-size:14px;list-style:none;display:flex;gap:8px}
+  details summary::before{content:"+";font-family:var(--ui);color:var(--ph);width:10px;flex:none}
+  details[open] summary::before{content:"-"}
+  details p{margin:6px 0 0;color:var(--dim);font-size:13px}
+
+  h1 i{animation:blink 1s step-end infinite}
+  @keyframes blink{50%{opacity:0}}
+  h1,h2,.sid{ text-shadow:0 0 8px rgba(61,255,124,.45) }
+  .btn{ text-shadow:none }
+  .toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,10px);background:var(--ph);color:#0d100f;
+    font-family:var(--ui);font-size:11.5px;padding:6px 12px;opacity:0;pointer-events:none;transition:.15s;z-index:9}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  .foot{border-top:1px solid var(--line);margin-top:26px;padding-top:10px;font-family:var(--ui);font-size:10.5px;
+    letter-spacing:.04em;color:var(--dim);line-height:2}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="top">
+    <div class="meta">
+      <span>NODE / 4090-24G</span>
+      <span>SHELL / WSL2</span>
+      <span>BRANCH / <b>dev@0c1a763</b></span>
+      <span>LOCAL ONLY</span>
+    </div>
+    <h1>训练机操作台<i>_</i></h1>
+    <p class="sub">按层走，别一次看完。每层自己有页面。</p>
+    <div class="mode checking" id="mode">
+      <span class="dot"></span>
+      <span class="tag" id="modeTag">CONNECTING</span>
+      <span class="msg" id="modeMsg">正在找后端……</span>
+      <button type="button" id="modeBtn">重试</button>
+    </div>
+    <div class="bar"><span id="done">0</span><div class="track" id="track"></div><span id="total">0</span></div>
+  </div>
+
+  <nav class="rail" id="rail">
+    <a href="#ov"   data-layer="ov">00 总览<span class="st" id="rst-ov"></span></a>
+    <a href="#l1"   data-layer="l1">01 机器自检<span class="st" id="rst-l1"></span></a>
+    <a href="#l2"   data-layer="l2">02 环境自检<span class="st" id="rst-l2"></span></a>
+    <a href="#l3"   data-layer="l3">03 装环境<span class="st" id="rst-l3"></span></a>
+    <a href="#l4"   data-layer="l4">04 数据<span class="st" id="rst-l4"></span></a>
+    <a href="#l5"   data-layer="l5">05 训练<span class="st" id="rst-l5"></span></a>
+    <a href="#t"    data-layer="t">06 排障<span class="st"></span></a>
+  </nav>
+
+  <div class="main">
+
+  <!-- ===== 00 总览 ===== -->
+  <section class="view" id="v-ov">
+    <div class="vhead"><span class="sid">00</span><h2>先看这页</h2><span class="vtag">总览</span></div>
+    <p class="hint">这台机器只跑一条训练线。五层，顺序别颠倒，前一层没绿就别点下一层。<b>哪一层跟你看到的不一样，就停下来。</b></p>
+
+    <div class="nexthop" id="nexthop" style="display:none"><span class="k">NEXT / 现在该干嘛</span><span id="nexthopTxt"></span></div>
+
+    <table>
+      <colgroup><col style="width:12%"><col style="width:22%"><col style="width:auto"><col style="width:22%"></colgroup>
+      <tr><th>层</th><th>干什么</th><th>要多久</th><th>状态</th></tr>
+      <tr><td class="mono">01</td><td>看机器够不够</td><td>LIVE 模式下全自动</td><td id="st1"><span class="s none">未开始</span></td></tr>
+      <tr><td class="mono">02</td><td>看环境装没装通</td><td>LIVE 模式下全自动</td><td id="st2"><span class="s none">未开始</span></td></tr>
+      <tr><td class="mono">03</td><td>装 Linux 和程序</td><td>半小时到一小时</td><td id="st3"><span class="s none">未开始</span></td></tr>
+      <tr><td class="mono">04</td><td>确认数据在盘上</td><td>LIVE 模式自己数</td><td id="st4"><span class="s none">未开始</span></td></tr>
+      <tr><td class="mono">05</td><td>开始训，然后不用管</td><td>一到两天</td><td id="st5"><span class="s none">未开始</span></td></tr>
+    </table>
+
+    <div class="flag" id="autoNote"><span class="k">关于"自动检查"</span>
+      后端连不上时走手动：命令给你，复制、跑、把输出贴回来，页面自己判定。<b>03 装完就全自动，不用再贴输出。</b></div>
+    <div class="btnrow"><a class="btn" href="#l1" style="text-decoration:none;display:inline-block">从 01 开始</a></div>
+  </section>
+
+  <!-- ===== 01 机器自检 ===== -->
+  <section class="view" id="v-l1">
+    <div class="vhead"><span class="sid">01</span><h2>机器够不够</h2><span class="vtag" id="tag1">AUTO / 后端自读</span></div>
+    <p class="hint">看两件事：显卡型号、内存。盘是 <b>1T</b> 的，够用，只把数字列出来。<b>后端在跑的话，Windows 那边的卡和内存它自己读，不用你粘。</b></p>
+
+    <div id="auto1" style="display:none">
+      <div class="result on"><div class="rh"><span>AUTO CHECK / 硬件</span><span id="a1sum"></span></div><div id="a1body"></div></div>
+      <p class="autofresh">每 12 秒自动刷新 · 上次 <b id="a1time">—</b></p>
+    </div>
+
+    <details id="man1" open>
+      <summary>备用：WSL 还没装、后端起不来时才手动跑</summary>
+      <p class="hint">在 Windows 里跑，不用管理员。结果粘下面的框。</p>
+      <div class="cmd"><div class="h"><span>POWERSHELL</span><button type="button">COPY</button></div><pre>$gpu = (Get-CimInstance Win32_VideoController).Name -join ' / '
+$ram = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB)
+$free = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -gt 0 } | ForEach-Object { "$($_.Name):$([math]::Round($_.Free/1GB))G" }) -join ' '
+"GPU=$gpu"
+"RAM=$ram"
+"FREE=$free"</pre></div>
+      <p class="hint">开始菜单搜 PowerShell，粘上面四条，回车。出来的几行整段选走。</p>
+      <textarea id="in1" class="paste" placeholder="粘在这里，GPU= / RAM= / FREE= 那几行"></textarea>
+      <div class="btnrow">
+        <button type="button" class="btn" id="go1">判定</button>
+        <button type="button" class="btn ghost" id="clr1">清空</button>
+      </div>
+      <div class="result" id="res1"><div class="rh"><span>CHECK RESULT</span><span id="r1sum"></span></div><div id="r1body"></div></div>
+    </details>
+    <p class="hint" style="margin-top:12px">判定只看显卡和内存两条。盘不参与判定，只把数字摆出来对一下是不是那块 1T 盘。</p>
+  </section>
+
+  <!-- ===== 02 环境自检 ===== -->
+  <section class="view" id="v-l2">
+    <div class="vhead"><span class="sid">02</span><h2>环境通不通</h2><span class="vtag" id="tag2">WSL / LINUX</span></div>
+    <p class="hint">看卡进没进 Linux、torch 装没装、代码对不对版。<b>装完 03 回来刷新就行。</b></p>
+
+    <div id="auto2" style="display:none">
+      <div class="result on"><div class="rh"><span>AUTO CHECK / 环境</span><span id="a2sum"></span></div><div id="a2body"></div></div>
+      <p class="autofresh">每 12 秒自动刷新 · 上次 <b id="a2time">—</b></p>
+      <div class="btnrow"><button type="button" class="btn ghost" id="recheck2">立刻重查</button></div>
+    </div>
+
+    <details id="man2" open>
+      <summary>手动模式（后端没起来时用这个）</summary>
+      <div class="cmd"><div class="h"><span>POWERSHELL / 看有没有装</span><button type="button">COPY</button></div><pre>wsl -l -v</pre></div>
+      <div class="cmd"><div class="h"><span>LINUX / 进机器后跑</span><button type="button">COPY</button></div><pre>echo "CUDA=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
+echo "VRAM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader | head -1)"
+echo "PY=$(python3 -V 2&gt;&amp;1 | awk '{print $2}')"
+python3 - &lt;&lt;'PY'
+import torch
+print("TORCH=" + torch.__version__)
+print("CUDATORCH=" + str(torch.cuda.is_available()))
+PY
+echo "FFMPEG=$(ffmpeg -version 2&gt;/dev/null | head -1 | awk '{print $3}')"
+echo "HEAD=$(cd ~/beatfcn-dev 2&gt;/dev/null &amp;&amp; git rev-parse --short HEAD || echo none)"</pre></div>
+      <p class="hint">整段复制，一回车跑完，把所有输出粘回来。</p>
+      <textarea id="in2" class="paste" placeholder="粘 CUDA= / VRAM= / TORCH= / CUDATORCH= / FFMPEG= / HEAD= 这几行"></textarea>
+      <div class="btnrow">
+        <button type="button" class="btn" id="go2">判定</button>
+        <button type="button" class="btn ghost" id="clr2">清空</button>
+      </div>
+      <div class="result" id="res2"><div class="rh"><span>CHECK RESULT</span><span id="r2sum"></span></div><div id="r2body"></div></div>
+    </details>
+    <div class="flag"><span class="k">报错也别慌</span><code class="mono">nvidia-smi</code> 说 command not found，说明 WSL 装完没重启过。没重启就白装。</div>
+  </section>
+
+  <!-- ===== 03 装环境 ===== -->
+  <section class="view" id="v-l3">
+    <div class="vhead"><span class="sid">03</span><h2>装 Linux 和程序</h2><span class="vtag">一次性</span></div>
+    <p class="hint">盘里有个 <b>双击安装训练系统.bat</b>，双击它就装完。没有这个文件才往下看手工步骤。</p>
+
+    <div class="flag"><span class="k">双击之后会怎样</span>
+      弹一个黑窗口；WSL 没开的话再弹一个管理员窗，点“是”，装完要重启一次；<br>
+      重启回来再双击同一个文件，它开始解压系统（5～10 分钟，进度不动是正常的，别关窗）；<br>
+      完了浏览器自己弹出这个页面，顶部亮 LIVE。以后每天双击它一次就能回来。
+    </div>
+    <p class="hint">它<b>不装</b>显卡驱动、不装 Windows 版 Python、不联网下载东西，只解压盘里的系统包并起后端；东西全在你那块盘上，不动 C 盘。<b>要你动手的只有两下：管理员窗口的“是”、还有重启。</b></p>
+    <div class="chk"><input type="checkbox" data-k="s0"><span class="t">双击装完，这页顶部亮了 LIVE<small>直接看 02 是否全绿就行，下面手工步骤不用碰。</small></span></div>
+
+    <details id="man3">
+      <summary>没那个 bat 文件：手工装，四条命令</summary>
+
+      <div class="chk"><input type="checkbox" data-k="s1"><span class="t">管理员 PowerShell 装平台层<small>重启一次。重启完再回来。</small></span></div>
+      <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --install --no-distribution</pre></div>
+
+      <div class="chk"><input type="checkbox" data-k="s2"><span class="t">把发行版导进来<small>三个路径按实际位置改：名字 / 装到哪 / 包在哪。盘要 NTFS。</small></span></div>
+      <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --import beatfcn D:\wsl\beatfcn E:\beatfcn-train.tar</pre></div>
+
+      <div class="chk"><input type="checkbox" data-k="s3"><span class="t">拉代码、装依赖、装 ffmpeg<small>torch 那个轮子很大，慢是正常的，别中途 Ctrl+C。</small></span></div>
+      <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~
+git clone -b dev https://github.com/Designant119/beatfcn-dev.git
+cd beatfcn-dev
+pip install -r requirements.txt
+sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
+
+      <div class="chk"><input type="checkbox" data-k="s3b"><span class="t">起操作台后端<small>就一条命令。跑起来之后回到这个页面，顶部亮 LIVE，01/02 全自动。</small></span></div>
+      <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~/beatfcn-dev &amp;&amp; python3 console_server.py</pre></div>
+      <p class="hint">然后 Windows 浏览器打开 <code class="mono">http://localhost:7777</code>（或手机连同一 WiFi 访问 <code class="mono">http://这台机的IP:7777</code>）。关掉这个黑窗口页面就退回手动模式，训练不受影响。</p>
+    </details>
+
+    <div class="chk"><input type="checkbox" data-k="s4"><span class="t">回 02 重跑一遍自检，全绿再往下</span></div>
+    <div class="btnrow"><a class="btn ghost" href="#l2" style="text-decoration:none;display:inline-block">去 02 自检</a></div>
+    <div class="flag"><span class="k">内存小的话</span>进 05 之前设一个数，别让它把内存吃光。</div>
+  </section>
+
+  <!-- ===== 04 数据 ===== -->
+  <section class="view" id="v-l4">
+    <div class="vhead"><span class="sid">04</span><h2>数据</h2><span class="vtag">在盘里</span></div>
+    <p class="hint">数据不用下载也不用导——它和代码在同一块盘上，放在代码目录的 <b>inputs/</b> 里。这页不问你，自己数。</p>
+    <div class="flag"><span class="k">你要做的</span>别删 <b>inputs/</b> 和 <b>reports/</b> 里的东西。盘是 <b>1T</b> 的，够用，不用算余量。别的不用管。</div>
+    <div id="diskLive" style="display:none" class="result on"><div class="rh"><span>盘与数据 · 后端实测</span><span></span></div><div id="diskBody"></div></div>
+    <p class="hint">上面几行是后端自己数出来的，不是谁口头说“导好了”。特征数到 <b>0</b> 首就是没到，红着；有数字就是在了。盘那行只用来确认看的是那块 1T 盘。</p>
+    <div class="chk"><input type="checkbox" data-k="d1"><span class="t">表格里特征和清单都 PASS<small>这两行绿了自动勾，不用你点。</small></span></div>
+  </section>
+
+  <!-- ===== 05 训练 ===== -->
+  <section class="view" id="v-l5">
+    <div class="vhead"><span class="sid">05</span><h2>开跑，然后不用管</h2><span class="vtag">1-2 天</span></div>
+    <p class="hint">一跑一两天。开跑前先设内存上限，别让它吃满。</p>
+
+    <div class="chk"><input type="checkbox" data-k="t1"><span class="t">内存 16G 设 4，32G 以上可以用默认</span></div>
+    <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>export BEATFCN_MAX_LOADER_WORKERS=4</pre></div>
+
+    <div class="chk"><input type="checkbox" data-k="t2"><span class="t">用 tmux 起，关窗口不会停<small>以后回来：wsl -d beatfcn，然后 tmux attach -t train</small></span></div>
+    <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>tmux new -s train
+<s># 训练启动命令，定稿后补这里</s>
+<s># 想离开：Ctrl+B 松开，再按 D</s></pre></div>
+
+    <div class="chk"><input type="checkbox" data-k="t3"><span class="t">看进度：日志里 loss 有数字就说明在练<small>数字上下跳很正常。</small></span></div>
+    <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>tail -f <s>训练日志路径</s></pre></div>
+
+    <div class="flag"><span class="k">它自己会存</span>每 300 步存一次检查点。断电重启，重新起就接着跑。</div>
+
+    <h3 style="font-size:15px;margin:22px 0 4px">跑的时候别做这几件事</h3>
+    <div class="chk"><input type="checkbox" data-k="t4"><span class="t">别删文件夹<small>中间产物删了要重跑。</small></span></div>
+    <div class="chk"><input type="checkbox" data-k="t5"><span class="t">别更新显卡驱动、别重装系统</span></div>
+    <div class="chk"><input type="checkbox" data-k="t6"><span class="t">别同时开大型游戏<small>显存被抢会直接退出。</small></span></div>
+    <div class="chk"><input type="checkbox" data-k="t7"><span class="t">别拔装着代码和数据的这块盘</span></div>
+    <div class="chk"><input type="checkbox" data-k="t8"><span class="t">别自己改命令里的数字</span></div>
+
+    <div class="console">
+      <div class="h"><span>STATUS OUT / 状态输出</span>
+        <div class="acts"><button type="button" id="outStat">取状态</button><button type="button" id="outClr">清空</button></div>
+      </div>
+      <pre id="outBody"><span class="t">还没连后端。这里逐行记每次请求的状态码：200 通、404 路径不对、超时或 ERR 是后端没起。</span></pre>
+    </div>
+    <p class="hint" style="margin-top:8px">后端通了这里会自己滚。出了问题直接报这行的数字，比截图省事。</p>
+  </section>
+
+  <!-- ===== 06 排障 ===== -->
+  <section class="view" id="v-t">
+    <div class="vhead"><span class="sid">06</span><h2>常见情况</h2><span class="vtag">对照着看</span></div>
+    <div class="hint">先在这页找一样的。找不到再问我，把屏幕截图带上。</div>
+    <details><summary>页面顶部一直是手动模式，不亮 LIVE</summary><p>后端没跑。进 Linux：<code class="mono">cd ~/beatfcn-dev &amp;&amp; python3 console_server.py</code>，然后刷新页面。手机看的话，要用电脑的 IP 访问 <code class="mono">http://IP:7777</code>，两台设备连同一个 WiFi。</p></details>
+    <details><summary>显存不够 out of memory</summary><p>批大小降到 1，或者发消息让我改配置。别自己加参数。</p></details>
+    <details><summary>硬盘满了</summary><p>一般是旧检查点堆着。<b>删之前问一句删哪个目录</b>，别按大小排序自己删。</p></details>
+    <details><summary>Windows 的 C 盘莫名其妙少了一大块</summary><p>Linux 那个虚拟盘不会自己缩。确认训练结束再回收：<code class="mono">wsl --manage beatfcn --set-sparse true</code>。有的版本没这个参数，报错就跳过。</p></details>
+    <details><summary>断过电、重启过</summary><p>进 Linux，<code class="mono">tmux attach -t train</code>，或者重新起训练。它从最近一次检查点接上，不用改东西。</p></details>
+    <details><summary>找不到训练窗口了</summary><p><code class="mono">wsl -d beatfcn</code> 进去，<code class="mono">tmux ls</code>，有 train 就 attach 回去。</p></details>
+    <details><summary>跑完了</summary><p>先什么都别动，把最后那几屏日志截图发过来。</p></details>
+    <div class="btnrow"><a class="btn ghost" href="#ov" style="text-decoration:none;display:inline-block">回总览</a></div>
+  </section>
+
+  </div>
+
+  <div class="foot">
+    beatfcn r5 · 4090 专用 · 当前版本看页头 HEAD<br>05 的启动命令还没定稿，定了再补
+  </div>
+</div>
+
+<div class="toast" id="toast">COPIED</div>
+
+<script>
+(function(){
+  var K_CHK='r5runbook:v4:chk';
+  var K_RAW='r5runbook:v4:raw';
+  var POLL_MS=12000;
+  var nav=document.getElementById('rail');
+  var views=Array.prototype.slice.call(document.querySelectorAll('.view'));
+  var toast=document.getElementById('toast');
+  var timer;
+
+  function say(t){ toast.textContent=t||'COPIED'; toast.classList.add('on'); clearTimeout(timer);
+    timer=setTimeout(function(){toast.classList.remove('on')},1200); }
+
+  /* ================= 路由 ================= */
+  function show(id){
+    var target=document.getElementById('v-'+id) ? id : 'ov';
+    views.forEach(function(v){ v.classList.toggle('on', v.id==='v-'+target); });
+    Array.prototype.forEach.call(nav.querySelectorAll('a'),function(a){
+      a.setAttribute('aria-current', a.getAttribute('href')==='#'+target ? 'true':'false');
+    });
+    window.scrollTo(0,0);
+  }
+  nav.addEventListener('click',function(e){
+    var a=e.target.closest('a'); if(!a) return;
+    e.preventDefault();
+    var id=a.getAttribute('href').slice(1);
+    if(location.hash!=='#'+id) location.hash=id; else show(id);
+  });
+  window.addEventListener('hashchange',function(){ show(location.hash.replace('#','')||'ov'); });
+
+  /* ================= 勾选态势 ================= */
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox][data-k]'));
+  var track=document.getElementById('track');
+  var doneEl=document.getElementById('done'), totalEl=document.getElementById('total');
+  var saved={};
+  try{ saved=JSON.parse(localStorage.getItem(K_CHK)||'{}'); }catch(e){ saved={}; }
+  var segs=boxes.map(function(){ var i=document.createElement('i'); track.appendChild(i); return i; });
+  totalEl.textContent=boxes.length;
+
+  var live={hw:null,sw:null,data:null};           /* LIVE 模式的三组判定 */
+  function groupVerdict(items){
+    if(!items||!items.length) return null;
+    var w={bad:0,warn:0,none:0,pass:0};
+    items.forEach(function(it){ w[it.status]=(w[it.status]||0)+1; });
+    if(w.bad) return ['bad','有项没过'];
+    if(w.none===items.length) return ['none','未开始'];
+    if(w.warn||w.none) return ['warn','能跑，有风险'];
+    return ['pass','全过'];
+  }
+  function paint(){
+    try{
+      var s4=document.querySelector('input[data-k="s4"]');
+      if(s4&&live.sw&&live.sw[0]==='pass'&&!s4.checked){s4.checked=true;s4.dispatchEvent(new Event('change'));}
+      var d1=document.querySelector('input[data-k="d1"]');
+      if(d1&&live.data&&live.data[0]==='pass'&&!d1.checked){d1.checked=true;d1.dispatchEvent(new Event('change'));}
+    }catch(e){}
+    var done=0;
+    boxes.forEach(function(b,i){
+      var on=b.checked; segs[i].className=on?'on':''; if(on)done++;
+      var row=b.closest('.chk'); if(row) row.classList.toggle('done',on);
+    });
+    doneEl.textContent=done;
+    var v={l1:count('l1'),l2:count('l2'),l3:count('l3'),l4:count('l4'),l5:count('l5')};
+    /* 01/02：LIVE 结果优先，没有再用手动判定 */
+    var env=saved.env||{};
+    var st1=live.hw||(env.win?env.win:null), st2=live.sw||(env.wsl?env.wsl:null);
+    box('st1',st1); box('st2',st2);
+    box('st3',v.l3); box('st4',v.l4); box('st5',v.l5);
+    rail('l1',st1); rail('l2',st2); rail('l3',v.l3); rail('l4',v.l4); rail('l5',v.l5);
+    nexthop(st1,st2,v);
+  }
+  function count(viewId){
+    /* 03 有两条路：双击装（s0+s4）或手工装（s1~s3b+s4），任一条走完就算过 */
+    if(viewId==='l3'){
+      var q=function(k){ return document.querySelector('input[data-k="'+k+'"]'); };
+      var s0=q('s0'), s4=q('s4');
+      var manual=['s1','s2','s3','s3b'].every(function(k){ var e=q(k); return e&&e.checked; });
+      if(s4&&s4.checked&&((s0&&s0.checked)||manual)) return ['pass','全做完'];
+      var n=0; ['s0','s1','s2','s3','s3b','s4'].forEach(function(k){ var e=q(k); if(e&&e.checked) n++; });
+      return n?['warn','进行中']:['none','未开始'];
+    }
+    var list=boxes.filter(function(b){ return b.closest('.view').id==='v-'+viewId; });
+    if(!list.length) return null;
+    var d=list.filter(function(b){return b.checked}).length;
+    return d===list.length?['pass','全做完']:(d?['warn',d+'/'+list.length]:['none','未开始']);
+  }
+  function box(id,info){
+    var el=document.getElementById(id); if(!el) return;
+    if(!info){ el.innerHTML='<span class="s none">未开始</span>'; return; }
+    el.innerHTML='<span class="s '+info[0]+'">'+info[1]+'</span>';
+  }
+  function rail(layer,info){
+    var el=document.getElementById('rst-'+layer); if(!el) return;
+    el.className='st '+(info?info[0]:'');
+  }
+  function nexthop(st1,st2,v){
+    var el=document.getElementById('nexthop'), tx=document.getElementById('nexthopTxt');
+    var step=null;
+    if(!st1||st1[0]!=='pass') step='去 01 机器自检，看机器扛不扛得住。';
+    else if(!(v.l3&&v.l3[0]==='pass')) step='机器没问题。去 03 装环境，装完回 02 自检。';
+    else if(!st2||st2[0]!=='pass') step='环境装过了但 02 还没全绿。回 02 看是哪项没过。';
+    else if(!(v.l4&&v.l4[0]==='pass')) step='环境全绿。去 04 确认数据方案。';
+    else if(!(v.l5&&v.l5[0]==='pass')) step='数据就位。去 05 开跑，然后不用管。';
+    else step='全做完。等训练结束，把最后几屏日志截图发回来。';
+    tx.textContent=step; el.style.display='block';
+  }
+  boxes.forEach(function(b){
+    if(saved['k:'+b.getAttribute('data-k')]) b.checked=true;
+    b.addEventListener('change',function(){
+      saved['k:'+b.getAttribute('data-k')]=b.checked;
+      try{localStorage.setItem(K_CHK,JSON.stringify(saved))}catch(e){}
+      paint();
+    });
+  });
+
+  /* ================= 复制 ================= */
+  Array.prototype.forEach.call(document.querySelectorAll('.cmd'),function(cmd){
+    var btn=cmd.querySelector('button'); if(!btn) return;
+    var pre=cmd.querySelector('pre');
+    btn.addEventListener('click',function(){
+      var t=pre.textContent;
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(t).then(function(){say()},function(){legacy(pre)});
+      }else legacy(pre);
+    });
+  });
+  function legacy(pre){
+    var r=document.createRange(); r.selectNodeContents(pre);
+    var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    try{document.execCommand('copy')}catch(e){}
+    say();
+  }
+
+  /* ================= 手动判定引擎（回退用） ================= */
+  function parse(text){
+    var out={};
+    String(text||'').replace(/\r/g,'').split('\n').forEach(function(line){
+      var m=line.match(/^\s{0,3}([A-Z][A-Z0-9_]*)\s*=\s*(.*)$/);
+      if(m) out[m[1]]=m[2].trim();
+    });
+    out.__raw=text||'';
+    if(/No module named '?torch/i.test(out.__raw)) out.TORCH='__missing__';
+    return out;
+  }
+  function vram(gb){ var n=parseFloat(String(gb||'').replace(/[^0-9.]/g,'')); return isNaN(n)?null:(n>1000?Math.round(n/1024):Math.round(n)); }
+  function freeMax(txt){
+    var nums=(String(txt||'').match(/(\d{2,5})\s*G/g)||[]).map(function(s){return parseInt(s,10)});
+    return nums.length?Math.max.apply(null,nums):null;
+  }
+  var SPEC_WIN=[
+    {key:'GPU',label:'显卡',test:function(v){
+      if(!v) return ['none','没读到'];
+      if(/4090|3090|4080/i.test(v)) return ['pass','能扛'];
+      if(/3080|4070|2080|A5000/i.test(v)) return ['warn','显存可能不够，先别开训'];
+      return ['warn','不是常见训练卡，可能跑不动'];
+    }},
+    {key:'RAM',label:'内存',test:function(v){
+      var n=parseFloat(v); if(isNaN(n)) return ['none','没读到'];
+      if(n>=30) return ['pass',n+'G，够'];
+      if(n>=16) return ['warn',n+'G，要调小 worker 数'];
+      return ['bad',n+'G，太小'];
+    }},
+    {key:'FREE',label:'空盘',test:function(v){
+      var n=freeMax(v); if(n===null) return ['none','没读到'];
+      if(n>=400) return ['pass',n+'G，够'];
+      if(n>=250) return ['warn',n+'G，紧，别装别的'];
+      return ['bad',n+'G，不够'];
+    }}
+  ];
+  var SPEC_WSL=[
+    {key:'CUDA',label:'显卡',test:function(v){
+      if(!v) return ['bad','nvidia-smi 没输出，多半没重启过 WSL'];
+      if(/4090|3090|4080/i.test(v)) return ['pass','显卡进来了'];
+      return ['warn',v];
+    }},
+    {key:'VRAM',label:'显存',test:function(v){
+      var g=vram(v); if(g===null) return ['none','没读到'];
+      if(g>=22) return ['pass',g+'G'];
+      if(g>=15) return ['warn',g+'G，要降批大小'];
+      return ['bad',g+'G，不够'];
+    }},
+    {key:'TORCH',label:'torch',test:function(v){
+      if(v==='__missing__') return ['bad','没装，pip install -r requirements.txt'];
+      if(!v) return ['none','没读到'];
+      return ['pass',v];
+    }},
+    {key:'CUDATORCH',label:'CUDA 可用',test:function(v){
+      if(!v) return ['none','没读到'];
+      if(/^true$/i.test(v)) return ['pass','True'];
+      if(/^false$/i.test(v)) return ['bad','False，显卡没接进来'];
+      return ['warn',v];
+    }},
+    {key:'FFMPEG',label:'ffmpeg',test:function(v){
+      if(!v) return ['bad','没装：apt install -y ffmpeg'];
+      return ['pass',v];
+    }},
+    {key:'HEAD',label:'代码版本',test:function(v){
+      if(!v||v==='none') return ['bad','没找到 beatfcn-dev 目录'];
+      if(/^0c1a763/.test(v)) return ['pass','对上了'];
+      return ['warn',v+'，不是这一版'];
+    }},
+    {key:'PY',label:'python',test:function(v){
+      if(!v) return ['none','没读到'];
+      if(/^3\.1[0-9]/.test(v)) return ['pass',v];
+      return ['warn',v+'，版本偏'];
+    }}
+  ];
+  function rows(spec,data){
+    return spec.map(function(r){
+      var raw=data[r.key];
+      var res=r.test(raw,data);
+      return {k:r.label,v:raw||'',s:res[0],note:res[1]};
+    });
+  }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function renderRows(list,bodyId,sumId){
+    var body=document.getElementById(bodyId), sum=document.getElementById(sumId);
+    var count={pass:0,warn:0,bad:0,none:0};
+    body.innerHTML=list.map(function(r){
+      count[r.s]=(count[r.s]||0)+1;
+      return '<div class="row"><span class="k">'+esc(r.k)+'</span><span class="v">'+(r.v?esc(r.v):'—')+
+        (r.note?'<em>'+esc(r.note)+'</em>':'')+'</span><span class="s '+r.s+'">'+r.s.toUpperCase()+'</span></div>';
+    }).join('');
+    sum.textContent=count.pass+' PASS · '+count.warn+' WARN · '+count.bad+' FAIL';
+    return count;
+  }
+  function runManual(which){
+    var data=parse(document.getElementById(which==='win'?'in1':'in2').value);
+    var list=rows(which==='win'?SPEC_WIN:SPEC_WSL,data);
+    var count=renderRows(list, which==='win'?'r1body':'r2body', which==='win'?'r1sum':'r2sum');
+    if(typeof outLine==='function'){
+      outLine(count.bad?'bad':((count.warn||count.none)?'warn':'ok'),
+        'LOCAL 判定 '+(which==='win'?'01':'02')+' → '+count.pass+' PASS / '+count.warn+' WARN / '+count.bad+' FAIL'+(count.none?' / '+count.none+' 没读到':''));
+    }
+    document.getElementById(which==='win'?'res1':'res2').classList.add('on');
+    var verdict = count.bad ? ['bad','卡住'] : (count.warn ? ['warn','能跑，有风险'] : ['pass','全过']);
+    saved.env=saved.env||{};
+    saved.env[which]=verdict;
+    var raws={};
+    try{ raws=JSON.parse(localStorage.getItem(K_RAW)||'{}'); }catch(e){ raws={}; }
+    raws[which]=document.getElementById(which==='win'?'in1':'in2').value;
+    try{ localStorage.setItem(K_CHK,JSON.stringify(saved)); localStorage.setItem(K_RAW,JSON.stringify(raws)); }catch(e){}
+    paint();
+  }
+  document.getElementById('go1').addEventListener('click',function(){ runManual('win'); });
+  var _deb;
+  function autoJudge(id,which){
+    document.getElementById(id).addEventListener('input',function(){
+      clearTimeout(_deb); _deb=setTimeout(function(){
+        if(document.getElementById(id).value.trim().length>8) runManual(which);
+      },400);
+    });
+  }
+  autoJudge('in1','win'); autoJudge('in2','wsl');  // 糊上去就判，不用点
+  document.getElementById('go2').addEventListener('click',function(){ runManual('wsl'); });
+  document.getElementById('clr1').addEventListener('click',function(){
+    document.getElementById('in1').value=''; document.getElementById('res1').classList.remove('on');
+  });
+  document.getElementById('clr2').addEventListener('click',function(){
+    document.getElementById('in2').value=''; document.getElementById('res2').classList.remove('on');
+  });
+
+  /* ================= LIVE 引擎 ================= */
+  var apiBase=(location.protocol.indexOf('http')===0)?'':('http://'+(location.hostname||'localhost')+':7777');
+  var modeEl=document.getElementById('mode'), modeTag=document.getElementById('modeTag'), modeMsg=document.getElementById('modeMsg');
+  var isLive=false, envTimer=null;
+
+  /* ---------- 状态输出（05 页） ---------- */
+  var outBody=document.getElementById('outBody'), outLines=[], OUT_MAX=140;
+  function outLine(kind,text){
+    var d=new Date();
+    var tm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);
+    var last=outLines[outLines.length-1];
+    if(last && last.s===text){ last.n=(last.n||1)+1; outPaint(); return; }
+    outLines.push({k:kind,s:text,tm:tm,n:1});
+    if(outLines.length>OUT_MAX) outLines.shift();
+    outPaint();
+  }
+  function outPaint(){
+    outBody.innerHTML=outLines.map(function(l){
+      return '<span class="t">'+l.tm+'</span> <span class="'+l.k+'">'+esc(l.s)+(l.n>1?'  ×'+l.n:'')+'</span>';
+    }).join('\n');
+    outBody.scrollTop=outBody.scrollHeight;
+  }
+  var apiToken='';
+  try{ apiToken=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
+  if(apiToken){ try{ localStorage.setItem('r5runbook:v4:token',apiToken); }catch(e){} }
+  function api(path,cb){
+    var done=false;
+    var url=apiBase+path+(apiToken?((path.indexOf('?')<0?'?':'&')+'token='+encodeURIComponent(apiToken)):'');
+    var t=setTimeout(function(){ if(!done){done=true;outLine('warn','TIMEOUT '+path);cb(null);} },3500);
+    try{
+      fetch(url).then(function(r){
+        outLine(r.ok?'ok':'bad', r.status+' '+path);
+        if(r.status===401){ if(!done){done=true;clearTimeout(t);
+          setMode(false,'访问码不对：在网址末尾加 ?token=访问码 再回车');cb(null);} return; }
+        return r.json();
+      }).then(function(j){
+        if(done) return; done=true; clearTimeout(t); cb(j);
+      }).catch(function(){ if(!done){done=true;clearTimeout(t);outLine('bad','ERR '+path);cb(null);} });
+    }catch(e){ if(!done){done=true;clearTimeout(t);outLine('bad','ERR '+path);cb(null);} }
+  }
+  document.getElementById('outClr').addEventListener('click',function(){
+    outLines=[]; outBody.innerHTML='<span class="t">已清空。下一次请求会重新记。</span>';
+  });
+  document.getElementById('outStat').addEventListener('click',function(){
+    api('/api/status',function(j){
+      if(!j||!j.ok){ outLine('bad','/api/status 没返回 ok'); return; }
+      var st=j.stages||[];
+      if(!st.length){ outLine('warn','stages.json 还没写，训练阶段一个都没声明'); return; }
+      st.forEach(function(x){
+        var c=(x.status==='pass'||x.status==='ok'||x.status==='ready')?'ok':((x.status==='bad'||x.status==='fail')?'bad':'warn');
+        outLine(c,'STAGE '+(x.id||'-')+' '+(x.label||'')+' → '+(x.status||'-'));
+      });
+    });
+  });
+  function setMode(on,msg){
+    isLive=on;
+    modeEl.className='mode '+(on?'live':'');
+    modeTag.textContent=on?'LIVE':'MANUAL';
+    modeMsg.textContent=msg||(on?'后端已连接，自检全自动':'后端没连上：走手动模式（复制命令→粘结果）');
+    /* LIVE 时收起手动区，亮出自动区 */
+    document.getElementById('auto1').style.display=on?'block':'none';
+    document.getElementById('auto2').style.display=on?'block':'none';
+    document.getElementById('man1').open=!on;
+    document.getElementById('man2').open=!on;
+    document.getElementById('man1').style.display=on?'none':'block';
+    document.getElementById('man2').style.display=on?'none':'block';
+    document.getElementById('tag1').textContent=on?'AUTO / 后端直读':'WINDOWS / POWERSHELL';
+    document.getElementById('tag2').textContent=on?'AUTO / 后端直读':'WSL / LINUX';
+    document.getElementById('autoNote').style.display=on?'none':'block';
+    if(on){ pollEnv(); } else { live.hw=null; live.sw=null; paint(); }
+  }
+  function renderAuto(items,bodyId,sumId,timeId){
+    var t=new Date();
+    var hh=('0'+t.getHours()).slice(-2), mm=('0'+t.getMinutes()).slice(-2), ss=('0'+t.getSeconds()).slice(-2);
+    /* 后端 item 是 key/label/value/status，手动引擎的 renderRows 读 k/v/s：先映射 */
+    var rowsIn=items.map(function(it){ return {k:it.label, v:it.value, s:it.status, note:it.note}; });
+    renderRows(rowsIn,bodyId,sumId);
+    document.getElementById(timeId).textContent=hh+':'+mm+':'+ss;
+  }
+  function pollEnv(){
+    if(!isLive) return;
+    api('/api/env',function(j){
+      if(!j||!j.items){ setMode(false); return; }
+      var hw=j.items.filter(function(it){return it.group==='hw'});
+      var sw=j.items.filter(function(it){return it.group==='sw'});
+      renderAuto(hw,'a1body','a1sum','a1time');
+      renderAuto(sw,'a2body','a2sum','a2time');
+      live.hw=groupVerdict(hw); live.sw=groupVerdict(sw);
+      var dat=j.items.filter(function(it){return it.group==='data'});
+      live.data=groupVerdict(dat);
+      var dl=document.getElementById('diskLive'), db=document.getElementById('diskBody');
+      var disks=j.items.filter(function(it){return it.group==='disk'}).concat(dat);
+      if(disks.length){ dl.style.display='block';
+        db.innerHTML=disks.map(function(it){
+          return '<div class="row"><span class="k">'+esc(it.label)+'</span><span class="v">'+esc(it.value)+
+            (it.note?'<em>'+esc(it.note)+'</em>':'')+'</span><span class="s '+it.status+'">'+it.status.toUpperCase()+'</span></div>';
+        }).join('');
+      }
+      paint();
+    });
+  }
+  document.getElementById('modeBtn').addEventListener('click',function(){
+    modeEl.className='mode checking'; modeTag.textContent='CONNECTING'; modeMsg.textContent='正在找后端……';
+    api('/api/ping',function(j){ if(j&&j.ok&&!j.authed){ setMode(false,'要访问码：在网址末尾加 ?token=访问码 再回车'); return; } setMode(!!(j&&j.ok)); });
+  });
+  document.getElementById('recheck2').addEventListener('click',pollEnv);
+
+  /* ================= 启动 ================= */
+  try{
+    var raw=JSON.parse(localStorage.getItem(K_RAW)||'{}');
+    if(raw.win) document.getElementById('in1').value=raw.win;
+    if(raw.wsl) document.getElementById('in2').value=raw.wsl;
+  }catch(e){}
+  paint();
+  show((location.hash||'#ov').replace('#',''));
+  api('/api/ping',function(j){ if(j&&j.ok&&!j.authed){ setMode(false,'要访问码：在网址末尾加 ?token=访问码 再回车'); return; } setMode(!!(j&&j.ok)); });
+  envTimer=setInterval(function(){
+    if(isLive&&document.visibilityState==='visible') pollEnv();
+  },POLL_MS);
+})();
+</script>
+<script>
+(function(){
+  function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  document.querySelectorAll('.cmd pre').forEach(function(pre){
+    var t=esc(pre.textContent);
+    t=t.replace(/(--[A-Za-z][\w-]*)/g,'<b class="f">$1</b>')
+       .replace(/(~\/[^\s]+|\$[\w{}]+|[A-Z]:\\[\w\\.-]*)/g,'<b class="v">$1</b>')
+       .replace(/\b(\d[\d._]*)\b/g,'<b class="n">$1</b>');
+    pre.innerHTML=t;
+  });
+})();
+</script>
+</body>
+</html>
