@@ -16,9 +16,11 @@ def teacher_scores(steps,target,request,count_probability,prior):
     for row in steps:
         cell,rank=row['cell'],row['rank'];truth=target['members'][cell][rank];k=truth.kind
         valid=np.asarray(row['kind_allowed'],bool);prob=np.asarray(row['type_probability'],float)
-        pp=np.asarray(prior,float)*valid;pp/=pp.sum()
         if valid.sum()==1:result['forced']+=1
-        else:
+        elif valid.any():
+            # Empty support has no conditional mass: pp.sum() would be 0 and every prior
+            # log below would be NaN. Probabilities are still checked in the other branches.
+            pp=np.asarray(prior,float)*valid;pp/=pp.sum()
             result['type_nll'].append(-math.log(max(prob[k],1e-300)))
             result['type_prior_nll'].append(-math.log(max(pp[k],1e-300)))
             for j,name in enumerate(KINDS):

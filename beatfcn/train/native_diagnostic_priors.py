@@ -8,6 +8,7 @@ zero conditional mass. This explicitly defines conditioning, not beat snapping.
 from bisect import bisect_left,bisect_right
 from collections import Counter,defaultdict
 import math
+from numbers import Integral
 
 
 KINDS=('tap','hold','flick','drag')
@@ -15,7 +16,9 @@ DURATION_UPPER_US=tuple([1000*(2**k) for k in range(21)]+[1_200_000_000])
 
 
 def duration_bucket(delta_us):
-    if not isinstance(delta_us,int) or not 0<delta_us<=DURATION_UPPER_US[-1]:
+    # Integral also accepts numpy integers: np.int64 is not an int subclass, and onset/end
+    # fields taken straight out of arrays are np.int64.
+    if not isinstance(delta_us,Integral) or not 0<delta_us<=DURATION_UPPER_US[-1]:
         raise ValueError('Duration outside fixed diagnostic support')
     return bisect_left(DURATION_UPPER_US,delta_us)
 
