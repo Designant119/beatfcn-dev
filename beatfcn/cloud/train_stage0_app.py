@@ -197,6 +197,9 @@ def build_native_counterfactual_plan(tape: str, mel_stats: str, name: str,
               memory=(16384, 16384), timeout=3600, retries=0)
 def extract_counterfactual_tar() -> dict:
     target = Path(DATA)/'counterfactual-d94-580-v1'
+    if target.exists():
+        import shutil
+        shutil.rmtree(target)
     target.mkdir(parents=True, exist_ok=True)
     proc = subprocess.run(['tar', '-xf', f'{DATA}/cf580.tar', '-C', str(target)],
                           capture_output=True, text=True)
@@ -340,6 +343,7 @@ def train_large_plan(plan_rel: str, auto_resume: bool = False) -> dict:
         deadline_timer.daemon = True
         deadline_timer.start()
     lines = []
+    returncode = None
     try:
         for line in proc.stdout:
             print(line, end='', flush=True)
@@ -349,6 +353,8 @@ def train_large_plan(plan_rel: str, auto_resume: bool = False) -> dict:
         returncode = proc.wait()
     finally:  # cancellation / lost input / timeout: never leave the trainer running
         _kill_group(proc)
+    if returncode is None:  # stdout iteration blew up: still report the exit code
+        returncode = proc.wait()
     if deadline_timer is not None:
         deadline_timer.cancel()
     run_s = time.monotonic() - run_start
@@ -428,6 +434,7 @@ def run_plan(plan_rel: str) -> dict:
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, bufsize=1, start_new_session=True)
     lines = []
+    returncode = None
     try:
         for line in proc.stdout:
             print(line, end='', flush=True)
@@ -437,6 +444,8 @@ def run_plan(plan_rel: str) -> dict:
         returncode = proc.wait()
     finally:  # cancellation / lost input / timeout: never leave the trainer running
         _kill_group(proc)
+    if returncode is None:  # stdout iteration blew up: still report the exit code
+        returncode = proc.wait()
     run_s = time.monotonic() - run_start
     stop_sync.set()
     sync_thread.join(timeout=10)
@@ -598,6 +607,7 @@ def _run_repo_script(module, args, sync_rels):
                             cwd=str(REPO), env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, bufsize=1, start_new_session=True)
     tail = []
+    code = None
     try:
         for line in proc.stdout:
             print(line, end='', flush=True)
@@ -605,6 +615,8 @@ def _run_repo_script(module, args, sync_rels):
         code = proc.wait()
     finally:  # cancellation / lost input / timeout: never leave the child running
         _kill_group(proc)
+    if code is None:  # stdout iteration blew up: still report the exit code
+        code = proc.wait()
     for rel in sync_rels:
         src = REPO / rel
         if not src.exists():

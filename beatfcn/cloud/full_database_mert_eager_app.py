@@ -237,13 +237,13 @@ def encode_mert_eager(run_id, contract_json, dispatch_deadline_unix):
                 result = _write(value, features, mel, expected, output_root, temporary)
                 with lock:
                     stage['write_s'] += result['wall_s']
-                    records.append(dict(audio_sha256=value['audio_sha256'],
+                    records.append(dict(audio_sha256=value['job']['audio_sha256'],
                         existing=False, files=result['files']))
                     completed_count[0] += 1
                     pending_writes[0] -= 1
             except Exception as exc:
                 with lock:
-                    failures.append(dict(audio_sha256=value['audio_sha256'],
+                    failures.append(dict(audio_sha256=value['job']['audio_sha256'],
                         stage='write', error=f'{type(exc).__name__}: {exc}'))
                     pending_writes[0] -= 1
                 stop_work.set()

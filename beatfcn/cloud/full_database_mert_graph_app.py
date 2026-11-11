@@ -136,6 +136,8 @@ def encode_mert_graph(run_id, contract_json, dispatch_deadline_unix):
     if contract.get('pipeline') != EXPECTED_PIPELINE or not isinstance(contract.get('diagnostic_only'), bool):
         raise ValueError('Formal MERT graph pipeline identity changed')
     validate_local_source(CHECKPOINT)
+    if not contract['output_root'].startswith(REMOTE_ROOT + '/'):
+        raise ValueError('Output root must stay inside full-database-v1')
     jobs = contract['jobs']
     if not jobs or len({job['audio_sha256'] for job in jobs}) != len(jobs):
         raise ValueError('Jobs must be nonempty and unique')
@@ -215,6 +217,8 @@ def encode_mert_graph(run_id, contract_json, dispatch_deadline_unix):
                     group_index += 1
                 pending = set(group_futures) | set(writer_futures)
                 if not pending:
+                    if stop_submitting:
+                        break
                     continue
                 done, _ = wait(pending, timeout=1, return_when=FIRST_COMPLETED)
                 for future in done:

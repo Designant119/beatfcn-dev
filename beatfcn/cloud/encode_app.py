@@ -111,9 +111,10 @@ def compare_gpus(gpus: str = 'L4,A10,L40S,A100-40GB,H100'):
             table.append({'gpu': g, 'error': f'{type(exc).__name__}: {exc}'[:200]})
             continue
         best = max(r['rows'], key=lambda x: x['windows_per_s'])
+        price = PRICE_PER_HOUR.get(g)
         table.append({'gpu': g, 'device': r['gpu'], 'best_batch': best['batch'], 'windows_per_s': best['windows_per_s'],
                       'peak_gb': best['peak_allocated_gb'],
-                      'windows_per_dollar': round(best['windows_per_s'] * 3600 / PRICE_PER_HOUR[g])})
+                      'windows_per_dollar': round(best['windows_per_s'] * 3600 / price) if price else None})
     out = REPO / 'reports' / 'gpu_encode_benchmark.json'
     out.parent.mkdir(exist_ok=True)
     out.write_text(json.dumps(table, indent=1))

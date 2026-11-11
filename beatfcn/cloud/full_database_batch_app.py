@@ -209,6 +209,8 @@ def encode_mert_batch(run_id, contract_json, dispatch_deadline_unix):
                     gpu_futures[future] = [item['job'] for item in batch]
                 pending = set(prefetch_futures) | set(gpu_futures) | set(writer_futures)
                 if not pending:
+                    if stop_submitting:
+                        break
                     continue
                 done, _ = wait(pending, timeout=1, return_when=FIRST_COMPLETED)
                 for future in done:
