@@ -859,7 +859,8 @@ class ContinuousDecoder:
         self.fusion = None if onset_fusion is None else _onset_fusion_rule(onset_fusion)
         if self.fusion:
             self.decoding['onset_fusion'] = dict(self.fusion)
-        self.rng_mode = None if temperature is None else 'per_row'
+        # seats start on the shared idle generator; seat(..., generator=...) upgrades this to 'per_row'
+        self.rng_mode = None if temperature is None else 'shared_batch_generator'
         self.device = next(model.parameters()).device
         self.use_graph = (CUDA_GRAPH_DEFAULT if cuda_graph is None else bool(cuda_graph)) and not compile_decode \
             and self.device.type == 'cuda' and not _GRAPH_FAILURES
@@ -969,6 +970,8 @@ class ContinuousDecoder:
         self.failures[row], self.tables[row], self.positions[row] = None, entry['table'], 0
         if generator is not None:
             self.generators[row] = generator
+            # the reported rng_mode must match what actually draws the tokens
+            self.rng_mode = 'per_row'
             if self.batched is None:
                 self.batched = _batched_sampling_ok([generator])
 
