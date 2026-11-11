@@ -522,7 +522,10 @@ def score_readout(rows):
     silence_seconds = sum((r['request']['end_us']-r['request']['start_us'])/1e6 for r in silence)
     split_measured = bool(silent) and all(s['true_silence_events'] is not None for s in silent)
     foreign = [g for g in grounding if g['intervention'] == 'foreign' and g['complete']]
-    empty = [r for r in positive if not r['prediction']['events']]
+    # Empty positives are the decode rule producing no event on a complete answer. Rows killed
+    # by watchdog / token budget / incomplete carry events == [] too, but classify() ranks those
+    # categories before empty_positive, so counting them here would inflate the hack rate.
+    empty = [r for r in positive if r['failure'] == 'empty_positive']
     hacks = dict(meaning=MEANINGS['hacks'],
         empty_positive_rate=len(empty)/len(positive) if positive else None, empty_positive_cases=len(empty),
         all_positive_empty=bool(positive) and len(empty) == len(positive),
