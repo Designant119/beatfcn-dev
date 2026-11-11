@@ -13,6 +13,8 @@ from .native_diagnostic_priors import DURATION_UPPER_US
 
 KINDS = ('tap', 'hold', 'flick', 'drag')
 SLOTS = 512
+# head_us padding: larger than any legal onset, so padded rows stay monotone for searchsorted.
+_HEAD_PAD = 2 ** 62
 
 
 def prepare_public_support(requests, known_regions=None, *, max_duration_us=512_000_000):
@@ -39,7 +41,10 @@ def prepare_public_support(requests, known_regions=None, *, max_duration_us=512_
     b = len(requests)
     hsize = max(1, max(len(h) for h, _ in layouts))
     csize = max(1, max(map(len, copies)))
-    result = dict(head_us=torch.zeros(b, hsize, dtype=torch.int64), head_valid=torch.zeros(b, hsize, dtype=torch.bool),
+    # Padding must sort AFTER every real head: loss_pass runs searchsorted over this row, which
+    # requires a monotone sequence. With 0 padding a row like [5k, 9k, 0, 0] is not sorted and
+    # searchsorted lands legal targets in the pad tail, marking the whole batch unsupported.
+    result = dict(head_us=torch.full((b, hsize), _HEAD_PAD, dtype=torch.int64), head_valid=torch.zeros(b, hsize, dtype=torch.bool),
                   type_allowed=torch.zeros(b, hsize, 4, dtype=torch.bool), copy_us=torch.zeros(b, csize, dtype=torch.int64),
                   copy_valid=torch.zeros(b, csize, dtype=torch.bool),
                   request_start_us=torch.tensor([r.start_us for r in requests], dtype=torch.int64),
@@ -245,7 +250,7 @@ def loss_pass(model, output, targets, target_valid, prior, *, details=False):
     supported = (~target_valid | (matched_head & allowed)) & (~hold | supported_tail)
     support_ok = supported.all()
     loss = (occupancy+head_loss+kind_loss+tail_loss).mean()
-    loss = torch.where(support_ok, loss, loss*0+torch.inf)
+    loss = torch.where(support_ok, loss, torch.full_like(loss, float('inf')))
     metrics = dict(occupancy=occupancy.mean().detach(), head=head_loss.mean().detach(),
                    kind=kind_loss.mean().detach(), tail=tail_loss.mean().detach(),
                    supported=support_ok.detach(), members=target_valid.sum().detach(), holds=hold.sum().detach())
