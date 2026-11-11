@@ -138,7 +138,9 @@ class HN2Native(nn.Module):
         self.whole_pointwise = nn.ModuleList(nn.Linear(fine, fine, bias=False) for _ in range(2))
         self.song_projection = nn.Linear(1024, d, bias=False)
         self.phrase_projection = nn.Linear(d, d, bias=False)
-        self.reference_projection = nn.Linear(16, d, bias=False)
+        # r5 reference rows are 12 columns wide (train/event_reference.py REFERENCE_COLUMNS);
+        # the old 16-wide projection rejects every real reference tensor at encode().
+        self.reference_projection = nn.Linear(12, d, bias=False)
         self.control_projection = nn.Linear(6, d, bias=False)
         self.control_ids = nn.Embedding(8, d)
         self.status = nn.Embedding(3, d)
