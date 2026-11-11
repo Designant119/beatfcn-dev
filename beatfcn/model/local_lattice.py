@@ -41,7 +41,9 @@ class LatticeCanvas(LocalTypedCanvas):
     def forward(self,inputs):
         controls=inputs['controls'].clone()
         # Density and hold/flick/drag preferences each have one explicit path.
-        controls[:,[0,2,6,7]]=0
+        # r5 7-slot layout (encode_controls / CONTROL_FIELDS order):
+        # 0 density, 1 peak, 2 hold_head, 3 hold_occupancy, 4 chord, 5 flick, 6 drag.
+        controls[:,[0,2,5,6]]=0
         memory=self.encode({**inputs,'controls':controls})
         n=inputs['local'].shape[2]*self.c.band_slots;m=inputs['mel'].shape[1]
         query=torch.arange(FRAMES,device=controls.device).float()[None]*.01+.005
@@ -60,7 +62,7 @@ class LatticeCanvas(LocalTypedCanvas):
         presence=self.presence(x).squeeze(-1)+tilt[:,None]
         slots=x[:,:,None]+self.slot_ids[None,None];slots=slots+self.attributes(slots)
         kinds=self.kind(slots)
-        for j,(field,kind) in enumerate(((2,1),(6,2),(7,3))):
+        for j,(field,kind) in enumerate(((2,1),(5,2),(6,3))):
             band=inputs['controls'][:,field];ratio=band[:,:2].mean(-1).clamp(.001,.999)
             baseline=self.type_prior[kind].clamp(.001,.999)
             bias=torch.where(band[:,2]>.5,F.softplus(self.ratio_alpha[j])*(torch.logit(ratio)-torch.logit(baseline)),0.)
@@ -126,7 +128,7 @@ def counterfactual_hinge(output,inputs,*,field_index,lower,upper):
     if field_index==0:
         value=number/(inputs['end_s']-inputs['origin_s'])
     else:
-        kind={2:1,6:2,7:3}[field_index]
+        kind={2:1,5:2,6:3}[field_index]
         value=types[:,kind]/number.clamp_min(1e-6)
     return (F.relu(lower-value)+F.relu(value-upper)).mean()
 
