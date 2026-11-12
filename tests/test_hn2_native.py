@@ -30,7 +30,7 @@ def toy_batch(request=None, regions=()):
              song=torch.randn(1, 8, 1024, generator=g)*.1,
              song_times=(torch.arange(8)[None]+.5)*.5,
              song_valid=torch.ones(1, 8, dtype=torch.bool),
-             reference=torch.zeros(1, 3, 16), reference_times=torch.zeros(1, 3),
+             reference=torch.zeros(1, 3, 12), reference_times=torch.zeros(1, 3),
              reference_valid=torch.tensor([[True, False, False]]),
              controls=torch.zeros(1, 8, 6), mode=torch.ones(1, dtype=torch.long))
     x['whole_mel'], x['whole_mel_times'], x['whole_mel_valid'] = x['mel'].clone(), x['mel_times'].clone(), x['mel_valid'].clone()
@@ -48,7 +48,7 @@ class HN2Tests(unittest.TestCase):
     def test_actual_meta_capacity_and_narrow_family(self):
         with torch.device('meta'):
             model = HN2Native()
-        self.assertEqual(sum(p.numel() for p in model.parameters()), 138621056)
+        self.assertEqual(sum(p.numel() for p in model.parameters()), 138617984)
         self.assertTrue(all(p.requires_grad for p in model.parameters()))
         self.assertEqual(narrow_config(128).slots, 512)
 
