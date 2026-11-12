@@ -451,8 +451,10 @@ def run_plan(plan_rel: str) -> dict:
     sync_thread.join(timeout=10)
     copy_start = time.monotonic()
     copied = []
-    for rel in (plan['output'], plan['generation_output'],
-                plan['checkpoint_dir'], plan['generation_dir']):
+    for rel in (plan['output'], plan.get('generation_output'),
+                plan['checkpoint_dir'], plan.get('generation_dir')):
+        if not rel:
+            continue
         src = REPO / rel
         if not src.exists():
             continue
