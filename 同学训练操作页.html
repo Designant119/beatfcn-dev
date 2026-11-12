@@ -421,7 +421,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
 
       <div class="tp-row">
-        <span class="tp-lab">跑多少步<small>1 步＝拿一批数据算一次梯度、更新一次权重。<b>不是“轮”</b>——一整轮数据要拆成很多步。这个方案最多 2400 步</small></span>
+        <span class="tp-lab">跑多少步<small>1 步＝拿一批数据算一次梯度、更新一次权重。<b>不是“轮”</b>——一整轮数据要拆成很多步。这个方案最多 <b id="tpUpdMax">2400</b> 步</small></span>
         <span class="tp-ctl"><input type="number" id="tpUpd" min="100" max="2400" step="50" value="300" inputmode="numeric"><input type="range" id="tpUpdR" min="100" max="2400" step="50" value="300"></span>
         <span class="tp-val" id="tpUpdV">300</span>
       </div>
@@ -916,7 +916,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(isNaN(n)) return fb;
     return Math.min(hi,Math.max(lo,n));
   }
-  function tpUpdVal(){ return tpClamp(tpUpd,100,2400,300); }
+  function tpUpdVal(){ return tpClamp(tpUpd,100,parseInt(tpUpd.max,10)||2400,300); }
   function tpCkVal(){ return tpClamp(tpCk,50,2400,300); }
   function tpHrVal(){ return tpClamp(tpHr,1,168,48); }
   function tpDeadline(h){              /* 运行时长换算的绝对截止时刻（命令里 --deadline-unix 的人话版） */
@@ -973,6 +973,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpCk.value=String(p.light_checkpoint_every);
       tpCkR.value=String(p.light_checkpoint_every);
     }
+    var hi=Math.min(2400,(p.horizon_updates||2400));   /* 步数上限不能超方案自己的 horizon，否则训练脚本会拒绝 */
+    tpUpd.max=String(hi); tpUpdR.max=String(hi);
+    document.getElementById('tpUpdMax').textContent=String(p.horizon_updates||2400);
+    if(parseInt(tpUpd.value,10)>hi){ tpUpd.value=String(hi); tpUpdR.value=String(hi); }
   }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
@@ -1049,13 +1053,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         tpStart.disabled=false; tpStart.textContent='开始训练';
         var note=(j&&j.note)?String(j.note):'后端没回 note';
         if(j&&j.ok){
-          tpStartNote.textContent='已开跑：'+note;
+          tpStartNote.textContent=note;
           outLine('ok','CMD '+j.command);
-          trBody.textContent+='\n[开始训练]\n'+j.command+'\n'+note+'\n';
+          pollTrain();                 /* 立刻抓一次，别等 5 秒轮询 */
         }else{
           tpStartNote.textContent=note;
           outLine('bad','train-start 拒绝：'+note);
-          trBody.textContent+='\n[train-start 失败]\n'+note+'\n';
         }
         trBody.scrollTop=trBody.scrollHeight;
       })

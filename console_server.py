@@ -505,6 +505,10 @@ def _train_start(body):
 
     # 存点间隔：不传就沿用方案里的值；传了且和方案不一样时，用一份只改这一项的临时副本
     base_every = known[plan].get('light_checkpoint_every')
+    horizon = known[plan].get('horizon_updates')
+    if isinstance(horizon, int) and 0 < horizon < updates:
+        return bad('这个方案最多 %d 步，跑多少步不能超过它（收到 %d）；换步数更大的方案，或调小步数'
+                   % (horizon, updates))
     ck_every = want_int('checkpoint_every', 50, 2400) if 'checkpoint_every' in body else base_every
     if 'checkpoint_every' in body and ck_every is None:
         return bad('checkpoint_every 要是 50–2400 的整数步数（收到 %r）' % (body.get('checkpoint_every'),))
@@ -515,7 +519,7 @@ def _train_start(body):
             plan_path = _plan_copy_with_checkpoint(plan, ck_every)
         except Exception as e:
             return bad('生成临时方案失败：' + str(e))
-        ck_note = '（存点间隔改成每 %d 步，用临时方案 %s，原方案没动）' % (ck_every, plan_path)
+        ck_note = '（存点间隔改成每 %d 步：已生成临时方案 %s，原方案没动）' % (ck_every, plan_path)
 
     deadline_ts = int(time.time() + hours * 3600)
     q = shlex.quote
