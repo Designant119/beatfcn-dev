@@ -89,11 +89,11 @@
 
   /* 05 页 MACHINE：CPU / 内存 / 显存 / 显卡 / 硬盘 小折线 */
   .syswrap{padding:8px 10px 4px}
-  .sysrow{display:grid;grid-template-columns:9.8em 1fr;gap:10px;align-items:center;padding:4px 0}
+  .sysrow{display:grid;grid-template-columns:10.5em 1fr;gap:12px;align-items:center;padding:5px 0}
   .sysrow .sk{font-size:10.5px;color:var(--dim);line-height:1.35;min-width:0}
   .sysrow .sk b{display:block;font-family:var(--mono);font-size:12.5px;color:var(--text);font-weight:400;
     overflow-wrap:anywhere;word-break:break-word}
-  .sysrow svg{width:100%;height:34px;display:block}
+  .sysrow svg{width:100%;height:68px;display:block}
   .sysrow svg line{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
   .sysrow svg line.lim{stroke:var(--bad);stroke-dasharray:5 4;opacity:.4}
   .sysrow svg path{fill:none;stroke:var(--ph);stroke-width:1.4;vector-effect:non-scaling-stroke}
@@ -502,15 +502,15 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
       <div class="syswrap">
         <div class="sysrow" data-k="cpu"><div class="sk"><span>CPU</span><b id="sysCpuV">—</b></div>
-          <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d=""/></svg></div>
+          <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
         <div class="sysrow" data-k="mem"><div class="sk"><span>内存</span><b id="sysMemV">—</b></div>
-          <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d=""/></svg></div>
+          <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
         <div class="sysrow" data-k="vram"><div class="sk"><span>显存</span><b id="sysVramV">—</b></div>
-          <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d=""/></svg></div>
+          <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
         <div class="sysrow" data-k="gpu"><div class="sk"><span>显卡使用率</span><b id="sysGpuV">—</b></div>
-          <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d=""/></svg></div>
+          <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
         <div class="sysrow" data-k="disk"><div class="sk"><span>硬盘</span><b id="sysDiskV">—</b></div>
-          <svg viewBox="0 0 100 26" preserveAspectRatio="none"><path d=""/></svg></div>
+          <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
       </div>
     </div>
     <p class="hint" style="margin-top:8px">每条曲线是最近 120 次采样（5 秒一次，约 10 分钟）。任何一条贴着 95% 并且变红，说明顶到天花板了：CPU 满了会拖慢数据加载，显存满了训练会直接退出，硬盘满了存快照会失败。</p>
@@ -884,7 +884,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(!row) return;
     var path=row.querySelector('path'), n=arr.length;
     if(n<2){ path.setAttribute('d',''); return; }
-    var w=100,h=26,d='';
+    var w=100,h=50,d='';
     for(var i=0;i<n;i++){
       var x=w*i/(n-1), y=h-Math.max(0,Math.min(100,arr[i]))/100*h;
       d+=(i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2);
@@ -937,7 +937,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   document.getElementById('sysGet').addEventListener('click',sysPoll);
   (function sysInitGrid(){                 /* 25/50/75% 参考线 + 95% 危险线，低位也能看出量级 */
     Array.prototype.forEach.call(document.querySelectorAll('.sysrow svg'),function(svg){
-      [6.5,13,19.5].forEach(function(y){
+      [12.5,25,37.5].forEach(function(y){
         var ln=document.createElementNS('http://www.w3.org/2000/svg','line');
         ln.setAttribute('x1','0'); ln.setAttribute('x2','100');
         ln.setAttribute('y1',y); ln.setAttribute('y2',y);
@@ -945,7 +945,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       });
       var lim=document.createElementNS('http://www.w3.org/2000/svg','line');
       lim.setAttribute('x1','0'); lim.setAttribute('x2','100');
-      lim.setAttribute('y1','1.3'); lim.setAttribute('y2','1.3');
+      lim.setAttribute('y1','2.5'); lim.setAttribute('y2','2.5');
       lim.setAttribute('class','lim');
       svg.insertBefore(lim, svg.firstChild);
     });
