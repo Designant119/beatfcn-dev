@@ -171,7 +171,7 @@ def record_probe_usage(path,job_id,*,elapsed_s_since_dispatch,reported_actual_us
         stop=live+money(job['stop_allowance_s'])*money(job['rate_upper_usd_s'])>=money(job['reserved_upper_usd'])
         job.update(elapsed_s_since_dispatch=str(elapsed),reported_actual_usd=str(reported),live_upper_usd=str(live),
             stop_required=bool(stop),status='closed' if closed or was_closed else 'stopping' if stop else 'running')
-        if closed:job['stop_evidence']=stop_evidence
+        if closed and stop_evidence:job['stop_evidence']=stop_evidence
         if billing_evidence_sha256:job['billing_evidence_sha256']=billing_evidence_sha256
         _pool_totals(pool)
         ledger['planned_stages'][POOL]['accounted_upper_usd']=str(max(CAP,money(pool['committed_upper_usd'])))
