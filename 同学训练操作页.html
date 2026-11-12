@@ -80,6 +80,8 @@
   .console pre{margin:0;padding:8px 10px;max-height:230px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--dim)}
   .console .ok{color:var(--ok)} .console .warn{color:var(--warn)} .console .bad{color:var(--bad)}
   .console .t{color:#5c665f}
+  .tprog{font-family:var(--mono,monospace);font-size:12px;line-height:1.6;color:#8dff9b;
+    background:rgba(0,255,120,.05);border-left:2px solid #22c55e;padding:6px 9px;margin-bottom:8px;word-break:break-word}
   .console .tmetrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;
     background:var(--line);border-bottom:1px solid var(--line)}
   .console .tmetrics div{background:#0a0d0c;padding:6px 10px;min-width:0}
@@ -530,6 +532,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       <div class="h"><span>TRAIN OUT / 训练输出</span>
         <div class="acts"><span class="t" id="trSrc"></span><button type="button" id="trGet">取一次</button><button type="button" id="trClr">清空</button></div>
       </div>
+      <div class="tprog" id="trProg" style="display:none"></div>
       <div class="tmetrics" id="trMetrics" style="display:none"></div>
       <pre id="trBody"><span class="t">连上后端后，这里每 5 秒抓一次训练输出（日志文件或 tmux 的 train 会话）。
 上面参数块是解析出的最新一条带指标的日志行——步数、学习率、loss、F1……日志里有什么参数就列什么，一个不落。</span></pre>
@@ -876,6 +879,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   });
   /* ---------- 训练输出（05 页 TRAIN OUT） ---------- */
   var trBody=document.getElementById('trBody'), trMetrics=document.getElementById('trMetrics'), trSrc=document.getElementById('trSrc');
+  var trProg=document.getElementById('trProg');
 
   /* ---------- 机器状态（MACHINE 小图） ---------- */
   var sysHist={cpu:[],mem:[],vram:[],gpu:[],disk:[]};
@@ -973,8 +977,33 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(/^grad/.test(k)) return hot.length+1;
     return hot.length+2;                        // 其余按日志里的原序殿后
   }
+  var TR_PHASE={'start':'刚启动','load_checkpoint':'正在加载权重','build_panel':'正在读数据清单',
+    'build_exposure':'正在生成训练数据（这步可能最久）','train':'正在训练'};
+  function trEta(s){
+    if(s<60) return Math.round(s)+' 秒';
+    if(s<3600) return Math.round(s/60)+' 分钟';
+    var h=Math.floor(s/3600), m=Math.round((s-h*3600)/60);
+    return h+' 小时'+(m?' '+m+' 分':'');
+  }
+  function trProgShow(pg){
+    if(!pg||typeof pg!=='object'){ trProg.style.display='none'; return; }
+    var bits=[];
+    if(pg.phase in TR_PHASE && pg.phase!=='train') bits.push(TR_PHASE[pg.phase]);
+    if(typeof pg.updates==='number'&&(pg.updates>0||pg.phase==='train')){
+      var tgt=(typeof pg.target_updates==='number'&&pg.target_updates>0)?pg.target_updates:null;
+      bits.push('第 '+tpFmtNum(pg.updates)+(tgt?' / '+tpFmtNum(tgt):'')+' 步');
+    }
+    if(typeof pg.gpu_peak_mib==='number'&&pg.gpu_peak_mib>0) bits.push('显存峰值 '+(pg.gpu_peak_mib/1024).toFixed(1)+' GB');
+    var rate=(typeof pg.recent_updates_per_s==='number'&&pg.recent_updates_per_s>0)?pg.recent_updates_per_s:
+             ((typeof pg.rate_updates_per_s==='number'&&pg.rate_updates_per_s>0)?pg.rate_updates_per_s:null);
+    if(rate) bits.push(rate.toFixed(2)+' 步/秒');
+    if(typeof pg.eta_s==='number'&&pg.eta_s>0) bits.push('还剩约 '+trEta(pg.eta_s));
+    if(bits.length){ trProg.textContent=bits.join(' · '); trProg.style.display=''; }
+    else { trProg.style.display='none'; trProg.textContent=''; }
+  }
   function trRender(j){
     if(!j||!j.ok){ trSrc.textContent=(j&&j.note)?j.note:'后端没回 /api/trainlog'; return; }
+    trProgShow(j.progress||{});
     var lines=j.lines||[];
     if(!lines.length){
       trSrc.textContent='还没抓到训练输出：训练没起，或日志文件 / tmux train 会话都没有';
