@@ -274,7 +274,6 @@
     <a href="#l3"   data-layer="l3">03 打开 Linux<span class="st" id="rst-l3"></span></a>
     <a href="#l4"   data-layer="l4">04 数据<span class="st" id="rst-l4"></span></a>
     <a href="#l5"   data-layer="l5">05 训练<span class="st" id="rst-l5"></span></a>
-    <a href="#t"    data-layer="t">06 排障<span class="st"></span></a>
   </nav>
 
   <div class="main">
@@ -533,21 +532,6 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     </div>
     <p class="hint" style="margin-top:8px">后端通了这里会自己滚。出了问题直接报这行的数字，比截图省事。</p>
   </section>
-
-  <!-- ===== 06 排障 ===== -->
-  <section class="view" id="v-t">
-    <div class="vhead"><span class="sid">06</span><h2>常见情况</h2><span class="vtag">对照着看</span></div>
-    <div class="hint">先在这页找一样的。找不到再问我，把屏幕截图带上。</div>
-    <details><summary>页面顶部一直是手动模式，不亮 LIVE</summary><p>后端没跑。进 Linux：<code class="mono">cd ~/beatfcn-dev &amp;&amp; ./run_server.sh</code>，然后刷新页面。手机看的话，要用电脑的 IP 访问 <code class="mono">http://IP:7777</code>，两台设备连同一个 WiFi。</p></details>
-    <details><summary>显存不够 out of memory</summary><p>批大小降到 1，或者发消息让我改配置。别自己加参数。</p></details>
-    <details><summary>硬盘满了</summary><p>一般是旧检查点堆着。<b>删之前问一句删哪个目录</b>，别按大小排序自己删。</p></details>
-    <details><summary>Windows 的 C 盘莫名其妙少了一大块</summary><p>Linux 那个虚拟盘不会自己缩。确认训练结束再回收：<code class="mono">wsl --manage beatfcn --set-sparse true</code>。有的版本没这个参数，报错就跳过。</p></details>
-    <details><summary>断过电、重启过</summary><p>进 Linux，<code class="mono">tmux attach -t train</code>，或者重新起训练。它从最近一次检查点接上，不用改东西。</p></details>
-    <details><summary>找不到训练窗口了</summary><p><code class="mono">wsl -d beatfcn</code> 进去，<code class="mono">tmux ls</code>，有 train 就 attach 回去。</p></details>
-    <details><summary>跑完了</summary><p>先什么都别动，把最后那几屏日志截图发过来。</p></details>
-    <div class="btnrow"><a class="btn ghost" href="#ov" style="text-decoration:none;display:inline-block">回总览</a></div>
-  </section>
-
   </div>
 
   <div class="foot">
