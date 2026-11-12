@@ -170,7 +170,7 @@ def encode_mert_streams(run_id, contract_json, dispatch_deadline_unix):
                     outstanding += 1
                 pending = set(prefetch_futures) | set(gpu_futures) | set(writer_futures)
                 if not pending:
-                    continue
+                    break  # early stop with jobs unsubmitted: nothing left to submit or await
                 done, _ = wait(pending, timeout=1, return_when=FIRST_COMPLETED)
                 for future in done:
                     if future in prefetch_futures:
