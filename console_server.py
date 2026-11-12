@@ -494,6 +494,15 @@ def _train_start(body):
             return bad('%s 要是布尔（收到 %r）' % (k, v))
     if device not in ('cuda', 'cpu'):
         return bad('device 只接受 cuda / cpu（收到 %r）' % (device,))
+    # 训练起来以后顺手把进度推到飞书（可选）。地址只认飞书群机器人，别让它变成任意 URL 的起跳板
+    feishu = body.get('feishu_webhook')
+    if isinstance(feishu, str) and feishu.strip():
+        feishu = feishu.strip()
+        if len(feishu) > 300 or not re.match(
+                r'https://open\.(feishu\.cn|larksuite\.com)/open-apis/bot/v2/hook/[\w-]+$', feishu):
+            return bad('飞书地址只接受群机器人 webhook：https://open.feishu.cn/open-apis/bot/v2/hook/…')
+    else:
+        feishu = None
     known = {p['name']: p for p in train_plans()}
     if not known:
         return bad('%s 里没有可用的 json 计划，先放计划再开跑' % os.path.join(REPO, 'plans', 'evolve'))
@@ -537,7 +546,8 @@ def _train_start(body):
 
     if dry_run:
         return 200, {'ok': True, 'command': cmd,
-                     'note': 'dry_run：只生成命令，未检查 tmux、未启动' + ck_note}
+                     'note': 'dry_run：只生成命令，未检查 tmux、未启动'
+                             + ('；也没起飞书上报' if feishu else '') + ck_note}
 
     try:
         probe = subprocess.run(['tmux', 'has-session', '-t', 'train'],
@@ -559,8 +569,27 @@ def _train_start(body):
         err = (started.stderr or started.stdout or '').strip()
         return 200, {'ok': False, 'command': cmd,
                      'note': 'tmux 启动失败：' + (err or '退出码 %d，无输出' % started.returncode)}
+    report_note = ''
+    if feishu:
+        # 上报独立跑在一个 tmux 会话里，挂了不影响训练；重启时先清掉旧的
+        rcmd = ('cd {repo} && python3 -m scripts.report_progress --plan {plan} --out-dir {out} '
+                '--webhook {hook} --interval 120').format(
+            repo=q(REPO), plan=q(os.path.join(REPO, 'plans', 'evolve', plan)),
+            out=q(known[plan].get('out_dir') or ''), hook=q(feishu))
+        try:
+            subprocess.run(['tmux', 'kill-session', '-t', 'report'], capture_output=True, timeout=8)
+        except Exception:
+            pass
+        try:
+            rr = subprocess.run(['tmux', 'new-session', '-d', '-s', 'report', rcmd],
+                                capture_output=True, text=True, timeout=10)
+            report_note = ('；进度每 2 分钟推到飞书群' if rr.returncode == 0
+                           else '；飞书上报没起来（' + (rr.stderr or '').strip()[:60] + '）')
+        except Exception as e:
+            report_note = '；飞书上报没起来（%s）' % e
     return 200, {'ok': True, 'command': cmd,
-                 'note': '已在 tmux 会话 train 里开跑；tmux attach -t train 看屏幕，tail -f train.log 看日志' + ck_note}
+                 'note': '已在 tmux 会话 train 里开跑；tmux attach -t train 看屏幕，tail -f train.log 看日志'
+                         + report_note + ck_note}
 
 
 # ---------------- 训练输出（05 页的 TRAIN OUT） ----------------

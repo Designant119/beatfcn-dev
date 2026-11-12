@@ -180,6 +180,8 @@
   .tp-flag select{width:auto}
   .tp-ctl input[type=number]{width:6.5em;flex:none;background:#080b0a;border:1px solid var(--line);color:var(--text);
     font-family:var(--mono);font-size:12.5px;padding:6px}
+  .tp-ctl input[type=url]{width:100%;flex:1;background:#080b0a;border:1px solid var(--line);color:var(--text);
+    font-family:var(--mono);font-size:11.5px;padding:6px}
   .tp-ctl input[type=range]{flex:1;min-width:70px;accent-color:var(--ph);margin:0}
   .tp-val{grid-column:2;font-family:var(--mono);font-size:11px;color:var(--phdim);white-space:nowrap;text-align:right}
   .tp-flags{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;padding:9px 10px}
@@ -451,6 +453,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         <label class="tp-flag"><span>用哪个算</span>
           <select id="tpDev"><option value="cuda">显卡（正常选这个）</option><option value="cpu">CPU（只是试跑，很慢）</option></select>
         </label>
+      </div>
+
+      <div class="tp-row">
+        <span class="tp-lab">进度推到飞书<small>可不填。填了以后每 2 分钟往群里发一条进度卡（跑多少步、loss、还剩多久、最近快照），人在外面也能看。地址从飞书群「设置 → 群机器人 → 自定义机器人」拿。</small></span>
+        <span class="tp-ctl"><input type="url" id="tpFeishu" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/…" autocomplete="off" spellcheck="false"></span>
+        <span class="tp-val" id="tpFeishuV"></span>
       </div>
 
       <div class="tp-snap" id="tpSnap">快照存哪、留几份——连上后端后显示。</div>
@@ -909,6 +917,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpStartNote=document.getElementById('tpStartNote');
   var tpDetailBtn=document.getElementById('tpDetailBtn'), tpKv=document.getElementById('tpKv'),
       tpSnap=document.getElementById('tpSnap');
+  var tpFeishu=document.getElementById('tpFeishu'), tpFeishuV=document.getElementById('tpFeishuV');
   var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false, tpKvOpen=false;
 
   function tpClamp(el,lo,hi,fb){        /* 数字框读值：越界钳回范围；输入中清空了先按回退值生成命令 */
@@ -1043,7 +1052,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var payload={id:'train-start',plan:tpPlan.value,updates:tpUpdVal(),workers:parseInt(tpWk.value,10),
       checkpoint_every:ck,
       deadline_hours:tpHrVal(),resume:tpResume.checked,save_optimizer:tpSaveOpt.checked,
-      no_compile:tpNoComp.checked,device:tpDev.value};
+      no_compile:tpNoComp.checked,device:tpDev.value,
+      feishu_webhook:tpFeishu.value.trim()};
     tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';
     var url=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
     fetch(url,{method:'POST',headers:apiToken?{'X-Token':apiToken}:{},'Content-Type':'application/json',
@@ -1070,6 +1080,21 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   });
   tpPlan.innerHTML='<option value="">（连上后端后自动列出）</option>';
   tpPaint();
+
+  /* 飞书群机器人地址：填一次就记住，下次自动带上 */
+  try{ tpFeishu.value=localStorage.getItem('r5runbook:v4:feishu')||''; }catch(e){}
+  function tpFeishuPaint(){
+    var v=tpFeishu.value.trim();
+    if(!v){ tpFeishuV.textContent=''; return; }
+    var ok=/^https:\/\/open\.(feishu\.cn|larksuite\.com)\/open-apis\/bot\/v2\/hook\/[\w-]+$/.test(v);
+    tpFeishuV.textContent=ok?'已设置':'地址不对';
+    tpFeishuV.style.color=ok?'var(--phdim)':'var(--bad)';
+  }
+  tpFeishu.addEventListener('input',function(){
+    try{ localStorage.setItem('r5runbook:v4:feishu',tpFeishu.value.trim()); }catch(e){}
+    tpFeishuPaint();
+  });
+  tpFeishuPaint();
 
   function setMode(on,msg){
     isLive=on;
