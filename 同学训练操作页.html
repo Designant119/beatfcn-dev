@@ -169,18 +169,19 @@
   .tpanel{border:1px solid var(--line);background:var(--panel);margin:8px 0 12px}
   .tpanel .tp-h{font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--phdim);
     border-bottom:1px solid var(--line);padding:5px 9px}
-  .tp-row{display:grid;grid-template-columns:10em 1fr auto;gap:6px 12px;align-items:center;
-    padding:9px 10px;border-bottom:1px dotted var(--line)}
-  .tp-lab{font-size:13px;min-width:0}
-  .tp-lab small{display:block;color:var(--dim);font-size:11px;line-height:1.5;overflow-wrap:anywhere;word-break:break-word}
-  .tp-ctl{display:flex;gap:8px;align-items:center;min-width:0}
+  .tp-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;
+    padding:10px 11px;border-bottom:1px dotted var(--line)}
+  .tp-lab{grid-column:1/-1;font-size:13px;min-width:0}
+  .tp-lab small{display:block;color:var(--dim);font-size:11.5px;line-height:1.6;margin-top:3px;
+    overflow-wrap:anywhere;word-break:break-word}
+  .tp-ctl{grid-column:1;display:flex;gap:8px;align-items:center;min-width:0}
   .tp-ctl select,.tp-flag select{width:100%;background:#080b0a;border:1px solid var(--line);color:var(--text);
     font-family:var(--mono);font-size:12px;padding:6px}
   .tp-flag select{width:auto}
   .tp-ctl input[type=number]{width:6.5em;flex:none;background:#080b0a;border:1px solid var(--line);color:var(--text);
     font-family:var(--mono);font-size:12.5px;padding:6px}
   .tp-ctl input[type=range]{flex:1;min-width:70px;accent-color:var(--ph);margin:0}
-  .tp-val{font-family:var(--mono);font-size:11px;color:var(--phdim);white-space:nowrap;text-align:right}
+  .tp-val{grid-column:2;font-family:var(--mono);font-size:11px;color:var(--phdim);white-space:nowrap;text-align:right}
   .tp-flags{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;padding:9px 10px}
   .tp-flag{display:flex;gap:7px;align-items:center;cursor:pointer;font-size:13px;min-height:34px}
   .tp-flag input[type=checkbox]{appearance:none;-webkit-appearance:none;width:15px;height:15px;flex:none;margin:0;
@@ -189,6 +190,17 @@
   .tp-flag input[type=checkbox]:checked::after{content:"";position:absolute;left:4px;top:0;width:5px;height:9px;
     border:2px solid var(--ok);border-top:0;border-left:0;transform:rotate(42deg)}
   .tp-note{font-size:12px;color:var(--dim);min-width:0;word-break:break-word;align-self:center}
+  .tp-flag span small{display:inline;font-size:11px;color:var(--dim);margin-left:5px;font-weight:400}
+  .tp-detail{border-bottom:1px dotted var(--line);padding:7px 10px}
+  .tp-detail button{background:transparent;border:1px solid var(--line);color:var(--phdim);cursor:pointer;
+    font-family:var(--ui);font-size:11px;letter-spacing:.04em;padding:4px 8px;text-align:left}
+  .tp-detail button:hover{border-color:var(--ph);color:var(--text)}
+  .tp-kv{display:grid;grid-template-columns:7.5em 1fr;gap:7px 10px;margin-top:9px;font-size:12.5px}
+  .tp-kv .k{color:var(--text);white-space:nowrap;font-size:12.5px}
+  .tp-kv .v{color:var(--text);font-family:var(--mono);font-size:12px;word-break:break-all;min-width:0}
+  .tp-kv .v em{display:block;color:var(--dim);font-style:normal;font-size:10.5px;margin-top:1px;opacity:.8}
+  .tp-snap{border-top:1px solid var(--line);padding:9px 10px;font-size:12.5px;color:var(--dim);line-height:1.7}
+  .tp-snap b{color:var(--text);font-weight:400;font-family:var(--mono);font-size:12px;word-break:break-all}
   @media (max-width:540px){
     .tp-row{grid-template-columns:1fr auto}
     .tp-lab{grid-column:1/-1;margin-bottom:-2px}
@@ -396,35 +408,52 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <p class="hint">一跑一两天。调好下面的参数，点「开始训练」；命令随控件实时生成，也可以自己复制去跑。训练跑在 tmux 的 <b>train</b> 会话里，关窗口不停，回来 <code class="mono">tmux attach -t train</code>。</p>
 
     <div class="tpanel">
-      <div class="tp-h">TRAIN PARAMS / 训练参数</div>
+      <div class="tp-h">TRAIN PARAMS / 训练设置（照着中文选就行，括号里是原参数名）</div>
+
       <div class="tp-row">
-        <span class="tp-lab">计划<small>plans/evolve 里的 json，后端自动列</small></span>
+        <span class="tp-lab">训练方案<small>这次练什么、多快学、多久存一次，都写在这份方案里。不用看懂内容，选一个就对了</small></span>
         <span class="tp-ctl"><select id="tpPlan"></select></span>
         <span class="tp-val" id="tpPlanInfo"></span>
       </div>
+      <div class="tp-detail">
+        <button type="button" id="tpDetailBtn">＋ 看这个方案里写了什么</button>
+        <div class="tp-kv" id="tpKv" style="display:none"></div>
+      </div>
+
       <div class="tp-row">
-        <span class="tp-lab">目标更新数 updates<small>100–2400，一次 50</small></span>
+        <span class="tp-lab">跑多少步<small>1 步＝拿一批数据算一次梯度、更新一次权重。<b>不是“轮”</b>——一整轮数据要拆成很多步。这个方案最多 2400 步</small></span>
         <span class="tp-ctl"><input type="number" id="tpUpd" min="100" max="2400" step="50" value="300" inputmode="numeric"><input type="range" id="tpUpdR" min="100" max="2400" step="50" value="300"></span>
         <span class="tp-val" id="tpUpdV">300</span>
       </div>
+
       <div class="tp-row">
-        <span class="tp-lab">加载进程数<small>BEATFCN_MAX_LOADER_WORKERS，内存 16G 别超 4</small></span>
+        <span class="tp-lab">数据加载进程<small><b>是 CPU 的，不是显卡的</b>。这些进程在内存里提前准备数据，每个都吃一份内存：16G 内存用 4，32G 以上可以往上加，加太多会把机器卡死</small></span>
         <span class="tp-ctl"><input type="range" id="tpWk" min="1" max="16" step="1" value="4"></span>
         <span class="tp-val" id="tpWkV">4</span>
       </div>
+
       <div class="tp-row">
-        <span class="tp-lab">运行时长（小时）<small>1–168，到点自动存盘收工</small></span>
+        <span class="tp-lab">多久存一次快照<small>练到第 N 步存一份。调成和方案不一样时，会用一份临时方案（原文件不动）</small></span>
+        <span class="tp-ctl"><input type="number" id="tpCk" min="50" max="2400" step="50" value="300" inputmode="numeric"><input type="range" id="tpCkR" min="50" max="2400" step="50" value="300"></span>
+        <span class="tp-val" id="tpCkV">300</span>
+      </div>
+
+      <div class="tp-row">
+        <span class="tp-lab">最多跑多久<small>单位小时。到点自动存盘收工，不会白跑</small></span>
         <span class="tp-ctl"><input type="number" id="tpHr" min="1" max="168" step="1" value="48" inputmode="numeric"></span>
         <span class="tp-val" id="tpHrV"></span>
       </div>
+
       <div class="tp-flags">
-        <label class="tp-flag"><input type="checkbox" id="tpResume"><span>--resume 断点续跑</span></label>
-        <label class="tp-flag"><input type="checkbox" id="tpSaveOpt"><span>--save-optimizer</span></label>
-        <label class="tp-flag"><input type="checkbox" id="tpNoComp"><span>--no-compile</span></label>
-        <label class="tp-flag"><span>设备</span>
-          <select id="tpDev"><option value="cuda">cuda</option><option value="cpu">cpu</option></select>
+        <label class="tp-flag"><input type="checkbox" id="tpResume"><span>接着上次继续<small>从最新快照往下练</small></span></label>
+        <label class="tp-flag"><input type="checkbox" id="tpSaveOpt"><span>连优化器状态一起存<small>文件大一倍，续跑不用重新热身；不确定就别勾</small></span></label>
+        <label class="tp-flag"><input type="checkbox" id="tpNoComp"><span>关掉编译加速<small>只有报编译错误才勾</small></span></label>
+        <label class="tp-flag"><span>用哪个算</span>
+          <select id="tpDev"><option value="cuda">显卡（正常选这个）</option><option value="cpu">CPU（只是试跑，很慢）</option></select>
         </label>
       </div>
+
+      <div class="tp-snap" id="tpSnap">快照存哪、留几份——连上后端后显示。</div>
     </div>
 
     <div class="btnrow">
@@ -437,7 +466,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="chk"><input type="checkbox" data-k="t3"><span class="t">看进度：日志里 loss 有数字就说明在练<small>数字上下跳很正常；后端连着时，下面「训练输出」框里直接看，不用手动 tail。</small></span></div>
     <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>tail -f train.log</pre></div>
 
-    <div class="flag"><span class="k">它自己会存</span>每 300 步存一次检查点。断电重启，重新起就接着跑。</div>
+    <div class="flag"><span class="k">它自己会存</span>默认每 300 步存一份快照（上面的「多久存一次快照」可以改），只留最近几份。断电重启，勾上「接着上次继续」就接着跑。</div>
 
     <h3 style="font-size:15px;margin:22px 0 4px">跑的时候别做这几件事</h3>
     <div class="chk"><input type="checkbox" data-k="t4"><span class="t">别删文件夹<small>中间产物删了要重跑。</small></span></div>
@@ -452,7 +481,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
       <div class="tmetrics" id="trMetrics" style="display:none"></div>
       <pre id="trBody"><span class="t">连上后端后，这里每 5 秒抓一次训练输出（日志文件或 tmux 的 train 会话）。
-上面参数块是解析出的最新一条带指标的日志行——轮数、步数、学习率、loss、F1……日志里有什么参数就列什么，一个不落。</span></pre>
+上面参数块是解析出的最新一条带指标的日志行——步数、学习率、loss、F1……日志里有什么参数就列什么，一个不落。</span></pre>
     </div>
     <p class="hint" style="margin-top:8px">参数块每 5 秒自动换新；原始日志在下面滚。上面的启动命令已把输出 tee 进 <code class="mono">train.log</code>，这里直接抓；没有日志文件时也能抓 tmux 屏幕。</p>
 
@@ -872,12 +901,15 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var tpPlan=document.getElementById('tpPlan'), tpPlanInfo=document.getElementById('tpPlanInfo');
   var tpUpd=document.getElementById('tpUpd'), tpUpdR=document.getElementById('tpUpdR'), tpUpdV=document.getElementById('tpUpdV');
   var tpWk=document.getElementById('tpWk'), tpWkV=document.getElementById('tpWkV');
+  var tpCk=document.getElementById('tpCk'), tpCkR=document.getElementById('tpCkR'), tpCkV=document.getElementById('tpCkV');
   var tpHr=document.getElementById('tpHr'), tpHrV=document.getElementById('tpHrV');
   var tpResume=document.getElementById('tpResume'), tpSaveOpt=document.getElementById('tpSaveOpt'),
       tpNoComp=document.getElementById('tpNoComp'), tpDev=document.getElementById('tpDev');
   var tpCmd=document.getElementById('tpCmd'), tpStart=document.getElementById('tpStart'),
       tpStartNote=document.getElementById('tpStartNote');
-  var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false;
+  var tpDetailBtn=document.getElementById('tpDetailBtn'), tpKv=document.getElementById('tpKv'),
+      tpSnap=document.getElementById('tpSnap');
+  var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false, tpKvOpen=false;
 
   function tpClamp(el,lo,hi,fb){        /* 数字框读值：越界钳回范围；输入中清空了先按回退值生成命令 */
     var n=parseInt(el.value,10);
@@ -885,6 +917,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     return Math.min(hi,Math.max(lo,n));
   }
   function tpUpdVal(){ return tpClamp(tpUpd,100,2400,300); }
+  function tpCkVal(){ return tpClamp(tpCk,50,2400,300); }
   function tpHrVal(){ return tpClamp(tpHr,1,168,48); }
   function tpDeadline(h){              /* 运行时长换算的绝对截止时刻（命令里 --deadline-unix 的人话版） */
     var d=new Date(Date.now()+h*3600*1000);
@@ -899,27 +932,64 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       .replace(/(~\/[^\s]+|\$[\w{}]+|[A-Z]:\\[\w\\.-]*)/g,'<b class="v">$1</b>')
       .replace(/\b(\d[\d._]*)\b/g,'<b class="n">$1</b>');
   }
-  function tpPlanInfoPaint(){
-    var p=null;
-    for(var i=0;i<tpPlans.length;i++){ if(tpPlans[i].name===tpPlan.value){ p=tpPlans[i]; break; } }
-    if(!p){ tpPlanInfo.textContent=''; return; }
+  function tpPlanObj(){
+    for(var i=0;i<tpPlans.length;i++){ if(tpPlans[i].name===tpPlan.value) return tpPlans[i]; }
+    return null;
+  }
+  function tpPlanInfoPaint(){          /* 选中方案后：一行摘要 + 详情表 + 快照位置，字段全来自后端 */
+    var p=tpPlanObj();
+    if(!p){
+      tpPlanInfo.textContent=''; tpKv.innerHTML='';
+      tpSnap.textContent='快照存哪、留几份——连上后端后显示。';
+      return;
+    }
     var bits=[];
+    if(p.horizon_updates!=null) bits.push('最多 '+p.horizon_updates+' 步');
     if(p.learning_rate!=null) bits.push('学习率 '+tpFmtNum(p.learning_rate));
     if(p.light_checkpoint_every!=null) bits.push('每 '+p.light_checkpoint_every+' 步存一次');
-    tpPlanInfo.textContent=bits.join(' · ');
+    if(p.light_checkpoint_keep!=null) bits.push('留 '+p.light_checkpoint_keep+' 份');
+    tpPlanInfo.textContent=bits.join(' · ')||'（这份方案里没写这些）';
+
+    var rows=[
+      ['最多多少步','schedule.horizon_updates',p.horizon_updates==null?null:p.horizon_updates+' 步'],
+      ['学习率','learning_rate',p.learning_rate==null?null:tpFmtNum(p.learning_rate)],
+      ['存快照间隔','light_checkpoint_every',p.light_checkpoint_every==null?null:'每 '+p.light_checkpoint_every+' 步'],
+      ['保留几份','light_checkpoint_keep',p.light_checkpoint_keep==null?null:p.light_checkpoint_keep+' 份'],
+      ['快照输出目录','out_dir',p.out_dir],
+      ['起始权重','init',p.init],
+      ['随机种子','seed',p.seed],
+      ['默认加载进程','loader_workers',p.loader_workers]
+    ];
+    tpKv.innerHTML=rows.map(function(r){
+      var v=(r[2]==null||r[2]==='')?'未写':String(r[2]);
+      return '<span class="k">'+r[0]+'</span><span class="v">'+esc(v)+'<em>'+r[1]+'</em></span>';
+    }).join('');
+
+    var keep=(p.light_checkpoint_keep==null)?'（方案没写留几份）':('最近 '+p.light_checkpoint_keep+' 份');
+    tpSnap.innerHTML='快照存在 '+(p.out_dir?('<b>'+esc(p.out_dir)+'</b>'):'（方案里没写，跑起来才确定）')+
+      '，文件名长这样 <b>step-000300.pt</b>，只留'+keep+'。下次勾上「接着上次继续」，会从这个目录读最新的那份，不用手填路径。';
+
+    if(p.light_checkpoint_every!=null){          /* 换方案时把存点间隔带成该方案的默认值 */
+      tpCk.value=String(p.light_checkpoint_every);
+      tpCkR.value=String(p.light_checkpoint_every);
+    }
   }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
-    var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), hr=tpHrVal();
+    var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
+    var p=tpPlanObj(), diff=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck);
     tpUpdV.textContent=String(upd);
     tpWkV.textContent=String(wk);
+    tpCkV.textContent=String(ck);
     tpHrV.textContent=hr+'h → '+tpDeadline(hr);
     var name=tpPlan.value;
     var flags=(tpResume.checked?' --resume':'')+(tpSaveOpt.checked?' --save-optimizer':'')
              +(tpNoComp.checked?' --no-compile':'');
     var dl=Math.round(Date.now()/1000+hr*3600);
-    var txt='export BEATFCN_MAX_LOADER_WORKERS='+wk+'\n'
+    var note=diff?('# 存点间隔已改成 '+ck+'：点「开始训练」会用临时方案；手跑这条命令仍按方案里的 '
+                    +p.light_checkpoint_every+'\n'):'';
+    var txt=note+'export BEATFCN_MAX_LOADER_WORKERS='+wk+'\n'
       +"tmux new -s train -d 'cd "+tpRepo+" && python -m scripts.evolve_finetune --plan plans/evolve/"
-      +(name||'<计划名>')+" --updates "+upd+" --deadline-unix "+dl+flags
+      +(name||'<方案名>')+" --updates "+upd+" --deadline-unix "+dl+flags
       +" --device "+tpDev.value+" 2>&1 | tee -a train.log'";
     tpCmd.innerHTML=hlCmd(txt);
   }
@@ -927,10 +997,18 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   tpUpd.addEventListener('change',function(){ tpUpd.value=String(tpUpdVal()); tpPaint(); });
   tpUpdR.addEventListener('input',function(){ tpUpd.value=tpUpdR.value; tpPaint(); });
   tpWk.addEventListener('input',tpPaint);
+  tpCk.addEventListener('input',function(){ tpCkR.value=String(tpCkVal()); tpPaint(); });
+  tpCk.addEventListener('change',function(){ tpCk.value=String(tpCkVal()); tpCkR.value=tpCk.value; tpPaint(); });
+  tpCkR.addEventListener('input',function(){ tpCk.value=tpCkR.value; tpPaint(); });
   tpHr.addEventListener('input',tpPaint);
   tpHr.addEventListener('change',function(){ tpHr.value=String(tpHrVal()); tpPaint(); });
   [tpResume,tpSaveOpt,tpNoComp,tpDev].forEach(function(el){ el.addEventListener('change',tpPaint); });
   tpPlan.addEventListener('change',function(){ tpPlanInfoPaint(); tpPaint(); });
+  tpDetailBtn.addEventListener('click',function(){
+    tpKvOpen=!tpKvOpen;
+    tpKv.style.display=tpKvOpen?'grid':'none';
+    tpDetailBtn.textContent=(tpKvOpen?'－ 收起':'＋ 看这个方案里写了什么');
+  });
 
   function tpFetchPlans(){             /* 计划下拉框只信后端：没连上就明说，绝不编列表 */
     if(tpGotPlans) return;
@@ -953,9 +1031,13 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     },8000);
   }
   tpStart.addEventListener('click',function(){
-    if(!tpPlan.value){ tpStartNote.textContent='先选计划（后端连上才有列表）'; return; }
-    if(!confirm('按这些参数开跑？')) return;
+    if(!tpPlan.value){ tpStartNote.textContent='先选方案（后端连上才有列表）'; return; }
+    var p=tpPlanObj(), ck=tpCkVal();
+    var extra=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck)
+      ? '\n\n注意：存点间隔会从方案里的 '+p.light_checkpoint_every+' 步改成每 '+ck+' 步（用临时方案，原文件不动）。' : '';
+    if(!confirm('按这些参数开跑？'+extra)) return;
     var payload={id:'train-start',plan:tpPlan.value,updates:tpUpdVal(),workers:parseInt(tpWk.value,10),
+      checkpoint_every:ck,
       deadline_hours:tpHrVal(),resume:tpResume.checked,save_optimizer:tpSaveOpt.checked,
       no_compile:tpNoComp.checked,device:tpDev.value};
     tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';

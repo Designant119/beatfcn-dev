@@ -40,6 +40,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from urllib.parse import urlparse, parse_qs, quote
@@ -395,7 +396,7 @@ _PLAN_NAME_RE = re.compile(r'[A-Za-z0-9._-]+\.json')
 
 
 def train_plans():
-    """05 页「计划」下拉框数据：REPO/plans/evolve/*.json 的只读清单（名字 + lr + 存点间隔）。
+    """05 页「训练方案」下拉框 + 详情：REPO/plans/evolve/*.json 的只读清单。
     字段缺了就给 None，绝不造数；目录不在就空列表。名字先过 _PLAN_NAME_RE——白名单只收
     无壳安全字符的文件名，train-start 拼 shell 命令时才敢直接往里嵌。"""
     plans = []
@@ -407,7 +408,9 @@ def train_plans():
     for name in names:
         if not _PLAN_NAME_RE.fullmatch(name) or not os.path.isfile(os.path.join(d, name)):
             continue
-        rec = {'name': name, 'learning_rate': None, 'light_checkpoint_every': None}
+        rec = {'name': name, 'learning_rate': None, 'light_checkpoint_every': None,
+               'light_checkpoint_keep': None, 'out_dir': None, 'horizon_updates': None,
+               'init': None, 'seed': None, 'loader_workers': None}
         try:
             with open(os.path.join(d, name), encoding='utf-8') as f:
                 cfg = json.load(f)
@@ -415,13 +418,42 @@ def train_plans():
                 lr = cfg.get('learning_rate')
                 if isinstance(lr, (int, float)) and not isinstance(lr, bool):
                     rec['learning_rate'] = lr
-                ck = cfg.get('light_checkpoint_every')
-                if isinstance(ck, int) and not isinstance(ck, bool):
-                    rec['light_checkpoint_every'] = ck
+                for key in ('light_checkpoint_every', 'light_checkpoint_keep', 'seed', 'loader_workers'):
+                    v = cfg.get(key)
+                    if isinstance(v, int) and not isinstance(v, bool):
+                        rec[key] = v
+                for key in ('out_dir', 'init'):
+                    v = cfg.get(key)
+                    if isinstance(v, str) and v:
+                        rec[key] = v
+                sched = cfg.get('schedule')
+                if isinstance(sched, dict):
+                    h = sched.get('horizon_updates')
+                    if isinstance(h, int) and not isinstance(h, bool):
+                        rec['horizon_updates'] = h
         except Exception:
             pass          # 单个 json 坏了不影响整张清单：名字照列，字段留空
         plans.append(rec)
     return plans
+
+
+def _plan_copy_with_checkpoint(plan_name, every):
+    """把方案复制到临时目录、只改 light_checkpoint_every 一个字段，返回副本绝对路径。
+    原方案文件一个字节都不动；副本放系统临时目录，不进仓库。"""
+    src = os.path.join(REPO, 'plans', 'evolve', plan_name)
+    with open(src, encoding='utf-8') as f:
+        cfg = json.load(f)
+    if not isinstance(cfg, dict):
+        raise ValueError('方案不是 json 对象')
+    cfg['light_checkpoint_every'] = every
+    d = os.path.join(tempfile.gettempdir(), 'beatfcn-run-plans')
+    os.makedirs(d, exist_ok=True)
+    dst = os.path.join(d, plan_name)
+    tmp = dst + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, dst)
+    return dst
 
 
 def _train_start(body):
@@ -465,18 +497,32 @@ def _train_start(body):
             return bad('%s 要是布尔（收到 %r）' % (k, v))
     if device not in ('cuda', 'cpu'):
         return bad('device 只接受 cuda / cpu（收到 %r）' % (device,))
-    known = {p['name'] for p in train_plans()}
+    known = {p['name']: p for p in train_plans()}
     if not known:
         return bad('%s 里没有可用的 json 计划，先放计划再开跑' % os.path.join(REPO, 'plans', 'evolve'))
     if plan not in known:
         return bad('plan 不在 plans/evolve 里：%r' % plan)
+
+    # 存点间隔：不传就沿用方案里的值；传了且和方案不一样时，用一份只改这一项的临时副本
+    base_every = known[plan].get('light_checkpoint_every')
+    ck_every = want_int('checkpoint_every', 50, 2400) if 'checkpoint_every' in body else base_every
+    if 'checkpoint_every' in body and ck_every is None:
+        return bad('checkpoint_every 要是 50–2400 的整数步数（收到 %r）' % (body.get('checkpoint_every'),))
+    plan_path = os.path.join(REPO, 'plans', 'evolve', plan)
+    ck_note = ''
+    if isinstance(ck_every, int) and ck_every != base_every:
+        try:
+            plan_path = _plan_copy_with_checkpoint(plan, ck_every)
+        except Exception as e:
+            return bad('生成临时方案失败：' + str(e))
+        ck_note = '（存点间隔改成每 %d 步，用临时方案 %s，原方案没动）' % (ck_every, plan_path)
 
     deadline_ts = int(time.time() + hours * 3600)
     q = shlex.quote
     cmd = ('cd {repo} && BEATFCN_MAX_LOADER_WORKERS={workers} python -m scripts.evolve_finetune '
            '--plan {plan} --updates {updates} --deadline-unix {deadline}'
            .format(repo=q(REPO), workers=workers,
-                   plan=q(os.path.join(REPO, 'plans', 'evolve', plan)),
+                   plan=q(plan_path),
                    updates=updates, deadline=deadline_ts))
     if flags['resume']:
         cmd += ' --resume'
@@ -487,7 +533,8 @@ def _train_start(body):
     cmd += ' --device {dev} 2>&1 | tee -a {log}'.format(dev=device, log=q(os.path.join(REPO, 'train.log')))
 
     if dry_run:
-        return 200, {'ok': True, 'command': cmd, 'note': 'dry_run：只生成命令，未检查 tmux、未启动'}
+        return 200, {'ok': True, 'command': cmd,
+                     'note': 'dry_run：只生成命令，未检查 tmux、未启动' + ck_note}
 
     try:
         probe = subprocess.run(['tmux', 'has-session', '-t', 'train'],
@@ -510,7 +557,7 @@ def _train_start(body):
         return 200, {'ok': False, 'command': cmd,
                      'note': 'tmux 启动失败：' + (err or '退出码 %d，无输出' % started.returncode)}
     return 200, {'ok': True, 'command': cmd,
-                 'note': '已在 tmux 会话 train 里开跑；tmux attach -t train 看屏幕，tail -f train.log 看日志'}
+                 'note': '已在 tmux 会话 train 里开跑；tmux attach -t train 看屏幕，tail -f train.log 看日志' + ck_note}
 
 
 # ---------------- 训练输出（05 页的 TRAIN OUT） ----------------
