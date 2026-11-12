@@ -23,7 +23,10 @@
                         验证侧指标训练行里不打，另从 reports 的验证记录以 val. 前缀并入，见 _val_metrics）
                         来源优先级：BEATFCN_TRAIN_LOG 环境变量 → stages.json 各阶段的 "log" 路径 →
                         train.log / reports/train_console.log 约定位置 → tmux 会话 train 的屏幕缓冲
-    POST /api/action    预留安全操作；目前仅支持 {"id":"env-recheck"}
+    GET  /api/train-plan 05 页计划下拉框：REPO/plans/evolve/*.json 的名字 + learning_rate/存点间隔（只读展示）
+    POST /api/action    白名单动作：{"id":"env-recheck"} 清缓存重查环境；{"id":"train-start"} 按 05 页控件值
+                        由后端拼装命令、tmux 会话 train 里启动（dry_run=true 只回命令不启动）。
+                        无删除/停止类动作
 
 设计约束:
     * 只用标准库，装完系统就能跑，先于 torch 存在
@@ -33,6 +36,7 @@
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -385,6 +389,130 @@ def get_status():
     return {'stages': stages}
 
 
+# ---------------- 05 训练参数 / 启动（train-plan + train-start） ----------------
+
+_PLAN_NAME_RE = re.compile(r'[A-Za-z0-9._-]+\.json')
+
+
+def train_plans():
+    """05 页「计划」下拉框数据：REPO/plans/evolve/*.json 的只读清单（名字 + lr + 存点间隔）。
+    字段缺了就给 None，绝不造数；目录不在就空列表。名字先过 _PLAN_NAME_RE——白名单只收
+    无壳安全字符的文件名，train-start 拼 shell 命令时才敢直接往里嵌。"""
+    plans = []
+    d = os.path.join(REPO, 'plans', 'evolve')
+    try:
+        names = sorted(os.listdir(d))
+    except OSError:
+        return plans
+    for name in names:
+        if not _PLAN_NAME_RE.fullmatch(name) or not os.path.isfile(os.path.join(d, name)):
+            continue
+        rec = {'name': name, 'learning_rate': None, 'light_checkpoint_every': None}
+        try:
+            with open(os.path.join(d, name), encoding='utf-8') as f:
+                cfg = json.load(f)
+            if isinstance(cfg, dict):
+                lr = cfg.get('learning_rate')
+                if isinstance(lr, (int, float)) and not isinstance(lr, bool):
+                    rec['learning_rate'] = lr
+                ck = cfg.get('light_checkpoint_every')
+                if isinstance(ck, int) and not isinstance(ck, bool):
+                    rec['light_checkpoint_every'] = ck
+        except Exception:
+            pass          # 单个 json 坏了不影响整张清单：名字照列，字段留空
+        plans.append(rec)
+    return plans
+
+
+def _train_start(body):
+    """05 页「开始训练」。参数逐项白名单校验，命令一律后端拼（前端传来的命令串一律无视），
+    起在 tmux 会话 train 里。返回 (http_code, {'ok','command','note'})；启动失败带 tmux 的 stderr。"""
+    def bad(note):
+        return 400, {'ok': False, 'command': '', 'note': note}
+
+    def want_int(key, lo, hi):
+        v = body.get(key)
+        if isinstance(v, bool):
+            return None
+        if isinstance(v, float) and v.is_integer():
+            v = int(v)
+        if not isinstance(v, int) or not lo <= v <= hi:
+            return None
+        return v
+
+    updates = want_int('updates', 100, 2400)
+    workers = want_int('workers', 1, 16)
+    hours = want_int('deadline_hours', 1, 168)
+    plan = body.get('plan')
+    device = body.get('device')
+    dry_run = body.get('dry_run', False)
+    flags = {k: body.get(k, False) for k in ('resume', 'save_optimizer', 'no_compile')}
+
+    if updates is None:
+        return bad('updates 要是 100–2400 的整数（收到 %r）' % (body.get('updates'),))
+    if workers is None:
+        return bad('workers 要是 1–16 的整数（收到 %r）' % (body.get('workers'),))
+    if hours is None:
+        return bad('deadline_hours 要是 1–168 的小时数（收到 %r）' % (body.get('deadline_hours'),))
+    if not isinstance(plan, str) or not plan:
+        return bad('plan 要是 plans/evolve 里的文件名')
+    if plan != os.path.basename(plan):
+        return bad('plan 只接受文件名，不许带路径：%r' % plan)
+    if not isinstance(dry_run, bool):
+        return bad('dry_run 要是布尔')
+    for k, v in flags.items():
+        if not isinstance(v, bool):
+            return bad('%s 要是布尔（收到 %r）' % (k, v))
+    if device not in ('cuda', 'cpu'):
+        return bad('device 只接受 cuda / cpu（收到 %r）' % (device,))
+    known = {p['name'] for p in train_plans()}
+    if not known:
+        return bad('%s 里没有可用的 json 计划，先放计划再开跑' % os.path.join(REPO, 'plans', 'evolve'))
+    if plan not in known:
+        return bad('plan 不在 plans/evolve 里：%r' % plan)
+
+    deadline_ts = int(time.time() + hours * 3600)
+    q = shlex.quote
+    cmd = ('cd {repo} && BEATFCN_MAX_LOADER_WORKERS={workers} python -m scripts.evolve_finetune '
+           '--plan {plan} --updates {updates} --deadline-unix {deadline}'
+           .format(repo=q(REPO), workers=workers,
+                   plan=q(os.path.join(REPO, 'plans', 'evolve', plan)),
+                   updates=updates, deadline=deadline_ts))
+    if flags['resume']:
+        cmd += ' --resume'
+    if flags['save_optimizer']:
+        cmd += ' --save-optimizer'
+    if flags['no_compile']:
+        cmd += ' --no-compile'
+    cmd += ' --device {dev} 2>&1 | tee -a {log}'.format(dev=device, log=q(os.path.join(REPO, 'train.log')))
+
+    if dry_run:
+        return 200, {'ok': True, 'command': cmd, 'note': 'dry_run：只生成命令，未检查 tmux、未启动'}
+
+    try:
+        probe = subprocess.run(['tmux', 'has-session', '-t', 'train'],
+                               capture_output=True, text=True, timeout=8)
+    except FileNotFoundError:
+        return 200, {'ok': False, 'command': cmd, 'note': '机器上没有 tmux：sudo apt install -y tmux 装上再点'}
+    except Exception as e:
+        return 200, {'ok': False, 'command': cmd, 'note': 'tmux has-session 没跑起来：' + str(e)}
+    if probe.returncode == 0:
+        return 200, {'ok': False, 'command': cmd, 'note': '已有训练在跑，先 tmux attach -t train 看看'}
+    try:
+        started = subprocess.run(['tmux', 'new-session', '-d', '-s', 'train', cmd],
+                                 capture_output=True, text=True, timeout=10)
+    except FileNotFoundError:
+        return 200, {'ok': False, 'command': cmd, 'note': '机器上没有 tmux：sudo apt install -y tmux 装上再点'}
+    except Exception as e:
+        return 200, {'ok': False, 'command': cmd, 'note': 'tmux new-session 没跑起来：' + str(e)}
+    if started.returncode != 0:
+        err = (started.stderr or started.stdout or '').strip()
+        return 200, {'ok': False, 'command': cmd,
+                     'note': 'tmux 启动失败：' + (err or '退出码 %d，无输出' % started.returncode)}
+    return 200, {'ok': True, 'command': cmd,
+                 'note': '已在 tmux 会话 train 里开跑；tmux attach -t train 看屏幕，tail -f train.log 看日志'}
+
+
 # ---------------- 训练输出（05 页的 TRAIN OUT） ----------------
 
 def _run_all(cmd, timeout=10):
@@ -644,11 +772,13 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/ping':
             return self._send(200, {'ok': True, 'authed': self._authed(),
                                     'host': os.uname().nodename, 'ts': time.time()})
-        if path in ('/api/env', '/api/status', '/api/trainlog'):
+        if path in ('/api/env', '/api/status', '/api/trainlog', '/api/train-plan'):
             if not self._authed():
-                return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码'})
+                return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码再回车'})
             if path == '/api/env':
                 return self._send(200, {'ok': True, 'items': get_env()})
+            if path == '/api/train-plan':
+                return self._send(200, {'ok': True, 'plans': train_plans(), 'repo': REPO})
             if path == '/api/trainlog':
                 src, lines, age = _train_log_tail()
                 # 解析用完整行，回显的单行截到 400 字符，别让一条超长行撑爆手机流量
@@ -677,6 +807,9 @@ class Handler(BaseHTTPRequestHandler):
             _cache['env'] = (0.0, None)
             _cache['torch'] = (0.0, None)
             return self._send(200, {'ok': True, 'items': get_env()})
+        if action == 'train-start':
+            code, resp = _train_start(body)
+            return self._send(code, resp)
         # 阶段动作：只允许 stages.json 里声明过的 start/stop，且命令逐字来自声明
         path_cfg = os.path.join(HERE, 'stages.json')
         if os.path.isfile(path_cfg):
