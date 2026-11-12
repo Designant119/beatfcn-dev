@@ -253,7 +253,7 @@
     <div class="meta">
       <span>NODE / 4090-24G</span>
       <span>SHELL / WSL2</span>
-      <span>BRANCH / <b>dev</b>（版本看 02 的 HEAD 行）</span>
+      <span>BRANCH / <b>main</b>（版本看 02 的 HEAD 行）</span>
       <span>LOCAL ONLY</span>
     </div>
     <h1>训练机操作台<i>_</i></h1>
@@ -304,7 +304,7 @@
   <!-- ===== 01 机器自检 ===== -->
   <section class="view" id="v-l1">
     <div class="vhead"><span class="sid">01</span><h2>机器够不够</h2><span class="vtag" id="tag1">AUTO / 后端自读</span></div>
-    <p class="hint">看两件事：显卡型号、内存。盘是 <b>1T</b> 的，够用，只把数字列出来。<b>后端在跑的话，Windows 那边的卡和内存它自己读，不用你粘。</b></p>
+    <p class="hint">看两件事：显卡型号、内存。盘多大不用算，只把数字列出来。<b>后端在跑的话，Windows 那边的卡和内存它自己读，不用你粘。</b></p>
 
     <div id="auto1" style="display:none">
       <div class="result on"><div class="rh"><span>AUTO CHECK / 硬件</span><span id="a1sum"></span></div><div id="a1body"></div></div>
@@ -328,7 +328,7 @@ $free = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -gt 0 } | F
       </div>
       <div class="result" id="res1"><div class="rh"><span>CHECK RESULT</span><span id="r1sum"></span></div><div id="r1body"></div></div>
     </details>
-    <p class="hint" style="margin-top:12px">判定只看显卡和内存两条。盘不参与判定，只把数字摆出来对一下是不是那块 1T 盘。</p>
+    <p class="hint" style="margin-top:12px">判定只看显卡和内存两条。盘不参与判定，只把数字摆出来对一下是不是你预期的那块盘。</p>
   </section>
 
   <!-- ===== 02 环境自检 ===== -->
@@ -369,26 +369,25 @@ echo "HEAD=$(cd ~/beatfcn-dev 2&gt;/dev/null &amp;&amp; git rev-parse --short HE
   <!-- ===== 03 装环境 ===== -->
   <section class="view" id="v-l3">
     <div class="vhead"><span class="sid">03</span><h2>装 Linux 和程序</h2><span class="vtag">一次性</span></div>
-    <p class="hint">盘里有个 <b>双击安装训练系统.bat</b>，双击它就装完。没有这个文件才往下看手工步骤。</p>
+    <p class="hint">环境分成两步：<b>先把 Linux 装起来</b>（只在第一次），<b>以后每天只要打开服务</b>。装好以后再回来，每天只用双击 <b>run_server.bat</b>。</p>
 
-    <div class="flag"><span class="k">双击之后会怎样</span>
-      弹一个黑窗口；WSL 没开的话再弹一个管理员窗，点“是”，装完要重启一次；<br>
-      重启回来再双击同一个文件，它开始解压系统（5～10 分钟，进度不动是正常的，别关窗）；<br>
-      完了浏览器自己弹出这个页面，顶部亮 LIVE。以后每天双击它一次就能回来。
+    <div class="flag"><span class="k">已经装好了？每天只要这一步</span>
+      双击仓库里的 <b>run_server.bat</b> → 弹一个黑窗口，服务在里面跑着，浏览器自动打开这个页面、顶部亮 LIVE。<br>
+      这个窗口<b>别关</b>；关掉页面就退回手动模式（已经在跑的训练不受影响）。
     </div>
-    <p class="hint">它<b>不装</b>显卡驱动、不装 Windows 版 Python、不联网下载东西，只解压盘里的系统包并起后端；东西全在你那块盘上，不动 C 盘。<b>要你动手的只有两下：管理员窗口的“是”、还有重启。</b></p>
-    <div class="chk"><input type="checkbox" data-k="s0"><span class="t">双击装完，这页顶部亮了 LIVE<small>直接看 02 是否全绿就行，下面手工步骤不用碰。</small></span></div>
+    <p class="hint">第一次装的时候不用自己下载 Python 和 torch：把一套装好的系统打成镜像带过来，导入一次就全都有（就是下面那三条命令）。<b>要你动手的只有开机进 BIOS 之外的两下：管理员窗口的“是”、还有重启一次。</b></p>
+    <div class="chk"><input type="checkbox" data-k="s0"><span class="t">双击 run_server.bat 后，这页顶部亮了 LIVE<small>亮了就说明环境齐了，下面的导入步骤不用碰。</small></span></div>
 
     <details id="man3">
-      <summary>没那个 bat 文件：手工装，四条命令</summary>
+      <summary>第一次装：三条命令导入镜像，再一条起服务</summary>
 
-      <div class="chk"><input type="checkbox" data-k="s1"><span class="t">管理员 PowerShell 装平台层<small>重启一次。重启完再回来。</small></span></div>
+      <div class="chk"><input type="checkbox" data-k="s1"><span class="t">管理员 PowerShell 打开 WSL 平台<small>已经开着就跳过。装完要重启一次，重启完再回来。</small></span></div>
       <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --install --no-distribution</pre></div>
 
-      <div class="chk"><input type="checkbox" data-k="s2"><span class="t">把发行版导进来<small>三个路径按实际位置改：名字 / 装到哪 / 包在哪。盘要 NTFS。</small></span></div>
+      <div class="chk"><input type="checkbox" data-k="s2"><span class="t">把打包好的系统导进来<small>三个路径按实际位置改：起个名 / 装到哪 / 镜像包在哪。装到哪这格要落在他的 SSD 上，别落在硬盘上，否则训练读数据会慢。包要 NTFS 盘。</small></span></div>
       <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --import beatfcn D:\wsl\beatfcn E:\beatfcn-train.tar</pre></div>
 
-      <div class="chk"><input type="checkbox" data-k="s3"><span class="t">拉代码、装依赖、装 ffmpeg<small>torch 那个轮子很大，慢是正常的，别中途 Ctrl+C。</small></span></div>
+      <div class="chk"><input type="checkbox" data-k="s3"><span class="t">镜像里没带代码时才需要：拉代码、装依赖、装 ffmpeg<small>镜像是整套导出的就跳过这步。torch 那个轮子很大，慢是正常的，别中途 Ctrl+C。</small></span></div>
       <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~
 git clone https://github.com/Designant119/beatfcn-dev.git
 cd beatfcn-dev
@@ -411,12 +410,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
   <!-- ===== 04 数据 ===== -->
   <section class="view" id="v-l4">
-    <div class="vhead"><span class="sid">04</span><h2>数据</h2><span class="vtag">在盘里</span></div>
-    <p class="hint">数据不用下载也不用导——它和代码在同一块盘上，放在代码目录的 <b>inputs/</b> 里。这页不问你，自己数。</p>
-    <div class="flag"><span class="k">你要做的</span>别删 <b>inputs/</b> 和 <b>reports/</b> 里的东西。盘是 <b>1T</b> 的，够用，不用算余量。别的不用管。</div>
+    <div class="vhead"><span class="sid">04</span><h2>数据</h2><span class="vtag">数文件</span></div>
+    <p class="hint">一个训练方案跑起来只要两样东西：<b>起始权重</b>（.pt）和 <b>数据集</b>（exposure-*.json）。下面按 05 页那些方案里写的路径，挨个查这两样在不在。</p>
+    <div class="flag"><span class="k">你要做的</span>别删数据目录里的东西（默认是 <b>/data</b>，换位置就在 run_server.sh 的 DATA_ROOT 里指过去）。盘够不够不用自己算，下面有实测数字。别的不用管。</div>
     <div id="diskLive" style="display:none" class="result on"><div class="rh"><span>盘与数据 · 后端实测</span><span></span></div><div id="diskBody"></div></div>
-    <p class="hint">上面几行是后端自己数出来的，不是谁口头说“导好了”。特征数到 <b>0</b> 首就是没到，红着；有数字就是在了。盘那行只用来确认看的是那块 1T 盘。</p>
-    <div class="chk"><input type="checkbox" data-k="d1"><span class="t">表格里特征和清单都 PASS<small>这两行绿了自动勾，不用你点。</small></span></div>
+    <p class="hint">上面每一行都是后端真的去看了那个文件，不是谁口头说“导好了”。数据集和权重全绿、最后一行 <b>可开跑的方案</b> 是满的，就可以进 05 开跑；有红的说明缺文件，红行里写了缺哪个。</p>
+    <div class="chk"><input type="checkbox" data-k="d1"><span class="t">数据集和起始权重都 PASS<small>全绿了自动勾，不用你点。</small></span></div>
   </section>
 
   <!-- ===== 05 训练 ===== -->

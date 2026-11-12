@@ -216,32 +216,74 @@ def win_items():
 
 
 def data_items():
-    """层04：数据在不在盘上——直接数文件，不看人嘴上说的"导好了"。"""
+    """层04：训练真正要的东西在不在——按方案 json 里引用的路径数文件，不看人嘴上说的“导好了”。
+
+    一个方案跑起来只需要两样东西：起始权重（init, .pt）和数据集（exposure, .json）。
+    这两样在不在，直接决定这个方案能不能开跑，所以逐个文件检查，最后给一行“几个方案齐了”。
+    """
     if not os.path.isdir(REPO):
         return [_item('DATA', '数据目录', '', 'none',
                       f'没找到 {REPO}：代码还没拉下来，数据无从检查', 'data')]
-    feat = tape = scored = 0
-    seen = 0
-    for root in (os.path.join(REPO, 'inputs'), os.path.join(REPO, 'reports')):
-        if not os.path.isdir(root):
+    root = (DATA_ROOT or '/data').rstrip('/') or '/data'
+    plans_dir = os.path.join(REPO, 'plans', 'evolve')
+    inits, exposures, total, ready = {}, {}, 0, 0
+    try:
+        names = sorted(os.listdir(plans_dir))
+    except OSError:
+        names = []
+    for name in names:
+        if not name.endswith('.json'):
             continue
-        for dirpath, dirnames, filenames in os.walk(root):
+        try:
+            with open(os.path.join(plans_dir, name), encoding='utf-8') as f:
+                cfg = json.load(f)
+        except Exception:
+            continue           # 坏的方案不参与统计，05 页会给它留空行
+        if not isinstance(cfg, dict):
+            continue
+        total += 1
+        init = cfg.get('init')
+        exp = (cfg.get('exposure') or {}).get('path') if isinstance(cfg.get('exposure'), dict) else None
+        ok_init = isinstance(init, str) and os.path.isfile(_repoint(init, root))
+        ok_exp = isinstance(exp, str) and os.path.isfile(_repoint(exp, root))
+        if ok_init and ok_exp:
+            ready += 1
+        for path, bucket, good in ((init, inits, ok_init), (exp, exposures, ok_exp)):
+            if isinstance(path, str) and path:
+                base = os.path.basename(_repoint(path, root))
+                bucket[base] = bucket.get(base, True) and good
+    items = []
+    for base, good in sorted(exposures.items()):
+        items.append(_item('EXP ' + base, '数据集', base, 'pass' if good else 'bad',
+                           '' if good else '不在：%s 里没有这个文件' % root, 'data'))
+    for base, good in sorted(inits.items()):
+        items.append(_item('INIT ' + base, '起始权重', base, 'pass' if good else 'bad',
+                           '' if good else '不在：%s 里没有这个文件' % root, 'data'))
+    if total:
+        items.append(_item('PLANS', '可开跑的方案', '%d / %d' % (ready, total),
+                           'pass' if ready == total else ('warn' if ready else 'bad'),
+                           '' if ready == total else '缺东西的方案开跑会直接报错', 'data'))
+    else:
+        items.append(_item('PLANS', '方案清单', '', 'none',
+                           'plans/evolve 里没有方案，05 页也就没东西可选', 'data'))
+    # 老盘布局（inputs/ + reports/ 那套）如果还在，顺手数一下，不影响上面的判定
+    feat = tape = seen = 0
+    for d in (os.path.join(REPO, 'inputs'), os.path.join(REPO, 'reports')):
+        if not os.path.isdir(d):
+            continue
+        for dirpath, dirnames, filenames in os.walk(d):
             seen += 1
-            if seen > 3000:      # 盘大了别扫到底，够判断就行
+            if seen > 3000:
                 break
-            names = set(filenames)
-            if 'L12.npy' in names and 'L23.npy' in names:
+            names_set = set(filenames)
+            if 'L12.npy' in names_set and 'L23.npy' in names_set:
                 feat += 1
             tape += sum(1 for f in filenames if f.endswith('.jsonl'))
         if seen > 3000:
             break
-    items = []
-    items.append(_item('FEAT', '特征目录', f'{feat} 首', 'pass' if feat else 'bad',
-                       '' if feat else 'inputs 里没有 L12.npy + L23.npy 齐的目录', 'data'))
-    items.append(_item('TAPE', '清单 jsonl', f'{tape} 份', 'pass' if tape else 'bad',
-                       '' if tape else 'inputs / reports 里没有 jsonl 清单', 'data'))
-    if not feat and not tape and seen:
-        items.append(_item('DATA0', '数据', '空的', 'bad', '目录在但里面没数据', 'data'))
+    if seen:
+        items.append(_item('LEGACY', '旧版 inputs/reports', '%d 首 / %d 份清单' % (feat, tape), 'none',
+                           '这套目录跟现在的 evolve 方案无关，只是盘上残留', 'data'))
     return items
 
 
@@ -297,7 +339,7 @@ def env_items():
         # 盘是给定的 1T，不算够不够；数字只用来确认"看的是那块盘"
         st = 'warn' if repo_free < 100 else 'none'
         items.append(_item('REPODISK', '代码+数据盘', f'{repo_free}G 空闲 / 共 {repo_total}G', st,
-                           '数比 1T 的盘小很多，可能看的不是那块盘' if st == 'warn' else '', 'disk'))
+                           '余量不到 100G：存快照和日志可能中途撑满，先清点旧产物' if st == 'warn' else '', 'disk'))
     else:
         st = 'none'
         items.append(_item('REPODISK', '代码+数据盘', '', 'none',
