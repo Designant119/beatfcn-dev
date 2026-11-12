@@ -327,7 +327,7 @@ def fit_i8(src_key: str = 'v2_L9-16-24', layers: list = (9, 16, 24), songs: int 
     from concurrent.futures import ThreadPoolExecutor
     import json as _json
     rows = [_json.loads(l) for l in open(f'{DATA}/manifest/charts.jsonl')]
-    train = {r['audio_sha256'] for r in rows if r.get('split') == 'train'}
+    train = {r.get('audio_sha256') for r in rows if r.get('split') == 'train'}  # error rows (bad_zip, audio_missing) carry no audio_sha256
     have = sorted(s for s in os.listdir(f'{DATA}/taps/{src_key}') if s in train)
     rng = np.random.default_rng(seed)
     pick = [have[i] for i in rng.choice(len(have), size=min(songs, len(have)), replace=False)]
@@ -399,7 +399,7 @@ def fit_pca(src_key: str = 'v2_L9-16-24', layers: list = (9, 16, 24), dims: int 
     import torch
     import json as _json
     rows = [_json.loads(l) for l in open(f'{DATA}/manifest/charts.jsonl')]
-    train = {r['audio_sha256'] for r in rows if r.get('split') == 'train'}
+    train = {r.get('audio_sha256') for r in rows if r.get('split') == 'train'}  # error rows (bad_zip, audio_missing) carry no audio_sha256
     have = sorted(s for s in os.listdir(f'{DATA}/taps/{src_key}') if s in train)
     rng = np.random.default_rng(seed)
     pick = [have[i] for i in rng.choice(len(have), size=min(songs, len(have)), replace=False)]
