@@ -59,7 +59,10 @@ def load_recipe(spec, init_config):
         raise ValueError(f'{base_path} is not the plan this candidate was written against')
     recipe = json.loads(base_path.read_text())
     recipe['config'] = dict(init_config)
-    for key in ('seed', 'loader_workers', 'loader_prefetch', 'song_style'):
+    # physical_microbatch_requests 也允许方案覆盖：它只决定“一次前向塞几条”，
+    # 等效 batch 由 accum_steps 决定，改它不动 exposure 长度。base_plan 一个字节不动。
+    for key in ('seed', 'loader_workers', 'loader_prefetch', 'song_style',
+                'physical_microbatch_requests'):
         if key in spec:
             recipe[key] = spec[key]
     return recipe

@@ -214,7 +214,13 @@
   .tp-kv .v em{display:block;color:var(--dim);font-style:normal;font-size:10.5px;margin-top:1px;opacity:.8}
   .tp-snap{border-top:1px solid var(--line);padding:9px 10px;font-size:12.5px;color:var(--dim);line-height:1.7}
   .tp-snap b{color:var(--text);font-weight:400;font-family:var(--mono);font-size:12px;word-break:break-all}
+  /* 方案那行特殊：下拉框独占一行，说明文字另起一行。否则长说明把 select 挤成一个小三角 */
+  .tp-row.tp-planrow{grid-template-columns:1fr}
+  .tp-row.tp-planrow .tp-ctl{grid-column:1}
+  .tp-row.tp-planrow .tp-val{grid-column:1;text-align:left;padding-top:2px}
   @media (max-width:540px){
+    .rail{flex-wrap:wrap;overflow-x:visible}
+    .rail a{flex:1 1 auto;text-align:center}
     .tp-row{grid-template-columns:1fr auto}
     .tp-lab{grid-column:1/-1;margin-bottom:-2px}
     .tp-ctl input[type=number]{width:5.5em}
@@ -430,7 +436,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="tpanel">
       <div class="tp-h">TRAIN PARAMS / 训练设置（照着中文选就行，括号里是原参数名）</div>
 
-      <div class="tp-row">
+      <div class="tp-row tp-planrow">
         <span class="tp-lab">训练方案<small>这次练什么、多快学、多久存一次，都写在这份方案里。不用看懂内容，选一个就对了</small></span>
         <span class="tp-ctl"><select id="tpPlan"></select></span>
         <span class="tp-val" id="tpPlanInfo"></span>
@@ -450,6 +456,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         <span class="tp-lab">数据加载进程<small><b>是 CPU 的，不是显卡的</b>。这些进程在内存里提前准备数据，每个都吃一份内存：16G 内存用 4，32G 以上可以往上加，加太多会把机器卡死</small></span>
         <span class="tp-ctl"><input type="range" id="tpWk" min="1" max="16" step="1" value="4"></span>
         <span class="tp-val" id="tpWkV">4</span>
+      </div>
+
+      <div class="tp-row">
+        <span class="tp-lab">一次塞几条<small><b>吃显存的就是这一项</b>。4 是默认；显存富余就改 8 或 16，一次前向算得更多、跑得更快；报显存不足就改回 4。<b>只影响速度和显存，不改每步看到的总数据量</b></small></span>
+        <span class="tp-ctl"><select id="tpMb"><option value="4">4（默认）</option><option value="8">8（吃满一点）</option><option value="16">16（最快，显存得够）</option></select></span>
+        <span class="tp-val" id="tpMbV">4 条/次</span>
       </div>
 
       <div class="tp-row">
@@ -1010,6 +1022,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var tpWk=document.getElementById('tpWk'), tpWkV=document.getElementById('tpWkV');
   var tpCk=document.getElementById('tpCk'), tpCkR=document.getElementById('tpCkR'), tpCkV=document.getElementById('tpCkV');
   var tpHr=document.getElementById('tpHr'), tpHrV=document.getElementById('tpHrV');
+  var tpMb=document.getElementById('tpMb'), tpMbV=document.getElementById('tpMbV');
   var tpResume=document.getElementById('tpResume'), tpSaveOpt=document.getElementById('tpSaveOpt'),
       tpNoComp=document.getElementById('tpNoComp'), tpDev=document.getElementById('tpDev');
   var tpCmd=document.getElementById('tpCmd'), tpStart=document.getElementById('tpStart'),
@@ -1113,8 +1126,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var flags=(tpResume.checked?' --resume':'')+(tpSaveOpt.checked?' --save-optimizer':'')
              +(tpNoComp.checked?' --no-compile':'');
     var dl=Math.round(Date.now()/1000+hr*3600);
+    var mb=parseInt(tpMb.value,10)||4;
     var note=diff?('# 存点间隔已改成 '+ck+'：点「开始训练」会用临时方案；手跑这条命令仍按方案里的 '
                     +p.light_checkpoint_every+'\n'):'';
+    if(mb!==4) note+='# 一次塞 '+mb+' 条只在点「开始训练」时生效（写进临时方案）；手跑这条命令仍按方案默认\n';
     var txt=note+'export BEATFCN_MAX_LOADER_WORKERS='+wk+'\n'
       +"tmux new -s train -d 'cd "+tpRepo+" && python -m scripts.evolve_finetune --plan plans/evolve/"
       +(name||'<方案名>')+" --updates "+upd+" --deadline-unix "+dl+flags
@@ -1130,6 +1145,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   tpCkR.addEventListener('input',function(){ tpCk.value=tpCkR.value; tpPaint(); });
   tpHr.addEventListener('input',tpPaint);
   tpHr.addEventListener('change',function(){ tpHr.value=String(tpHrVal()); tpPaint(); });
+  tpMb.addEventListener('change',function(){ tpMbV.textContent=tpMb.value+' 条/次'; tpPaint(); });
   [tpResume,tpSaveOpt,tpNoComp,tpDev].forEach(function(el){ el.addEventListener('change',tpPaint); });
   tpPlan.addEventListener('change',function(){ tpPlanInfoPaint(); tpPaint(); });
   tpDetailBtn.addEventListener('click',function(){
@@ -1167,6 +1183,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var payload={id:'train-start',plan:tpPlan.value,updates:tpUpdVal(),workers:parseInt(tpWk.value,10),
       checkpoint_every:ck,
       deadline_hours:tpHrVal(),resume:tpResume.checked,save_optimizer:tpSaveOpt.checked,
+      microbatch:parseInt(tpMb.value,10)||4,
       no_compile:tpNoComp.checked,device:tpDev.value};
     tpBusy=true; tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';
     var url=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');

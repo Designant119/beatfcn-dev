@@ -500,7 +500,7 @@ def _repoint(obj, root):
     return obj
 
 
-def _plan_copy_with_checkpoint(plan_name, every=None):
+def _plan_copy_with_checkpoint(plan_name, every=None, microbatch=None):
     """把方案复制到临时目录，改 store 间隔、必要时把 /data 换成 DATA_ROOT，返回副本绝对路径。
     原方案文件一个字节都不动；副本放系统临时目录，不进仓库。没改动就返回原路径。"""
     src = os.path.join(REPO, 'plans', 'evolve', plan_name)
@@ -512,6 +512,9 @@ def _plan_copy_with_checkpoint(plan_name, every=None):
     if isinstance(every, int):
         cfg['light_checkpoint_every'] = every
         changed = True
+    if isinstance(microbatch, int):
+        cfg['physical_microbatch_requests'] = microbatch
+        changed = True
     root = DATA_ROOT.rstrip('/') or '/data'
     if root != '/data':
         cfg = _repoint(cfg, root)
@@ -521,6 +524,8 @@ def _plan_copy_with_checkpoint(plan_name, every=None):
     d = os.path.join(tempfile.gettempdir(), 'beatfcn-run-plans')
     os.makedirs(d, exist_ok=True)
     tag = '' if root == '/data' else '-%s' % hashlib.md5(root.encode()).hexdigest()[:6]
+    if isinstance(microbatch, int):
+        tag += '-mb%d' % microbatch
     dst = os.path.join(d, plan_name.replace('.json', tag + '.json'))
     tmp = dst + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
@@ -598,18 +603,27 @@ def _train_start(body):
     if 'checkpoint_every' in body and ck_every is None:
         return bad('checkpoint_every 要是 50–%d 的整数步数（这个方案最多 %d 步；收到 %r）'
                    % (ck_hi, up_hi, body.get('checkpoint_every'),))
+    # 一次前向塞几条（显存）：1/2/4 是单条流，8/16 走分组打包，等效 batch 不变。
+    # 只认这几个值，训练脚本和 checkpoint 校验也是这一套。默认 4 = 不写进方案。
+    micro = body.get('microbatch', 4)
+    if isinstance(micro, bool) or not isinstance(micro, int) or micro not in (1, 2, 4, 8, 16):
+        return bad('microbatch 只能是 1 / 2 / 4 / 8 / 16（收到 %r）' % (micro,))
     plan_path = os.path.join(REPO, 'plans', 'evolve', plan)
     ck_note = ''
     root = (DATA_ROOT or '/data').rstrip('/') or '/data'
     every_changed = isinstance(ck_every, int) and ck_every != base_every
-    if every_changed or root != '/data':
+    mb_changed = micro != 4
+    if every_changed or mb_changed or root != '/data':
         try:
-            plan_path = _plan_copy_with_checkpoint(plan, ck_every if every_changed else None)
+            plan_path = _plan_copy_with_checkpoint(
+                plan, ck_every if every_changed else None, micro if mb_changed else None)
         except Exception as e:
             return bad('生成临时方案失败：' + str(e))
         bits = []
         if every_changed:
             bits.append('存点间隔改成每 %d 步' % ck_every)
+        if mb_changed:
+            bits.append('一次性塞 %d 条' % micro)
         if root != '/data':
             bits.append('数据目录指到 %s' % root)
         ck_note = '（%s：已生成临时方案 %s，原方案没动）' % ('；'.join(bits), plan_path)
@@ -853,6 +867,47 @@ def _flatten(obj, prefix='', depth=0):
     return out
 
 
+_pg_cache = {'t': 0.0, 'v': {}}   # (时间戳, 结果)：页面 5 秒一轮，别每轮重新扫 11 个 out_dir
+
+
+def _run_progress():
+    """当前那次训练的 progress.json（各方案 out_dir 里 mtime 最新的那份），只读。
+    训练器自己每 30 秒落盘，含 gpu_peak_mib / eta_s —— 页面上「这一跑到底吃了多少显存」就靠它。"""
+    now = time.time()
+    if now - _pg_cache['t'] < 4.0:
+        return _pg_cache['v']
+    newest = None
+    try:
+        for p in train_plans():
+            d = p.get('out_dir')
+            if not d:
+                continue
+            f = os.path.join(d, 'progress.json')
+            try:
+                m = os.path.getmtime(f)
+            except OSError:
+                continue
+            if newest is None or m > newest[0]:
+                newest = (m, f)
+    except Exception:
+        newest = None
+    out = {}
+    if newest is not None:
+        try:
+            with open(newest[1], encoding='utf-8') as fh:
+                s = json.load(fh)
+            if isinstance(s, dict):
+                for k in ('phase', 'updates', 'target_updates', 'start_updates', 'gpu_peak_mib',
+                          'rate_updates_per_s', 'recent_updates_per_s', 'eta_s', 'loss', 'lr',
+                          'deadline_unix', 'written_unix'):
+                    if k in s:
+                        out[k] = s[k]
+        except Exception:
+            out = {}
+    _pg_cache.update(t=now, v=out)
+    return out
+
+
 def _train_metrics(lines):
     """从尾部往上找第一条带指标的行，解析出全部参数。行里有 JSON 记录（本仓库训练器
     按行吐 {"event":"train","step":...}）就用 JSON；否则按 key=value / key: value 文本对
@@ -1043,6 +1098,7 @@ class Handler(BaseHTTPRequestHandler):
                 metrics.update(_val_metrics())   # 训练行里没有的验证指标（F1 等）以 val. 前缀并入
                 return self._send(200, {'ok': True, 'source': src, 'age_s': age,
                                         'lines': shown, 'metrics': metrics,
+                                        'progress': _run_progress(),
                                         'ts': time.time()})
             return self._send(200, {'ok': True, **get_status()})
         return self._send(404, {'ok': False, 'note': 'no such endpoint'})
