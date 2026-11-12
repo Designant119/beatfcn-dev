@@ -271,7 +271,7 @@
     <a href="#ov"   data-layer="ov">00 总览<span class="st" id="rst-ov"></span></a>
     <a href="#l1"   data-layer="l1">01 机器自检<span class="st" id="rst-l1"></span></a>
     <a href="#l2"   data-layer="l2">02 环境自检<span class="st" id="rst-l2"></span></a>
-    <a href="#l3"   data-layer="l3">03 装环境<span class="st" id="rst-l3"></span></a>
+    <a href="#l3"   data-layer="l3">03 打开 Linux<span class="st" id="rst-l3"></span></a>
     <a href="#l4"   data-layer="l4">04 数据<span class="st" id="rst-l4"></span></a>
     <a href="#l5"   data-layer="l5">05 训练<span class="st" id="rst-l5"></span></a>
     <a href="#t"    data-layer="t">06 排障<span class="st"></span></a>
@@ -291,7 +291,7 @@
       <tr><th>层</th><th>干什么</th><th>要多久</th><th>状态</th></tr>
       <tr><td class="mono">01</td><td>看机器够不够</td><td>LIVE 模式下全自动</td><td id="st1"><span class="s none">未开始</span></td></tr>
       <tr><td class="mono">02</td><td>看环境装没装通</td><td>LIVE 模式下全自动</td><td id="st2"><span class="s none">未开始</span></td></tr>
-      <tr><td class="mono">03</td><td>装 Linux 和程序</td><td>半小时到一小时</td><td id="st3"><span class="s none">未开始</span></td></tr>
+      <tr><td class="mono">03</td><td>打开 Linux（导系统）</td><td>二十分钟左右</td><td id="st3"><span class="s none">未开始</span></td></tr>
       <tr><td class="mono">04</td><td>确认数据在盘上</td><td>LIVE 模式自己数</td><td id="st4"><span class="s none">未开始</span></td></tr>
       <tr><td class="mono">05</td><td>开始训，然后不用管</td><td>一到两天</td><td id="st5"><span class="s none">未开始</span></td></tr>
     </table>
@@ -368,14 +368,14 @@ echo "HEAD=$(cd ~/beatfcn-dev 2&gt;/dev/null &amp;&amp; git rev-parse --short HE
 
   <!-- ===== 03 装环境 ===== -->
   <section class="view" id="v-l3">
-    <div class="vhead"><span class="sid">03</span><h2>装 Linux 和程序</h2><span class="vtag">一次性</span></div>
-    <p class="hint">环境分成两步：<b>先把 Linux 装起来</b>（只在第一次），<b>以后每天只要打开服务</b>。装好以后再回来，每天只用双击 <b>run_server.bat</b>。</p>
+    <div class="vhead"><span class="sid">03</span><h2>打开 Linux</h2><span class="vtag">只做一次</span></div>
+    <p class="hint">这里<b>不装任何程序</b>。Python、torch、代码、数据全在打包好的系统里，导入一次就全有。要做的只有两下：把 Windows 自带的 Linux 开关打开（会要求重启一次），然后把那个包导进去。以后每天只用双击 <b>run_server.bat</b>。</p>
 
-    <div class="flag"><span class="k">已经装好了？每天只要这一步</span>
+    <div class="flag"><span class="k">已经导完了？以后每天只要这一步</span>
       双击仓库里的 <b>run_server.bat</b> → 弹一个黑窗口，服务在里面跑着，浏览器自动打开这个页面、顶部亮 LIVE。<br>
       这个窗口<b>别关</b>；关掉页面就退回手动模式（已经在跑的训练不受影响）。
     </div>
-    <p class="hint">第一次装的时候不用自己下载 Python 和 torch：把一套装好的系统打成镜像带过来，导入一次就全都有（就是下面那三条命令）。<b>要你动手的只有开机进 BIOS 之外的两下：管理员窗口的“是”、还有重启一次。</b></p>
+    <p class="hint">为什么要重启：Windows 默认没开 Linux 这个功能，开它属于改动系统组件。这一步绕不过去，但一辈子只做一次。<b>除了点“是”和重启，剩下的都是复制粘贴。</b></p>
     <div class="chk"><input type="checkbox" data-k="s0"><span class="t">双击 run_server.bat 后，这页顶部亮了 LIVE<small>亮了就说明环境齐了，下面的导入步骤不用碰。</small></span></div>
 
     <details id="man3">
@@ -651,7 +651,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var el=document.getElementById('nexthop'), tx=document.getElementById('nexthopTxt');
     var step=null;
     if(!st1||st1[0]!=='pass') step='去 01 机器自检，看机器扛不扛得住。';
-    else if(!(v.l3&&v.l3[0]==='pass')) step='机器没问题。去 03 装环境，装完回 02 自检。';
+    else if(!(v.l3&&v.l3[0]==='pass')) step='机器没问题。去 03 把 Linux 打开、把系统导进去，完了回 02 自检。';
     else if(!st2||st2[0]!=='pass') step='环境装过了但 02 还没全绿。回 02 看是哪项没过。';
     else if(!(v.l4&&v.l4[0]==='pass')) step='环境全绿。去 04 确认数据方案。';
     else if(!(v.l5&&v.l5[0]==='pass')) step='数据就位。去 05 开跑，然后不用管。';
