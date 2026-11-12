@@ -71,6 +71,9 @@ def _decode(job, raw_index, temporary_root):
     from beatfcn.train.cuda_pipeline import decoded_audio_from_receipt
     started = time.monotonic()
     audio, original, wave = decoded_audio_from_receipt(job, raw_index, DATA, temporary_root)
+    # The legacy mel10 receipt is the authoritative decoded-sample clock.
+    if 4 * (len(wave) // CELL_SAMPLES) != job['expected_mel_frames']:
+        raise ValueError('Decoded sample clock differs from authoritative mel receipt: ' + audio)
     return dict(job=job, audio=audio, original=original, wave=wave,
         decode_s=time.monotonic() - started)
 
@@ -224,6 +227,7 @@ def encode_mert_graph(run_id, contract_json, dispatch_deadline_unix):
                 for future in done:
                     if future in group_futures:
                         group = group_futures.pop(future)
+                        submitted = set()
                         try:
                             decoded = future.result()
                             with lock:
@@ -273,14 +277,16 @@ def encode_mert_graph(run_id, contract_json, dispatch_deadline_unix):
                                             hosts[index], expected, output_root_path,
                                             temporary_root)
                                         writer_futures[writer] = value['job']
+                                        submitted.add(value['job']['audio_sha256'])
                                 with lock:
                                     stage['capture_s'] += capture_s
                                     stage['graph_shapes'] += 1
                                 runner.close()
                         except Exception as exc:
                             for job in group:
-                                failures.append(dict(audio_sha256=job['audio_sha256'],
-                                    stage='graph', error=f'{type(exc).__name__}: {exc}'))
+                                if job['audio_sha256'] not in submitted:
+                                    failures.append(dict(audio_sha256=job['audio_sha256'],
+                                        stage='graph', error=f'{type(exc).__name__}: {exc}'))
                             stopped = stop_submitting = True
                     else:
                         job = writer_futures.pop(future)
@@ -319,9 +325,20 @@ def encode_mert_graph(run_id, contract_json, dispatch_deadline_unix):
             graph_single_parity=parity)
         data.reload()
         by_id = {job['audio_sha256']: job for job in jobs}
-        recovery = list(recovery_pool.map(lambda record: verify_feature_folder(
-            output_root_path / 'features' / record['audio_sha256'],
-            by_id[record['audio_sha256']], model.revision), records))
+
+        def recovery_verify(record):
+            try:
+                return verify_feature_folder(
+                    output_root_path / 'features' / record['audio_sha256'],
+                    by_id[record['audio_sha256']], model.revision)
+            except Exception as exc:
+                with lock:
+                    failures.append(dict(audio_sha256=record['audio_sha256'],
+                        stage='recovery', error=f'{type(exc).__name__}: {exc}'))
+                return None
+
+        recovery = [verified for verified in recovery_pool.map(recovery_verify, records)
+            if verified]
     throughput = dict(new_audio_seconds=new_audio_seconds,
         stable_pipeline_seconds=stable_s,
         audio_seconds_per_second=new_audio_seconds / stable_s if stable_s > 0 else None,
@@ -333,4 +350,5 @@ def encode_mert_graph(run_id, contract_json, dispatch_deadline_unix):
         stopped=stopped or bool(utilization['rolling_stop_reason']),
         recovery_verified=[record['audio_sha256'] for record in recovery],
         throughput=throughput, profile=profile, wall_s=time.monotonic() - started,
-        gpu_utilization=utilization, all_existing=False)
+        gpu_utilization=utilization,
+        all_existing=not any(not record.get('existing') for record in records))
