@@ -1016,7 +1016,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpStartNote=document.getElementById('tpStartNote');
   var tpDetailBtn=document.getElementById('tpDetailBtn'), tpKv=document.getElementById('tpKv'),
       tpSnap=document.getElementById('tpSnap');
-  var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false, tpKvOpen=false;
+  var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false, tpKvOpen=false, tpBusy=false;
 
   function tpClamp(el,lo,hi,fb){        /* 数字框读值：越界钳回范围；输入中清空了先按回退值生成命令 */
     var n=parseInt(el.value,10);
@@ -1092,6 +1092,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     }
   }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
+    if(!tpPlan.value){                 /* 没方案就别装成能跑：一条占位命令 + 亮着的按钮最容易骗人 */
+      if(!tpBusy){
+        tpCmd.innerHTML=hlCmd('# 现在没有可跑的方案\n# 仓库里 plans/evolve 下没找到 *.json'
+          +(tpGotPlans?'（后端连上了，那张列表是空的）':'（后端还没连上，或没回）')
+          +'\n# 把方案文件拷进那个目录，再刷新这一页');
+        tpStart.disabled=true; tpStart.textContent='没有方案';
+        tpStartNote.textContent='';
+      }
+      return;
+    }
+    if(!tpBusy){ tpStart.disabled=false; tpStart.textContent='开始训练'; }
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
     var p=tpPlanObj(), diff=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck);
     tpUpdV.textContent=String(upd);
@@ -1135,10 +1146,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         tpPlanInfoPaint(); tpPaint(); return;
       }
       tpPlans=j.plans||[];
+      tpGotPlans=true;           /* 请求成功就算问过了：空列表是确定结果，不用每 5 秒重试 */
       if(!tpPlans.length){
         tpPlan.innerHTML='<option value="">（plans/evolve 里没有 json 计划）</option>';
       }else{
-        tpGotPlans=true;
         if(j.repo) tpRepo=j.repo;
         tpPlan.innerHTML=tpPlans.map(function(p){
           return '<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>';
@@ -1157,13 +1168,13 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       checkpoint_every:ck,
       deadline_hours:tpHrVal(),resume:tpResume.checked,save_optimizer:tpSaveOpt.checked,
       no_compile:tpNoComp.checked,device:tpDev.value};
-    tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';
+    tpBusy=true; tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';
     var url=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
     fetch(url,{method:'POST',headers:apiToken?{'X-Token':apiToken}:{},'Content-Type':'application/json',
                body:JSON.stringify(payload)})
       .then(function(r){ outLine(r.ok?'ok':'bad',r.status+' /api/action train-start'); return r.json(); })
       .then(function(j){
-        tpStart.disabled=false; tpStart.textContent='开始训练';
+        tpBusy=false; tpPaint();
         var note=(j&&j.note)?String(j.note):'后端没回 note';
         if(j&&j.ok){
           tpStartNote.textContent=note;
@@ -1176,7 +1187,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         trBody.scrollTop=trBody.scrollHeight;
       })
       .catch(function(){
-        tpStart.disabled=false; tpStart.textContent='开始训练';
+        tpBusy=false; tpPaint();
         tpStartNote.textContent='请求没出去：后端连不上';
         outLine('bad','ERR /api/action train-start');
       });
