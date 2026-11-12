@@ -494,8 +494,9 @@ def _train_start(body):
             return bad('%s 要是布尔（收到 %r）' % (k, v))
     if device not in ('cuda', 'cpu'):
         return bad('device 只接受 cuda / cpu（收到 %r）' % (device,))
-    # 训练起来以后顺手把进度推到飞书（可选）。地址只认飞书群机器人，别让它变成任意 URL 的起跳板
-    feishu = body.get('feishu_webhook')
+    # 训练起来以后顺手把进度推到飞书（可选）。地址只认飞书群机器人，别让它变成任意 URL 的起跳板。
+    # 不再从网页收：启动服务时用环境变量给一次（BEATFCN_FEISHU_WEBHOOK=...），页面上不留痕迹
+    feishu = os.environ.get('BEATFCN_FEISHU_WEBHOOK', '')
     if isinstance(feishu, str) and feishu.strip():
         feishu = feishu.strip()
         if len(feishu) > 300 or not re.match(
