@@ -80,6 +80,12 @@
   .console pre{margin:0;padding:8px 10px;max-height:230px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--dim)}
   .console .ok{color:var(--ok)} .console .warn{color:var(--warn)} .console .bad{color:var(--bad)}
   .console .t{color:#5c665f}
+  .console .tmetrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;
+    background:var(--line);border-bottom:1px solid var(--line)}
+  .console .tmetrics div{background:#0a0d0c;padding:6px 10px;min-width:0}
+  .console .tmetrics .k{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.04em}
+  .console .tmetrics .v{font-family:var(--mono);font-size:13px;color:#cfe0d0;word-break:break-all}
+  .console .tmetrics .v.ok{color:var(--ok)} .console .tmetrics .v.warn{color:var(--warn)}
   @media (min-width:820px){
     .rail{display:block;overflow:visible;position:sticky;top:0;padding:12px 0;float:left;width:170px;margin-right:22px}
     .rail a{display:block;margin-bottom:6px}
@@ -366,7 +372,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 <s># 训练启动命令，定稿后补这里</s>
 <s># 想离开：Ctrl+B 松开，再按 D</s></pre></div>
 
-    <div class="chk"><input type="checkbox" data-k="t3"><span class="t">看进度：日志里 loss 有数字就说明在练<small>数字上下跳很正常。</small></span></div>
+    <div class="chk"><input type="checkbox" data-k="t3"><span class="t">看进度：日志里 loss 有数字就说明在练<small>数字上下跳很正常；后端连着时，下面「训练输出」框里直接看，不用手动 tail。</small></span></div>
     <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>tail -f <s>训练日志路径</s></pre></div>
 
     <div class="flag"><span class="k">它自己会存</span>每 300 步存一次检查点。断电重启，重新起就接着跑。</div>
@@ -377,6 +383,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="chk"><input type="checkbox" data-k="t6"><span class="t">别同时开大型游戏<small>显存被抢会直接退出。</small></span></div>
     <div class="chk"><input type="checkbox" data-k="t7"><span class="t">别拔装着代码和数据的这块盘</span></div>
     <div class="chk"><input type="checkbox" data-k="t8"><span class="t">别自己改命令里的数字</span></div>
+
+    <div class="console">
+      <div class="h"><span>TRAIN OUT / 训练输出</span>
+        <div class="acts"><span class="t" id="trSrc"></span><button type="button" id="trGet">取一次</button><button type="button" id="trClr">清空</button></div>
+      </div>
+      <div class="tmetrics" id="trMetrics" style="display:none"></div>
+      <pre id="trBody"><span class="t">连上后端后，这里每 5 秒抓一次训练输出（日志文件或 tmux 的 train 会话）。
+上面参数块是解析出的最新一条带指标的日志行——轮数、步数、学习率、loss、F1……日志里有什么参数就列什么，一个不落。</span></pre>
+    </div>
+    <p class="hint" style="margin-top:8px">参数块每 5 秒自动换新；原始日志在下面滚。训练命令定稿后把输出重定向到 <code class="mono">train.log</code>（或在 <code class="mono">stages.json</code> 里写 <code class="mono">"log"</code> 路径）最稳；什么都不配也能抓 tmux 屏幕。</p>
 
     <div class="console">
       <div class="h"><span>STATUS OUT / 状态输出</span>
@@ -725,6 +741,68 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       });
     });
   });
+  /* ---------- 训练输出（05 页 TRAIN OUT） ---------- */
+  var trBody=document.getElementById('trBody'), trMetrics=document.getElementById('trMetrics'), trSrc=document.getElementById('trSrc');
+  var trLast='', trStalePolls=0, trainTimer=null, TR_MS=5000;
+  var TR_LABEL={epoch:'轮数',epochs:'总轮数',step:'步数',steps:'总步数',updates:'有效更新',lr:'学习率',
+    loss:'损失',f1:'F1',event:'事件',phase:'阶段',ts:'时间戳',elapsed_s:'耗时秒',elapsed:'耗时秒',
+    grad:'梯度',grad_norm:'梯度范数',gpu_util:'GPU利用率',examples:'样本数'};
+  var TR_VAL_LABEL={step:'验证步数',full_note_f1:'验证全音符F1',onset_f1_50ms:'验证起音F1@50ms',
+    note_f1_50ms:'验证音符F1@50ms'};   // 后端并进来的 val.* 验证指标；没登记的显示"验证 原键名"
+  function trLabel(k){
+    if(TR_LABEL[k]) return TR_LABEL[k];
+    if(k.slice(0,4)==='val.'){ var s=k.slice(4); return TR_VAL_LABEL[s]||('验证 '+(TR_LABEL[s]||s)); }
+    return k;
+  }
+  function trRank(k){
+    var hot=['epoch','step','updates','lr','loss'];
+    var i=hot.indexOf(k); if(i>=0) return i;
+    if(/f1/i.test(k)) return hot.length;        // f1 及各种 *_f1_* 变体靠前
+    if(/^grad/.test(k)) return hot.length+1;
+    return hot.length+2;                        // 其余按日志里的原序殿后
+  }
+  function trRender(j){
+    if(!j||!j.ok){ trSrc.textContent=(j&&j.note)?j.note:'后端没回 /api/trainlog'; return; }
+    var lines=j.lines||[];
+    if(!lines.length){
+      trSrc.textContent='还没抓到训练输出：训练没起，或日志文件 / tmux train 会话都没有';
+      trMetrics.style.display='none';
+      trBody.innerHTML='<span class="t">等训练一开跑，这里 5 秒内就会有内容。</span>';
+      trLast=''; trStalePolls=0;
+      return;
+    }
+    var flat=lines.join('\n');
+    trStalePolls = flat===trLast ? trStalePolls+1 : 0;
+    trLast=flat;
+    var idle=trStalePolls*TR_MS/1000;
+    trSrc.textContent=(j.source||'')
+      +(j.age_s!=null?' · '+(j.age_s<90?Math.round(j.age_s)+' 秒前':Math.round(j.age_s/60)+' 分钟前')+'更新':'')
+      +(idle>=180?' · 日志停滞 '+Math.round(idle)+' 秒':'');
+    var m=j.metrics||{}, keys=Object.keys(m);
+    keys.sort(function(a,b){ return trRank(a)-trRank(b); });   // sort 稳定：同 rank 保持原序
+    if(keys.length){
+      trMetrics.style.display='grid';
+      trMetrics.innerHTML=keys.map(function(k){
+        var v=String(m[k]), cls=/f1/i.test(k)?'ok':(/^(lr|loss)/.test(k)?'warn':'');
+        return '<div><span class="k">'+esc(trLabel(k))+'</span><span class="v '+cls+'">'+esc(v)+'</span></div>';
+      }).join('');
+    }else{
+      trMetrics.style.display='none';
+    }
+    trBody.textContent=lines.join('\n');
+    trBody.scrollTop=trBody.scrollHeight;
+  }
+  function pollTrain(){
+    var url=apiBase+'/api/trainlog'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
+    fetch(url).then(function(r){ return r.json(); }).then(trRender)
+      .catch(function(){ trSrc.textContent='后端没回 /api/trainlog'; });
+  }
+  document.getElementById('trGet').addEventListener('click',pollTrain);
+  document.getElementById('trClr').addEventListener('click',function(){
+    trLast=''; trStalePolls=0; trMetrics.style.display='none';
+    trBody.innerHTML='<span class="t">已清空。下一次轮询会重新抓。</span>';
+  });
+
   function setMode(on,msg){
     isLive=on;
     modeEl.className='mode '+(on?'live':'');
@@ -740,7 +818,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     document.getElementById('tag1').textContent=on?'AUTO / 后端直读':'WINDOWS / POWERSHELL';
     document.getElementById('tag2').textContent=on?'AUTO / 后端直读':'WSL / LINUX';
     document.getElementById('autoNote').style.display=on?'none':'block';
-    if(on){ envFails=0; pollEnv(); } else { live.hw=null; live.sw=null; paint(); }
+    if(on){ envFails=0; pollEnv();
+      if(!trainTimer) trainTimer=setInterval(function(){ if(isLive&&document.visibilityState==='visible') pollTrain(); },TR_MS);
+      pollTrain();                                 /* 训练输出比环境自检更该勤看：5 秒一轮 */
+    } else { live.hw=null; live.sw=null; paint(); }
   }
   function renderAuto(items,bodyId,sumId,timeId){
     var t=new Date();

@@ -19,6 +19,10 @@
     GET  /api/ping      探活
     GET  /api/env       环境自检（硬件 hw / 软件 sw / 各盘 disk；WSL 里还会经 powershell.exe 读 Windows 宿主侧的卡/内存/盘）
     GET  /api/status    训练阶段状态（读同目录 stages.json，暂无则空表）
+    GET  /api/trainlog  训练输出尾部 + 解析出的最新全部参数（轮数/步数/lr/loss…日志里有什么就给什么；
+                        验证侧指标训练行里不打，另从 reports 的验证记录以 val. 前缀并入，见 _val_metrics）
+                        来源优先级：BEATFCN_TRAIN_LOG 环境变量 → stages.json 各阶段的 "log" 路径 →
+                        train.log / reports/train_console.log 约定位置 → tmux 会话 train 的屏幕缓冲
     POST /api/action    预留安全操作；目前仅支持 {"id":"env-recheck"}
 
 设计约束:
@@ -49,6 +53,8 @@ _cache = {'env': (0.0, None), 'torch': (0.0, None), 'win': (0.0, None)}   # (时
 ENV_TTL = 15.0       # 秒：/api/env 整体缓存（须大于页面 12s 轮询间隔，否则每轮都冷探测）
 TORCH_TTL = 60.0     # 秒：torch 子进程检测缓存（首次 import 慢）
 WIN_TTL = 20.0       # 秒：Windows 宿主侧探测缓存（powershell 启动约 1 秒，别每轮都起）
+TRAIN_TAIL_LINES = 300        # /api/trainlog 回给页面的尾部行数
+TRAIN_READ_BYTES = 96 * 1024  # 日志文件只读末尾这么多字节，别把整份日志搬进内存
 _PS = shutil.which('powershell.exe') or shutil.which('pwsh') or shutil.which('powershell')
 _torch_probing = False  # 后台探测进行中（单飞）
 
@@ -379,6 +385,227 @@ def get_status():
     return {'stages': stages}
 
 
+# ---------------- 训练输出（05 页的 TRAIN OUT） ----------------
+
+def _run_all(cmd, timeout=10):
+    """跑一条命令拿整段 stdout（_run 只回第一行，这里要全量）。失败返回 ''。"""
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return out.stdout or ''
+    except Exception:
+        return ''
+
+
+def _train_log_tail():
+    """抓训练输出尾部。来源按优先级：
+    1. 环境变量 BEATFCN_TRAIN_LOG 指的日志文件
+    2. stages.json 里各阶段声明的 "log" 路径
+    3. 约定位置：本目录 / 代码根下的 train.log、reports/train_console.log
+    4. tmux 会话 train 的屏幕缓冲（页面本来就教同学在 tmux new -s train 里起训练）
+    返回 (来源描述, 行列表, 文件年龄秒或 None)；什么都没有时来源为空串。"""
+    candidates = []
+    env_log = os.environ.get('BEATFCN_TRAIN_LOG')
+    if env_log:
+        candidates.append(env_log)
+    cfg = os.path.join(HERE, 'stages.json')
+    if os.path.isfile(cfg):
+        try:
+            with open(cfg, encoding='utf-8') as f:
+                stages_cfg = json.load(f)
+            candidates += [s['log'] for s in stages_cfg if s.get('log')]
+        except Exception:
+            pass
+    candidates += [os.path.join(HERE, 'train.log'),
+                   os.path.join(REPO, 'train.log'),
+                   os.path.join(REPO, 'reports', 'train_console.log')]
+    seen = set()
+    for raw_path in candidates:
+        path = os.path.abspath(os.path.expanduser(str(raw_path)))
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            if not os.path.isfile(path) or os.path.getsize(path) == 0:
+                continue
+            with open(path, 'rb') as f:
+                f.seek(0, os.SEEK_END)
+                f.seek(max(0, f.tell() - TRAIN_READ_BYTES))
+                lines = f.read().decode('utf-8', 'replace').replace('\r', '\n').splitlines()
+            lines = [l for l in lines if l.strip()][-TRAIN_TAIL_LINES:]
+            if lines:
+                return ('日志 ' + path, lines, round(max(0, time.time() - os.path.getmtime(path)), 1))
+        except Exception:
+            continue
+    raw = _run_all(['tmux', 'capture-pane', '-p', '-t', 'train', '-S', '-4000'], timeout=5)
+    if raw:
+        lines = [l.rstrip() for l in raw.replace('\r', '\n').splitlines()]
+        lines = [l for l in lines if l.strip()][-TRAIN_TAIL_LINES:]
+        if lines:
+            return ('tmux 会话 train', lines, None)
+    return ('', [], None)
+
+
+_PAIR_RE = re.compile(
+    r'([A-Za-z_][A-Za-z0-9_.]*)\s*[=:]\s*('
+    r'-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?|[Tt]rue|[Ff]alse|[Nn]a[Nn]|[Ii]nf(?:inity)?)')
+
+
+def _flatten(obj, prefix='', depth=0):
+    """训练记录递归摊平成标量键值：子字典逐层用点号展开（如 fields.request.loss、
+    eval.full_note_f1），最深 4 层；再深的或 list 压成短 JSON 串——参数一个不落，
+    但别让单元格爆炸。非有限浮点转成字符串，浏览器 JSON 才收。"""
+    out = {}
+    for k, v in obj.items():
+        key = f'{prefix}.{k}' if prefix else str(k)
+        if isinstance(v, bool):
+            out[key] = v
+        elif isinstance(v, (int, float)):
+            out[key] = 'NaN' if v != v else ('inf' if v == float('inf')
+                                             else ('-inf' if v == float('-inf') else v))
+        elif isinstance(v, dict) and depth < 3:
+            out.update(_flatten(v, key, depth + 1))
+        else:
+            text = (json.dumps(v, ensure_ascii=False, default=str)
+                    if isinstance(v, (dict, list)) else str(v))
+            out[key] = text[:80] + ('…' if len(text) > 80 else '')
+    return out
+
+
+def _train_metrics(lines):
+    """从尾部往上找第一条带指标的行，解析出全部参数。行里有 JSON 记录（本仓库训练器
+    按行吐 {"event":"train","step":...}）就用 JSON；否则按 key=value / key: value 文本对
+    解析，普通 print 的进度行也吃得下。找不到返回空表。"""
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        start = line.find('{')
+        if start >= 0:
+            try:
+                rec = json.loads(line[start:])
+            except Exception:
+                rec = None
+            if isinstance(rec, dict):
+                flat = _flatten(rec)
+                if len(flat) >= 2 and any(isinstance(v, (int, float)) for v in flat.values()):
+                    return flat
+        pairs = _PAIR_RE.findall(line)
+        if len(pairs) >= 2:
+            out = {}
+            for k, v in pairs:
+                low = v.lower()
+                if low == 'true':
+                    out[k] = True
+                elif low == 'false':
+                    out[k] = False
+                elif low in ('nan', 'inf', 'infinity', '-inf', '-infinity'):
+                    out[k] = low
+                else:
+                    try:
+                        out[k] = int(v)
+                    except ValueError:
+                        out[k] = float(v)
+            if len(out) >= 2:
+                return out
+    return {}
+
+
+# ---------------- 验证侧指标（训练进度行不打 F1，验证事件里才有） ----------------
+
+def _run_validations(run):
+    """一个 run 记录里的全部验证记录。落盘形态（train_monitor.snapshot 的输出）会把
+    validations 摘进 model_progress（latest_validation / baseline / history），内存/
+    旧形态则留在 run['validations'][step]——两种都认，只收真实存在的记录。"""
+    records = []
+    vs = run.get('validations')
+    if isinstance(vs, dict):
+        records += [v for v in vs.values() if isinstance(v, dict)]
+    mp = run.get('model_progress')
+    if isinstance(mp, dict):
+        for key in ('latest_validation', 'baseline'):
+            if isinstance(mp.get(key), dict):
+                records.append(mp[key])
+        if isinstance(mp.get('history'), list):
+            records += [v for v in mp['history'] if isinstance(v, dict)]
+    return records
+
+
+def _latest_validation():
+    """挑一条最新验证记录：优先 reports/training_monitor.json 里"时间最新的 run 中
+    step 最大"的 validation（结构见 scripts/train_monitor.py；文件本体是单 run 快照，
+    rhythm 场景另有 paired_runs，旧/内存形态是 runs[run_id].validations[step]）；
+    没有就退到 reports/*.jsonl 里最后的 {"event":"val"} 行（每个文件取最后一条，再比
+    step/ts）。哪路都没有返回 None——宁缺勿造。"""
+    try:
+        with open(os.path.join(REPO, 'reports', 'training_monitor.json'), encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        data = None
+    if isinstance(data, dict):
+        runs = [data]
+        if isinstance(data.get('runs'), dict):
+            runs += [v for v in data['runs'].values() if isinstance(v, dict)]
+        if isinstance(data.get('paired_runs'), list):
+            runs += [v for v in data['paired_runs'] if isinstance(v, dict)]
+        best = None
+        for run in runs:
+            recs = _run_validations(run)
+            if not recs:
+                continue
+            metrics = run.get('metrics')
+            run_time = max([run.get('last_event_at') or 0,
+                            (metrics.get('recorded_at') if isinstance(metrics, dict) else 0) or 0]
+                           + [r.get('ts') or 0 for r in recs])
+            if best is None or run_time > best[0]:
+                best = (run_time, max(recs, key=lambda r: (r.get('step') or 0, r.get('ts') or 0)))
+        if best:
+            return best[1]
+    reports_dir = os.path.join(REPO, 'reports')
+    try:
+        names = sorted(n for n in os.listdir(reports_dir) if n.endswith('.jsonl'))
+    except OSError:
+        return None
+    best = None
+    for name in names:
+        try:
+            with open(os.path.join(reports_dir, name), 'rb') as f:
+                f.seek(0, os.SEEK_END)
+                f.seek(max(0, f.tell() - TRAIN_READ_BYTES))
+                tail = f.read().decode('utf-8', 'replace')
+        except OSError:
+            continue
+        for line in reversed(tail.replace('\r', '\n').splitlines()):
+            start = line.find('{')
+            if start < 0:
+                continue
+            try:
+                rec = json.loads(line[start:])
+            except Exception:
+                continue
+            if isinstance(rec, dict) and rec.get('event') == 'val':
+                key = (rec.get('step') or 0, rec.get('ts') or 0)
+                if best is None or key > best[0]:
+                    best = (key, rec)
+                break
+    return best[1] if best else None
+
+
+def _val_metrics():
+    """验证侧指标 → "val." 前缀键值（val.step / val.full_note_f1 / val.onset_f1_50ms…），
+    数值/布尔字段一个不落（沿用 _flatten 的摊平和非有限值转字符串规矩，字符串类字段
+    如 event/run_id 不进表）。来源什么都没有就给空表，绝不编造。"""
+    rec = _latest_validation()
+    if not isinstance(rec, dict):
+        return {}
+    out = {}
+    for k, v in _flatten(rec).items():
+        if isinstance(v, (bool, int, float)) or v in ('NaN', 'inf', '-inf'):
+            out['val.' + k] = v
+    if isinstance(rec.get('step'), (bool, int, float)):
+        out.setdefault('val.step', rec['step'])
+    return out
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = 'beatfcn-console/1.0'
 
@@ -417,11 +644,20 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/ping':
             return self._send(200, {'ok': True, 'authed': self._authed(),
                                     'host': os.uname().nodename, 'ts': time.time()})
-        if path in ('/api/env', '/api/status'):
+        if path in ('/api/env', '/api/status', '/api/trainlog'):
             if not self._authed():
                 return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码'})
             if path == '/api/env':
                 return self._send(200, {'ok': True, 'items': get_env()})
+            if path == '/api/trainlog':
+                src, lines, age = _train_log_tail()
+                # 解析用完整行，回显的单行截到 400 字符，别让一条超长行撑爆手机流量
+                shown = [(l[:400] + '…') if len(l) > 400 else l for l in lines]
+                metrics = _train_metrics(lines)
+                metrics.update(_val_metrics())   # 训练行里没有的验证指标（F1 等）以 val. 前缀并入
+                return self._send(200, {'ok': True, 'source': src, 'age_s': age,
+                                        'lines': shown, 'metrics': metrics,
+                                        'ts': time.time()})
             return self._send(200, {'ok': True, **get_status()})
         return self._send(404, {'ok': False, 'note': 'no such endpoint'})
 
