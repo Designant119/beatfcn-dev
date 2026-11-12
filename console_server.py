@@ -1002,6 +1002,40 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write('[console] %s %s\n' % (self.address_string(), fmt % args))
 
 
+def _usable_ip(ip):
+    if not ip:
+        return False
+    if ip.startswith('127.') or ip.startswith('169.254.'):
+        return False
+    return bool(re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ip))
+
+
+def _lan_ips():
+    """能给别人用的地址：(Windows 局域网地址, 本机地址)。
+
+    WSL 里 `hostname -I` 给的是虚拟网卡（172.x），手机根本连不上，
+    所以额外问一次 Windows 的 ipconfig，把真正的局域网 IP 捞出来。
+    """
+    ips = [ip for ip in (_run('hostname -I', timeout=5) or '').split() if _usable_ip(ip)]
+    win = []
+    try:
+        ver = open('/proc/version', encoding='utf-8', errors='ignore').read().lower()
+    except Exception:
+        ver = ''
+    is_wsl = 'microsoft' in ver or bool(os.environ.get('WSL_DISTRO_NAME'))
+    if is_wsl:
+        ic = '/mnt/c/Windows/System32/ipconfig.exe'
+        if os.path.exists(ic):
+            for line in _run_all([ic], timeout=8).splitlines():
+                if 'IPv4' in line or 'ipv4' in line:
+                    m = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', line)
+                    if m and _usable_ip(m.group(1)) and m.group(1) not in win:
+                        win.append(m.group(1))
+    # 家里的网段优先，WSL 自己的 172.x 排最后
+    win.sort(key=lambda ip: 0 if ip.startswith('192.168.') else (1 if ip.startswith('10.') else 2))
+    return win, ips, is_wsl
+
+
 def main():
     global TOKEN
     args = sys.argv[1:]
@@ -1013,16 +1047,17 @@ def main():
         if i + 1 < len(args):
             TOKEN = args[i + 1]
     srv = ThreadingHTTPServer(('0.0.0.0', port), Handler)
-    ips = []
-    try:
-        out = _run("hostname -I", timeout=5) or ''
-        ips = out.split()
-    except Exception:
-        pass
+    win, ips, is_wsl = _lan_ips()
     print(f'[console] 后端已启动: http://localhost:{port}')
     print(f'[console] 访问码: ' + (TOKEN or '未设置（仅限局域网/本机用）'))
-    for ip in ips:
+    for ip in (win or ips):
         print(f'[console] 手机/其他设备: http://{ip}:{port}')
+    if win and ips:
+        print('[console] 上面是 Windows 的局域网地址；WSL 里的 ' + '、'.join(ips) + ' 手机连不上，别用')
+    elif is_wsl:
+        print('[console] 注意：上面可能是 WSL 虚拟网卡，手机连不上。手机要用 Windows 的')
+        print('[console] 局域网 IP（Windows 里 ipconfig 看「WLAN」那行的 IPv4），格式 http://那个IP:'
+              + str(port))
     threading.Thread(target=_torch_probe, daemon=True).start()  # 预热：首次 import 别让页面等
     print('[console] Ctrl+C 停止。页面会自动退回手动模式，不影响训练。')
     try:
