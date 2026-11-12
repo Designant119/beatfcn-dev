@@ -1081,7 +1081,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var keep=(p.light_checkpoint_keep==null)?'（方案没写留几份）':('最近 '+p.light_checkpoint_keep+' 份');
     tpSnap.innerHTML='快照存在 '+(p.out_dir?('<b>'+esc(p.out_dir)+'</b>'):'（方案里没写，跑起来才确定）')+
       '，文件名长这样 <b>step-000300.pt</b>，只留'+keep+'。下次勾上「接着上次继续」，会从这个目录读最新的那份，不用手填路径。'+
-      '<br>数据不在 <b>/data</b> 的话（比如盘挂在别处），在 run_server.sh 的 <b>DATA_ROOT</b> 里填实际路径，开训练时会把方案里的 /data 自动换掉，原方案文件不动。';
+      '<br>一般不用动这里：随系统装好、数据就在 <b>/data</b> 的，run_server.sh 里的 <b>DATA_ROOT</b> 留空即可。只有数据没放进系统、直接从挂载的硬盘读（比如 <b>/mnt/e/data</b>）时，才需要在那行填实际路径——填了以后开训练会按新路径找，原方案文件不动。';
 
     if(p.light_checkpoint_every!=null){          /* 换方案时把存点间隔带成该方案的默认值 */
       tpCk.value=String(p.light_checkpoint_every);
