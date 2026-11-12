@@ -745,14 +745,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var trBody=document.getElementById('trBody'), trMetrics=document.getElementById('trMetrics'), trSrc=document.getElementById('trSrc');
   var trLast='', trStalePolls=0, trainTimer=null, TR_MS=5000;
   var TR_LABEL={epoch:'轮数',epochs:'总轮数',step:'步数',steps:'总步数',updates:'有效更新',lr:'学习率',
-    loss:'损失',f1:'F1',event:'事件',phase:'阶段',ts:'时间戳',elapsed_s:'耗时秒',elapsed:'耗时秒',
-    grad:'梯度',grad_norm:'梯度范数',gpu_util:'GPU利用率',examples:'样本数'};
+    loss:'损失',f1:'F1',event:'事件',phase:'当前阶段',ts:'时间戳',elapsed_s:'耗时',elapsed:'耗时秒',
+    grad:'梯度值',grad_norm:'梯度范数',gpu_util:'GPU 利用率',examples:'样本数',target:'目标更新数',
+    target_updates:'目标更新数',updates_per_s:'每秒更新数',data_wait:'数据等待占比',checkpoint:'检查点'};
   var TR_VAL_LABEL={step:'验证步数',full_note_f1:'验证全音符F1',onset_f1_50ms:'验证起音F1@50ms',
-    note_f1_50ms:'验证音符F1@50ms'};   // 后端并进来的 val.* 验证指标；没登记的显示"验证 原键名"
-  function trLabel(k){
+    note_f1_50ms:'验证音符F1@50ms'};   // 后端并进来的 val.* 验证指标；没登记的说明写「验证指标·原字段名」
+  function trLabel(k){                 // 返回中文说明；没登记的返回 ''，格子只显示原键名、不带空括号
     if(TR_LABEL[k]) return TR_LABEL[k];
-    if(k.slice(0,4)==='val.'){ var s=k.slice(4); return TR_VAL_LABEL[s]||('验证 '+(TR_LABEL[s]||s)); }
-    return k;
+    if(k.slice(0,7)==='fields.') return '分字段损失';
+    if(k.slice(0,4)==='val.'){ var s=k.slice(4); return TR_VAL_LABEL[s]||('验证指标·'+s); }
+    return '';
   }
   function trRank(k){
     var hot=['epoch','step','updates','lr','loss'];
@@ -784,7 +786,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       trMetrics.style.display='grid';
       trMetrics.innerHTML=keys.map(function(k){
         var v=String(m[k]), cls=/f1/i.test(k)?'ok':(/^(lr|loss)/.test(k)?'warn':'');
-        return '<div><span class="k">'+esc(trLabel(k))+'</span><span class="v '+cls+'">'+esc(v)+'</span></div>';
+        var lab=trLabel(k);            // 格子显示「原键名（中文说明）」，没说明的只有原键名
+        return '<div><span class="k">'+esc(lab?k+'（'+lab+'）':k)+'</span><span class="v '+cls+'">'+esc(v)+'</span></div>';
       }).join('');
     }else{
       trMetrics.style.display='none';
