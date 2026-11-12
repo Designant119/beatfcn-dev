@@ -973,7 +973,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpCk.value=String(p.light_checkpoint_every);
       tpCkR.value=String(p.light_checkpoint_every);
     }
-    var hi=Math.min(2400,(p.horizon_updates||2400));   /* 步数上限不能超方案自己的 horizon，否则训练脚本会拒绝 */
+    var hi=(p.horizon_updates||2400);                 /* 上限就是方案自己的 horizon，不是写死的 2400 */
     tpUpd.max=String(hi); tpUpdR.max=String(hi);
     document.getElementById('tpUpdMax').textContent=String(p.horizon_updates||2400);
     if(parseInt(tpUpd.value,10)>hi){ tpUpd.value=String(hi); tpUpdR.value=String(hi); }

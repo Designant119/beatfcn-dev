@@ -472,7 +472,6 @@ def _train_start(body):
             return None
         return v
 
-    updates = want_int('updates', 100, 2400)
     workers = want_int('workers', 1, 16)
     hours = want_int('deadline_hours', 1, 168)
     plan = body.get('plan')
@@ -480,8 +479,6 @@ def _train_start(body):
     dry_run = body.get('dry_run', False)
     flags = {k: body.get(k, False) for k in ('resume', 'save_optimizer', 'no_compile')}
 
-    if updates is None:
-        return bad('updates 要是 100–2400 的整数（收到 %r）' % (body.get('updates'),))
     if workers is None:
         return bad('workers 要是 1–16 的整数（收到 %r）' % (body.get('workers'),))
     if hours is None:
@@ -503,12 +500,14 @@ def _train_start(body):
     if plan not in known:
         return bad('plan 不在 plans/evolve 里：%r' % plan)
 
-    # 存点间隔：不传就沿用方案里的值；传了且和方案不一样时，用一份只改这一项的临时副本
+    # 步数上限就是这个方案自己写的 horizon（exposure 序列按这个长度造好，超了训练脚本会 ValueError）
     base_every = known[plan].get('light_checkpoint_every')
     horizon = known[plan].get('horizon_updates')
-    if isinstance(horizon, int) and 0 < horizon < updates:
-        return bad('这个方案最多 %d 步，跑多少步不能超过它（收到 %d）；换步数更大的方案，或调小步数'
-                   % (horizon, updates))
+    up_hi = horizon if isinstance(horizon, int) and horizon > 0 else 2400
+    updates = want_int('updates', 100, up_hi)
+    if updates is None:
+        return bad('updates 要是 100–%d 的整数（这个方案最多 %d 步；收到 %r）'
+                   % (up_hi, up_hi, body.get('updates')))
     ck_every = want_int('checkpoint_every', 50, 2400) if 'checkpoint_every' in body else base_every
     if 'checkpoint_every' in body and ck_every is None:
         return bad('checkpoint_every 要是 50–2400 的整数步数（收到 %r）' % (body.get('checkpoint_every'),))
