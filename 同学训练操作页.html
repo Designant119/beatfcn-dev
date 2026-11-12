@@ -591,11 +591,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     return ['pass','全过'];
   }
   function paint(){
+    /* 交给后端的两个勾：能过就勾上，退化了也要撤回来——只加不减会让“以前勾过”冒充“现在没问题” */
     try{
-      var s4=document.querySelector('input[data-k="s4"]');
-      if(s4&&live.sw&&live.sw[0]==='pass'&&!s4.checked){s4.checked=true;s4.dispatchEvent(new Event('change'));}
-      var d1=document.querySelector('input[data-k="d1"]');
-      if(d1&&live.data&&live.data[0]==='pass'&&!d1.checked){d1.checked=true;d1.dispatchEvent(new Event('change'));}
+      var syncBox=function(key,verdict){
+        var el=document.querySelector('input[data-k="'+key+'"]');
+        if(!el||!verdict) return;
+        var want=(verdict[0]==='pass');
+        if(want!==el.checked){ el.checked=want; el.dispatchEvent(new Event('change')); }
+      };
+      syncBox('s4',live.sw);
+      syncBox('d1',live.data);
     }catch(e){}
     var done=0;
     boxes.forEach(function(b,i){
@@ -608,9 +613,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var env=saved.env||{};
     var st1=live.hw||(env.win?env.win:null), st2=live.sw||(env.wsl?env.wsl:null);
     box('st1',st1); box('st2',st2);
-    box('st3',v.l3); box('st4',v.l4); box('st5',v.l5);
-    rail('l1',st1); rail('l2',st2); rail('l3',v.l3); rail('l4',v.l4); rail('l5',v.l5);
-    nexthop(st1,st2,v);
+    var st4=live.data||v.l4;        /* 04 有后端实测结果就用它，别用手动勾数冒充 */
+    box('st3',v.l3); box('st4',st4); box('st5',v.l5);
+    rail('l1',st1); rail('l2',st2); rail('l3',v.l3); rail('l4',st4); rail('l5',v.l5);
+    nexthop(st1,st2,{l3:v.l3,l4:st4,l5:v.l5});
   }
   function count(viewId){
     /* 03 有两条路：双击装（s0+s4）或手工装（s1~s3b+s4），任一条走完就算过 */
@@ -1018,7 +1024,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     return Math.min(hi,Math.max(lo,n));
   }
   function tpUpdVal(){ return tpClamp(tpUpd,100,parseInt(tpUpd.max,10)||2400,300); }
-  function tpCkVal(){ return tpClamp(tpCk,50,2400,300); }
+  function tpCkVal(){ return tpClamp(tpCk,50,parseInt(tpCk.max,10)||2400,300); }
   function tpHrVal(){ return tpClamp(tpHr,1,168,48); }
   function tpDeadline(h){              /* 运行时长换算的绝对截止时刻（命令里 --deadline-unix 的人话版） */
     var d=new Date(Date.now()+h*3600*1000);
@@ -1071,14 +1077,19 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       '，文件名长这样 <b>step-000300.pt</b>，只留'+keep+'。下次勾上「接着上次继续」，会从这个目录读最新的那份，不用手填路径。'+
       '<br>一般不用动这里：随系统装好、数据就在 <b>/data</b> 的，run_server.sh 里的 <b>DATA_ROOT</b> 留空即可。只有数据没放进系统、直接从挂载的硬盘读（比如 <b>/mnt/e/data</b>）时，才需要在那行填实际路径——填了以后开训练会按新路径找，原方案文件不动。';
 
-    if(p.light_checkpoint_every!=null){          /* 换方案时把存点间隔带成该方案的默认值 */
-      tpCk.value=String(p.light_checkpoint_every);
-      tpCkR.value=String(p.light_checkpoint_every);
-    }
     var hi=(p.horizon_updates||2400);                 /* 上限就是方案自己的 horizon，不是写死的 2400 */
+    var ckHi=Math.min(2400,hi);                       /* 存点间隔也不能超过总步数，否则中途一个快照都不会有 */
     tpUpd.max=String(hi); tpUpdR.max=String(hi);
+    tpCk.max=String(ckHi); tpCkR.max=String(ckHi);
     document.getElementById('tpUpdMax').textContent=String(p.horizon_updates||2400);
     if(parseInt(tpUpd.value,10)>hi){ tpUpd.value=String(hi); tpUpdR.value=String(hi); }
+    if(p.light_checkpoint_every!=null){          /* 换方案时把存点间隔带成该方案的默认值 */
+      var ckDef=Math.min(p.light_checkpoint_every,ckHi);
+      tpCk.value=String(ckDef);
+      tpCkR.value=String(ckDef);
+    }else if(parseInt(tpCk.value,10)>ckHi){
+      tpCk.value=String(ckHi); tpCkR.value=String(ckHi);
+    }
   }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();

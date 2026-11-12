@@ -591,9 +591,13 @@ def _train_start(body):
     if updates is None:
         return bad('updates 要是 100–%d 的整数（这个方案最多 %d 步；收到 %r）'
                    % (up_hi, up_hi, body.get('updates')))
-    ck_every = want_int('checkpoint_every', 50, 2400) if 'checkpoint_every' in body else base_every
+    # 存点间隔不能超过这个方案自己的总步数：训练脚本的存点条件是 current % every == 0，
+    # every 大于 updates 就永远命不中，中途一个快照都不会有（只剩结束那份）
+    ck_hi = min(2400, up_hi)
+    ck_every = want_int('checkpoint_every', 50, ck_hi) if 'checkpoint_every' in body else base_every
     if 'checkpoint_every' in body and ck_every is None:
-        return bad('checkpoint_every 要是 50–2400 的整数步数（收到 %r）' % (body.get('checkpoint_every'),))
+        return bad('checkpoint_every 要是 50–%d 的整数步数（这个方案最多 %d 步；收到 %r）'
+                   % (ck_hi, up_hi, body.get('checkpoint_every'),))
     plan_path = os.path.join(REPO, 'plans', 'evolve', plan)
     ck_note = ''
     root = (DATA_ROOT or '/data').rstrip('/') or '/data'
