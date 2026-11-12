@@ -390,17 +390,21 @@ echo "HEAD=$(cd ~/beatfcn-dev 2&gt;/dev/null &amp;&amp; git rev-parse --short HE
 
       <div class="chk"><input type="checkbox" data-k="s3"><span class="t">拉代码、装依赖、装 ffmpeg<small>torch 那个轮子很大，慢是正常的，别中途 Ctrl+C。</small></span></div>
       <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~
-git clone -b dev https://github.com/Designant119/beatfcn-dev.git
+git clone https://github.com/Designant119/beatfcn-dev.git
 cd beatfcn-dev
 pip install -r requirements-fc.txt
 sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
       <div class="chk"><input type="checkbox" data-k="s3b"><span class="t">起操作台后端<small>就一条命令。跑起来之后回到这个页面，顶部亮 LIVE，01/02 全自动。</small></span></div>
-      <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~/beatfcn-dev &amp;&amp; python3 console_server.py</pre></div>
-      <p class="hint">然后 Windows 浏览器打开 <code class="mono">http://localhost:7777</code>（或手机连同一 WiFi 访问 <code class="mono">http://这台机的IP:7777</code>）。关掉这个黑窗口页面就退回手动模式，训练不受影响。</p>
+      <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~/beatfcn-dev &amp;&amp; ./run_server.sh</pre></div>
+      <p class="hint">然后 Windows 浏览器打开 <code class="mono">http://localhost:7777</code>。关掉这个黑窗口页面就退回手动模式，训练不受影响。</p>
+      <p class="hint">想让它每 2 分钟把进度推到飞书：打开 <code class="mono">run_server.sh</code>，把第二行 <code class="mono">FEISHU=""</code> 里填上群机器人地址，之后点「开始训练」就自动推。</p>
     </details>
 
-    <div class="chk"><input type="checkbox" data-k="s4"><span class="t">回 02 重跑一遍自检，全绿再往下</span></div>
+    <div class="chk"><input type="checkbox" data-k="s3c"><span class="t">手机也要能打开<small>只在同一个 WiFi 下有效。打不开就右键管理员运行仓库里的 fix_lan_access.bat。</small></span></div>
+      <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>fix_lan_access.bat</pre></div>
+
+      <div class="chk"><input type="checkbox" data-k="s4"><span class="t">回 02 重跑一遍自检，全绿再往下</span></div>
     <div class="btnrow"><a class="btn ghost" href="#l2" style="text-decoration:none;display:inline-block">去 02 自检</a></div>
     <div class="flag"><span class="k">内存小的话</span>进 05 之前设一个数，别让它把内存吃光。</div>
   </section>
@@ -530,7 +534,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   <section class="view" id="v-t">
     <div class="vhead"><span class="sid">06</span><h2>常见情况</h2><span class="vtag">对照着看</span></div>
     <div class="hint">先在这页找一样的。找不到再问我，把屏幕截图带上。</div>
-    <details><summary>页面顶部一直是手动模式，不亮 LIVE</summary><p>后端没跑。进 Linux：<code class="mono">cd ~/beatfcn-dev &amp;&amp; python3 console_server.py</code>，然后刷新页面。手机看的话，要用电脑的 IP 访问 <code class="mono">http://IP:7777</code>，两台设备连同一个 WiFi。</p></details>
+    <details><summary>页面顶部一直是手动模式，不亮 LIVE</summary><p>后端没跑。进 Linux：<code class="mono">cd ~/beatfcn-dev &amp;&amp; ./run_server.sh</code>，然后刷新页面。手机看的话，要用电脑的 IP 访问 <code class="mono">http://IP:7777</code>，两台设备连同一个 WiFi。</p></details>
     <details><summary>显存不够 out of memory</summary><p>批大小降到 1，或者发消息让我改配置。别自己加参数。</p></details>
     <details><summary>硬盘满了</summary><p>一般是旧检查点堆着。<b>删之前问一句删哪个目录</b>，别按大小排序自己删。</p></details>
     <details><summary>Windows 的 C 盘莫名其妙少了一大块</summary><p>Linux 那个虚拟盘不会自己缩。确认训练结束再回收：<code class="mono">wsl --manage beatfcn --set-sparse true</code>。有的版本没这个参数，报错就跳过。</p></details>
