@@ -383,9 +383,14 @@ echo "HEAD=$(cd ~/beatfcn-dev 2&gt;/dev/null &amp;&amp; git rev-parse --short HE
 
       <div class="chk"><input type="checkbox" data-k="s1"><span class="t">管理员 PowerShell 打开 WSL 平台<small>已经开着就跳过。装完要重启一次，重启完再回来。</small></span></div>
       <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --install --no-distribution</pre></div>
+      <p class="hint">这条报“不认识这个参数”，说明 Windows 太老或 WSL 是旧版：去掉 <code class="mono">--no-distribution</code> 直接跑 <code class="mono">wsl --install</code>，它会顺带装一个 Ubuntu，多一个不影响，后面导入的还是你自己的那个。</p>
 
       <div class="chk"><input type="checkbox" data-k="s2"><span class="t">把打包好的系统导进来<small>三个路径按实际位置改：起个名 / 装到哪 / 镜像包在哪。装到哪这格要落在他的 SSD 上，别落在硬盘上，否则训练读数据会慢。包要 NTFS 盘。</small></span></div>
-      <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --import beatfcn D:\wsl\beatfcn E:\beatfcn-train.tar</pre></div>
+      <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --import beatfcn D:\wsl\beatfcn E:\beatfcn-train.tar --version 2</pre></div>
+      <p class="hint">最后的 <code class="mono">--version 2</code> 别删，不加可能按 WSL 1 导进来，torch 会直接跑不了。<code class="mono">D:\wsl\beatfcn</code> 那格是这块 Linux 盘的落点，训练会把它撑大，别指到快满的分区。</p>
+      <p class="hint">这里起的名字 <b>beatfcn</b> 要跟 <code class="mono">run_server.bat</code> 里第二行的 <code class="mono">set DISTRO=beatfcn</code> 一致，不一致就双击不进去。</p>
+
+      <div class="chk"><input type="checkbox" data-k="s2b"><span class="t">导入完默认是 root 用户<small>不用也行，能跑。想换普通用户：微软文档写明 <code class="mono">config --default-user</code> 对导入的发行版无效，要写 /etc/wsl.conf 里的 <code class="mono">[user] default=用户名</code>。</small></span></div>
 
       <div class="chk"><input type="checkbox" data-k="s3"><span class="t">镜像里没带代码时才需要：拉代码、装依赖、装 ffmpeg<small>镜像是整套导出的就跳过这步。torch 那个轮子很大，慢是正常的，别中途 Ctrl+C。</small></span></div>
       <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~
