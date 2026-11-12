@@ -592,6 +592,96 @@ def _train_start(body):
                          + report_note + ck_note}
 
 
+# ---------------- 机器状态（05 页的资源小图） ----------------
+
+_CPU_LOCK = threading.Lock()
+_CPU_PREV = {'total': None, 'idle': None}
+
+
+def _sys_cpu():
+    """两次读 /proc/stat 求差。第一次读不到差值就先睡 0.15 秒再读一遍。"""
+    for attempt in (0, 1):
+        try:
+            with open('/proc/stat') as f:
+                parts = f.readline().split()
+            vals = [int(x) for x in parts[1:]]
+        except Exception:
+            return None, None, None
+        idle = vals[3] + (vals[4] if len(vals) > 4 else 0)
+        total = sum(vals)
+        with _CPU_LOCK:
+            prev_total, prev_idle = _CPU_PREV['total'], _CPU_PREV['idle']
+            _CPU_PREV.update(total=total, idle=idle)
+        if prev_total is not None and total > prev_total:
+            dt, di = total - prev_total, idle - prev_idle
+            pct = round(max(0.0, min(100.0, 100.0 * (dt - di) / dt)), 1) if dt else None
+            try:
+                load1 = round(os.getloadavg()[0], 2)
+            except Exception:
+                load1 = None
+            return pct, os.cpu_count(), load1
+        if attempt == 0:
+            time.sleep(0.15)
+    return None, os.cpu_count(), None
+
+
+def _sys_mem():
+    try:
+        info = {}
+        with open('/proc/meminfo') as f:
+            for line in f:
+                k, v = line.split(':', 1)
+                info[k] = int(v.split()[0])
+        total = info['MemTotal']
+        avail = info.get('MemAvailable', info.get('MemFree', 0))
+        used = total - avail
+        return {'used_mb': used // 1024, 'total_mb': total // 1024,
+                'pct': round(100.0 * used / total, 1) if total else None}
+    except Exception:
+        return None
+
+
+def _sys_gpu():
+    try:
+        out = subprocess.run(
+            ['nvidia-smi', '--query-gpu=index,utilization.gpu,memory.used,memory.total,temperature.gpu',
+             '--format=csv,noheader,nounits'], capture_output=True, text=True, timeout=8)
+    except Exception:
+        return None
+    if out.returncode != 0:
+        return None
+    rows = []
+    for line in (out.stdout or '').strip().splitlines():
+        parts = [p.strip() for p in line.split(',')]
+        if len(parts) < 5:
+            continue
+        try:
+            used, total = int(parts[2]), int(parts[3])
+            rows.append({'index': int(parts[0]), 'util': int(parts[1]),
+                         'mem_used_mb': used, 'mem_total_mb': total,
+                         'pct': round(100.0 * used / total, 1) if total else None,
+                         'temp_c': int(parts[4])})
+        except Exception:
+            continue
+    return rows or None
+
+
+def _sys_disk():
+    try:
+        u = shutil.disk_usage(REPO)
+        return {'used_gb': round(u.used / 2 ** 30, 1), 'total_gb': round(u.total / 2 ** 30, 1),
+                'pct': round(100.0 * u.used / u.total, 1) if u.total else None}
+    except Exception:
+        return None
+
+
+def sys_payload():
+    pct, cores, load1 = _sys_cpu()
+    return {'ok': True, 'ts': time.time(),
+            'cpu': {'pct': pct, 'cores': cores, 'load1': load1},
+            'mem': _sys_mem(), 'gpu': _sys_gpu(), 'disk': _sys_disk()}
+
+
 # ---------------- 训练输出（05 页的 TRAIN OUT） ----------------
 
 def _run_all(cmd, timeout=10):
@@ -851,13 +941,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/ping':
             return self._send(200, {'ok': True, 'authed': self._authed(),
                                     'host': os.uname().nodename, 'ts': time.time()})
-        if path in ('/api/env', '/api/status', '/api/trainlog', '/api/train-plan'):
+        if path in ('/api/env', '/api/status', '/api/trainlog', '/api/train-plan', '/api/sys'):
             if not self._authed():
                 return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码再回车'})
             if path == '/api/env':
                 return self._send(200, {'ok': True, 'items': get_env()})
             if path == '/api/train-plan':
                 return self._send(200, {'ok': True, 'plans': train_plans(), 'repo': REPO})
+            if path == '/api/sys':
+                return self._send(200, sys_payload())
             if path == '/api/trainlog':
                 src, lines, age = _train_log_tail()
                 # 解析用完整行，回显的单行截到 400 字符，别让一条超长行撑爆手机流量
