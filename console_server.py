@@ -33,6 +33,7 @@
     * 只暴露只读探测 + 白名单动作，绝不提供删除类操作
     * 子进程全部带超时；torch 检测走子进程，本进程永不 import torch
 """
+import hashlib
 import json
 import os
 import re
@@ -400,6 +401,7 @@ def train_plans():
     字段缺了就给 None，绝不造数；目录不在就空列表。名字先过 _PLAN_NAME_RE——白名单只收
     无壳安全字符的文件名，train-start 拼 shell 命令时才敢直接往里嵌。"""
     plans = []
+    root = (DATA_ROOT or '/data').rstrip('/') or '/data'
     d = os.path.join(REPO, 'plans', 'evolve')
     try:
         names = sorted(os.listdir(d))
@@ -425,7 +427,7 @@ def train_plans():
                 for key in ('out_dir', 'init'):
                     v = cfg.get(key)
                     if isinstance(v, str) and v:
-                        rec[key] = v
+                        rec[key] = _repoint(v, root)
                 sched = cfg.get('schedule')
                 if isinstance(sched, dict):
                     h = sched.get('horizon_updates')
@@ -437,18 +439,47 @@ def train_plans():
     return plans
 
 
-def _plan_copy_with_checkpoint(plan_name, every):
-    """把方案复制到临时目录、只改 light_checkpoint_every 一个字段，返回副本绝对路径。
-    原方案文件一个字节都不动；副本放系统临时目录，不进仓库。"""
+# 数据根。方案 json 里写死的是 /data/...，换台机器就找不到东西；
+# 用 BEATFCN_DATA_ROOT 指到实际位置（比如硬盘挂到 /mnt/e 或同学家的 ~/data），
+# 下面的 _repoint 只改副本，仓库里的原方案一个字节不动。
+DATA_ROOT = os.environ.get('BEATFCN_DATA_ROOT', '/data') or '/data'
+
+
+def _repoint(obj, root):
+    """把方案里所有以 /data 开头的字符串换成 root 开头。递归 dict/list，其它原样返回。"""
+    if isinstance(obj, str):
+        if obj == '/data' or obj.startswith('/data/'):
+            return root.rstrip('/') + obj[len('/data'):]
+        return obj
+    if isinstance(obj, list):
+        return [_repoint(x, root) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _repoint(v, root) for k, v in obj.items()}
+    return obj
+
+
+def _plan_copy_with_checkpoint(plan_name, every=None):
+    """把方案复制到临时目录，改 store 间隔、必要时把 /data 换成 DATA_ROOT，返回副本绝对路径。
+    原方案文件一个字节都不动；副本放系统临时目录，不进仓库。没改动就返回原路径。"""
     src = os.path.join(REPO, 'plans', 'evolve', plan_name)
     with open(src, encoding='utf-8') as f:
         cfg = json.load(f)
     if not isinstance(cfg, dict):
         raise ValueError('方案不是 json 对象')
-    cfg['light_checkpoint_every'] = every
+    changed = False
+    if isinstance(every, int):
+        cfg['light_checkpoint_every'] = every
+        changed = True
+    root = DATA_ROOT.rstrip('/') or '/data'
+    if root != '/data':
+        cfg = _repoint(cfg, root)
+        changed = True
+    if not changed:
+        return src
     d = os.path.join(tempfile.gettempdir(), 'beatfcn-run-plans')
     os.makedirs(d, exist_ok=True)
-    dst = os.path.join(d, plan_name)
+    tag = '' if root == '/data' else '-%s' % hashlib.md5(root.encode()).hexdigest()[:6]
+    dst = os.path.join(d, plan_name.replace('.json', tag + '.json'))
     tmp = dst + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
@@ -523,12 +554,19 @@ def _train_start(body):
         return bad('checkpoint_every 要是 50–2400 的整数步数（收到 %r）' % (body.get('checkpoint_every'),))
     plan_path = os.path.join(REPO, 'plans', 'evolve', plan)
     ck_note = ''
-    if isinstance(ck_every, int) and ck_every != base_every:
+    root = (DATA_ROOT or '/data').rstrip('/') or '/data'
+    every_changed = isinstance(ck_every, int) and ck_every != base_every
+    if every_changed or root != '/data':
         try:
-            plan_path = _plan_copy_with_checkpoint(plan, ck_every)
+            plan_path = _plan_copy_with_checkpoint(plan, ck_every if every_changed else None)
         except Exception as e:
             return bad('生成临时方案失败：' + str(e))
-        ck_note = '（存点间隔改成每 %d 步：已生成临时方案 %s，原方案没动）' % (ck_every, plan_path)
+        bits = []
+        if every_changed:
+            bits.append('存点间隔改成每 %d 步' % ck_every)
+        if root != '/data':
+            bits.append('数据目录指到 %s' % root)
+        ck_note = '（%s：已生成临时方案 %s，原方案没动）' % ('；'.join(bits), plan_path)
 
     deadline_ts = int(time.time() + hours * 3600)
     q = shlex.quote
