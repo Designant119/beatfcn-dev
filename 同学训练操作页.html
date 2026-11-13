@@ -197,6 +197,7 @@
     font-family:var(--mono);font-size:12.5px;padding:6px}
   .tp-ctl input[type=range]{flex:1;min-width:70px;accent-color:var(--ph);margin:0}
   .tp-val{grid-column:2;font-family:var(--mono);font-size:11px;color:var(--phdim);white-space:nowrap;text-align:right}
+  #tpWkV.tp-warn{color:var(--warn)}
   .tp-flags{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;padding:9px 10px}
   .tp-flag{display:flex;gap:7px;align-items:center;cursor:pointer;font-size:13px;min-height:34px}
   .tp-flag input[type=checkbox]{appearance:none;-webkit-appearance:none;width:15px;height:15px;flex:none;margin:0;
@@ -455,9 +456,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
 
       <div class="tp-row">
-        <span class="tp-lab">数据加载进程<small><b>是 CPU 的，不是显卡的</b>。这些进程在内存里提前准备数据，每个都吃一份内存：16G 内存用 4，32G 以上可以往上加，加太多会把机器卡死</small></span>
+        <span class="tp-lab">数据加载进程<small><b>是 CPU 的，不是显卡的，只吃内存、不吃显存</b>。每个进程会把整份数据清单复制一份到内存里，满数据时约 3GB：16G 内存用 4，32G 最多到 8。<b>这根只能往下调</b>，往上拖超不过方案里写的数，超出那部分不生效</small></span>
         <span class="tp-ctl"><input type="range" id="tpWk" min="1" max="16" step="1" value="4"></span>
-        <span class="tp-val" id="tpWkV">4</span>
+        <span class="tp-val" id="tpWkV">4 个 · ≈12GB</span>
       </div>
 
       <div class="tp-row">
@@ -1148,7 +1149,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
     var p=tpPlanObj(), diff=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck);
     tpUpdV.textContent=String(upd);
-    tpWkV.textContent=String(wk);
+    var pw=(p&&p.loader_workers!=null)?p.loader_workers:8;     /* 方案里写死的那几个进程，超过它=白拖 */
+    tpWkV.textContent=wk+' 个 · ≈'+(wk*3)+'GB';
+    tpWkV.className='tp-val'+(wk>pw?' tp-warn':'');
     tpCkV.textContent=String(ck);
     tpHrV.textContent=hr+'h → '+tpDeadline(hr);
     var name=tpPlan.value;
@@ -1159,6 +1162,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var note=diff?('# 存点间隔已改成 '+ck+'：点「开始训练」会用临时方案；手跑这条命令仍按方案里的 '
                     +p.light_checkpoint_every+'\n'):'';
     if(mb!==4) note+='# 一次塞 '+mb+' 条只在点「开始训练」时生效（写进临时方案）；手跑这条命令仍按方案默认\n';
+    if(wk>pw) note+='# 加载进程 '+wk+' 个≈吃 '+(wk*3)+'GB 内存；方案上限是 '+pw+'，超出的不生效、实际仍按 '+pw+' 个跑\n';
     var txt=note+'export BEATFCN_MAX_LOADER_WORKERS='+wk+'\n'
       +"tmux new -s train -d 'cd "+tpRepo+" && python -m scripts.evolve_finetune --plan plans/evolve/"
       +(name||'<方案名>')+" --updates "+upd+" --deadline-unix "+dl+flags
