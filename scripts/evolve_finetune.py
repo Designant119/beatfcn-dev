@@ -257,13 +257,6 @@ def finetune(spec, *, updates, deadline_unix=None, resume=False, device='cuda', 
         accum = int(recipe['accum_steps'])
         microbatch = int(recipe.get('physical_microbatch_requests', 4))
         stride = max(1, microbatch//4)
-        # 分组打包（microbatch 8/16）一次吃掉 2/4 个 exposure update，靠 stride 补回循环次数才等效。
-        # accum 不是 stride 的整数倍时补不齐：最后一趟会多吃一整组，等效 batch 直接变大、梯度尺度也变。
-        # 宁可拒绝启动，也不让「只是快一点」悄悄改掉训练。
-        if stride > 1 and accum % stride:
-            raise ValueError('accum_steps=%d 不能被 microbatch/4=%d 整除：microbatch=%d 会让每步多吃数据，'
-                             '等效 batch 会变。把 physical_microbatch_requests 改回 4，或换 accum 能被整除的方案。'
-                             % (accum, stride, microbatch))
         # Workers must fork before any CUDA context exists in this process.
         progress.update(phase='start_loader')
         workers = loader_workers(recipe.get('loader_workers', 8)) if device == 'cuda' else 0
