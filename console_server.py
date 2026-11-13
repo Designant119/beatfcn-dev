@@ -500,7 +500,7 @@ def _repoint(obj, root):
     return obj
 
 
-def _plan_copy_with_checkpoint(plan_name, every=None, microbatch=None):
+def _plan_copy_with_checkpoint(plan_name, every=None):
     """把方案复制到临时目录，改 store 间隔、必要时把 /data 换成 DATA_ROOT，返回副本绝对路径。
     原方案文件一个字节都不动；副本放系统临时目录，不进仓库。没改动就返回原路径。"""
     src = os.path.join(REPO, 'plans', 'evolve', plan_name)
@@ -512,9 +512,6 @@ def _plan_copy_with_checkpoint(plan_name, every=None, microbatch=None):
     if isinstance(every, int):
         cfg['light_checkpoint_every'] = every
         changed = True
-    if isinstance(microbatch, int):
-        cfg['physical_microbatch_requests'] = microbatch
-        changed = True
     root = DATA_ROOT.rstrip('/') or '/data'
     if root != '/data':
         cfg = _repoint(cfg, root)
@@ -524,8 +521,6 @@ def _plan_copy_with_checkpoint(plan_name, every=None, microbatch=None):
     d = os.path.join(tempfile.gettempdir(), 'beatfcn-run-plans')
     os.makedirs(d, exist_ok=True)
     tag = '' if root == '/data' else '-%s' % hashlib.md5(root.encode()).hexdigest()[:6]
-    if isinstance(microbatch, int):
-        tag += '-mb%d' % microbatch
     dst = os.path.join(d, plan_name.replace('.json', tag + '.json'))
     tmp = dst + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
@@ -603,27 +598,18 @@ def _train_start(body):
     if 'checkpoint_every' in body and ck_every is None:
         return bad('checkpoint_every 要是 50–%d 的整数步数（这个方案最多 %d 步；收到 %r）'
                    % (ck_hi, up_hi, body.get('checkpoint_every'),))
-    # 一次前向塞几条（显存）：1/2/4 是单条流，8/16 走分组打包，等效 batch 不变。
-    # 只认这几个值，训练脚本和 checkpoint 校验也是这一套。默认 4 = 不写进方案。
-    micro = body.get('microbatch', 4)
-    if isinstance(micro, bool) or not isinstance(micro, int) or micro not in (1, 2, 4, 8, 16):
-        return bad('microbatch 只能是 1 / 2 / 4 / 8 / 16（收到 %r）' % (micro,))
     plan_path = os.path.join(REPO, 'plans', 'evolve', plan)
     ck_note = ''
     root = (DATA_ROOT or '/data').rstrip('/') or '/data'
     every_changed = isinstance(ck_every, int) and ck_every != base_every
-    mb_changed = micro != 4
-    if every_changed or mb_changed or root != '/data':
+    if every_changed or root != '/data':
         try:
-            plan_path = _plan_copy_with_checkpoint(
-                plan, ck_every if every_changed else None, micro if mb_changed else None)
+            plan_path = _plan_copy_with_checkpoint(plan, ck_every if every_changed else None)
         except Exception as e:
             return bad('生成临时方案失败：' + str(e))
         bits = []
         if every_changed:
             bits.append('存点间隔改成每 %d 步' % ck_every)
-        if mb_changed:
-            bits.append('一次性塞 %d 条' % micro)
         if root != '/data':
             bits.append('数据目录指到 %s' % root)
         ck_note = '（%s：已生成临时方案 %s，原方案没动）' % ('；'.join(bits), plan_path)
