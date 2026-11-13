@@ -1134,7 +1134,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpCk.value=String(ckHi); tpCkR.value=String(ckHi);
     }
   }
+  function tpShowVals(){               /* 纯读数：有没有方案都要立刻跟上，否则拖了像死机 */
+    var wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
+    var p=tpPlanObj(), pw=(p&&p.loader_workers!=null)?p.loader_workers:8;
+    tpUpdV.textContent=String(tpUpdVal());
+    tpWkV.textContent=wk+' 个 · ≈'+(wk*3)+'GB';
+    tpWkV.className='tp-val'+(wk>pw?' tp-warn':'');
+    tpCkV.textContent=String(ck);
+    tpHrV.textContent=hr+'h → '+tpDeadline(hr);
+  }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
+    tpShowVals();
     if(!tpPlan.value){                 /* 没方案就别装成能跑：一条占位命令 + 亮着的按钮最容易骗人 */
       if(!tpBusy){
         tpCmd.innerHTML=hlCmd('# 现在没有可跑的方案\n# 仓库里 plans/evolve 下没找到 *.json'
@@ -1148,12 +1158,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(!tpBusy){ tpStart.disabled=false; tpStart.textContent='开始训练'; }
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
     var p=tpPlanObj(), diff=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck);
-    tpUpdV.textContent=String(upd);
     var pw=(p&&p.loader_workers!=null)?p.loader_workers:8;     /* 方案里写死的那几个进程，超过它=白拖 */
-    tpWkV.textContent=wk+' 个 · ≈'+(wk*3)+'GB';
-    tpWkV.className='tp-val'+(wk>pw?' tp-warn':'');
-    tpCkV.textContent=String(ck);
-    tpHrV.textContent=hr+'h → '+tpDeadline(hr);
     var name=tpPlan.value;
     var flags=(tpResume.checked?' --resume':'')+(tpSaveOpt.checked?' --save-optimizer':'')
              +(tpNoComp.checked?' --no-compile':'');
