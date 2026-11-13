@@ -461,6 +461,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
 
       <div class="tp-row">
+        <span class="tp-lab">一次塞几条<small><b>吃显存的就是这一项</b>。4 是默认；显存富余就改 8 或 16，一次前向算得更多、跑得更快；报显存不足就改回 4。<b>只影响速度和显存，不改每步看到的总数据量</b></small></span>
+        <span class="tp-ctl"><select id="tpMb"><option value="4">4（默认）</option><option value="8">8（吃满一点）</option><option value="16">16（最快，显存得够）</option></select></span>
+        <span class="tp-val" id="tpMbV">4 条/次</span>
+      </div>
+
+      <div class="tp-row">
         <span class="tp-lab">多久存一次快照<small>练到第 N 步存一份。调成和方案不一样时，会用一份临时方案（原文件不动）</small></span>
         <span class="tp-ctl"><input type="number" id="tpCk" min="50" max="2400" step="50" value="300" inputmode="numeric"><input type="range" id="tpCkR" min="50" max="2400" step="50" value="300"></span>
         <span class="tp-val" id="tpCkV">300</span>
@@ -1045,6 +1051,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var tpWk=document.getElementById('tpWk'), tpWkV=document.getElementById('tpWkV');
   var tpCk=document.getElementById('tpCk'), tpCkR=document.getElementById('tpCkR'), tpCkV=document.getElementById('tpCkV');
   var tpHr=document.getElementById('tpHr'), tpHrV=document.getElementById('tpHrV');
+  var tpMb=document.getElementById('tpMb'), tpMbV=document.getElementById('tpMbV');
   var tpResume=document.getElementById('tpResume'), tpSaveOpt=document.getElementById('tpSaveOpt'),
       tpNoComp=document.getElementById('tpNoComp'), tpDev=document.getElementById('tpDev');
   var tpCmd=document.getElementById('tpCmd'), tpStart=document.getElementById('tpStart'),
@@ -1148,8 +1155,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var flags=(tpResume.checked?' --resume':'')+(tpSaveOpt.checked?' --save-optimizer':'')
              +(tpNoComp.checked?' --no-compile':'');
     var dl=Math.round(Date.now()/1000+hr*3600);
+    var mb=parseInt(tpMb.value,10)||4;
     var note=diff?('# 存点间隔已改成 '+ck+'：点「开始训练」会用临时方案；手跑这条命令仍按方案里的 '
                     +p.light_checkpoint_every+'\n'):'';
+    if(mb!==4) note+='# 一次塞 '+mb+' 条只在点「开始训练」时生效（写进临时方案）；手跑这条命令仍按方案默认\n';
     var txt=note+'export BEATFCN_MAX_LOADER_WORKERS='+wk+'\n'
       +"tmux new -s train -d 'cd "+tpRepo+" && python -m scripts.evolve_finetune --plan plans/evolve/"
       +(name||'<方案名>')+" --updates "+upd+" --deadline-unix "+dl+flags
@@ -1165,6 +1174,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   tpCkR.addEventListener('input',function(){ tpCk.value=tpCkR.value; tpPaint(); });
   tpHr.addEventListener('input',tpPaint);
   tpHr.addEventListener('change',function(){ tpHr.value=String(tpHrVal()); tpPaint(); });
+  tpMb.addEventListener('change',function(){ tpMbV.textContent=tpMb.value+' 条/次'; tpPaint(); });
   [tpResume,tpSaveOpt,tpNoComp,tpDev].forEach(function(el){ el.addEventListener('change',tpPaint); });
   tpPlan.addEventListener('change',function(){ tpPlanInfoPaint(); tpPaint(); });
   tpDetailBtn.addEventListener('click',function(){
@@ -1202,6 +1212,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var payload={id:'train-start',plan:tpPlan.value,updates:tpUpdVal(),workers:parseInt(tpWk.value,10),
       checkpoint_every:ck,
       deadline_hours:tpHrVal(),resume:tpResume.checked,save_optimizer:tpSaveOpt.checked,
+      microbatch:parseInt(tpMb.value,10)||4,
       no_compile:tpNoComp.checked,device:tpDev.value};
     tpBusy=true; tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';
     var url=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
