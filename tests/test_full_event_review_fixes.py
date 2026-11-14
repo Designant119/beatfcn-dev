@@ -27,6 +27,11 @@ def replay(tokens, request, vocab):
     return Counter(state.events)
 
 
+def lane_blind(events):
+    """Replay always emits lane=-1; mania lane is the editor's job, not a codec decision."""
+    return Counter(replace(e, lane=-1) for e in events)
+
+
 def far_windows():
     duration = 1_100_000_000
     mania = EventRequest('mania_4k', 600_300_000, 608_300_000, duration,
@@ -50,8 +55,8 @@ class CodecFixTests(unittest.TestCase):
         for request, events in far_windows():
             legacy = encode_events(events, request)
             tokens = encode_events(events, request, BOTH)
-            self.assertEqual(replay(tokens, request, BOTH), Counter(events))
-            self.assertEqual(replay(legacy, request, EventVocabulary()), Counter(events))
+            self.assertEqual(replay(tokens, request, BOTH), lane_blind(events))
+            self.assertEqual(replay(legacy, request, EventVocabulary()), lane_blind(events))
             self.assertEqual(len(tokens), len(legacy))
             fields = [BOTH.decision(t) for t in tokens]
             base = request.start_us // 2_000_000
@@ -70,7 +75,7 @@ class CodecFixTests(unittest.TestCase):
     def test_relative_blocks_alone_and_tail_query_alone_round_trip(self):
         for vocab in (EventVocabulary(relative_blocks=True), EventVocabulary(tail_query=True)):
             for request, events in far_windows():
-                self.assertEqual(replay(encode_events(events, request, vocab), request, vocab), Counter(events))
+                self.assertEqual(replay(encode_events(events, request, vocab), request, vocab), lane_blind(events))
 
     def test_tail_queries_follow_emitted_tail_coordinates(self):
         request = EventRequest('mania_4k', 10_000_000, 18_000_000, 40_000_000)

@@ -231,33 +231,32 @@ class ExportTests(unittest.TestCase):
         bad = dict(mania, audio_sha256='0'*64)
         self.assertFalse(wb.resolve_audio(self.raw, bad)['ok'])
 
-    def test_missing_audio_still_writes_chart_with_reason(self):
-        from beatfcn.events.osu_mania import parse_osu
+    def test_missing_audio_skips_mania_and_writes_phira_chart(self):
         mania, phira = self.items[0]['song'], self.items[4]['song']
         missing = dict(ok=False, reason='nope')
         r = wb.export_song(self.root/'out'/'m', 'm', mania, self.drafts[mania['song_id']]['events'], missing,
                            title='t', artist='a', version='v')
-        self.assertTrue(r['disk_roundtrip']['exact'])
-        self.assertNotIn('osz', r)
         self.assertEqual(r['audio']['reason'], 'nope')
-        self.assertFalse(parse_osu(Path(r['chart']['path']).read_bytes(), 'm.osu').quarantined)
+        self.assertIn('skipped', r['chart'])
+        self.assertIn('no .osu', r['chart']['skipped'])
+        self.assertNotIn('path', r['chart'])
+        self.assertFalse(list((self.root/'out'/'m').glob('*.osu')))
         r = wb.export_song(self.root/'out'/'p', 'p', phira, self.drafts[phira['song_id']]['events'], missing,
                            title='t', artist='a', version='v')
         self.assertFalse(r['chart']['package'])
         self.assertTrue(Path(r['chart']['path']).is_file())
 
-    def test_export_writes_the_playback_clock(self):
-        from beatfcn.events.osu_mania import parse_osu
+    def test_playback_clock_is_receipted_for_skipped_mania(self):
         mania = self.items[0]['song']
         events = [dict(onset_us=5_000, end_us=5_000, type='tap', lane=0)] + self.drafts[mania['song_id']]['events'][1:]
         r = wb.export_song(self.root/'clk'/'m', 'm', mania, events, dict(ok=False, reason='x'), title='t', artist='a',
                            version='v', clock_shift_us=14_000, clock_source='receipt')
         self.assertEqual((r['clock']['shift_us'], r['clock']['dropped_before_zero']), (14_000, 1))
-        written = sorted(e.onset_us for e in parse_osu(Path(r['chart']['path']).read_bytes(), 'm.osu').events)
-        self.assertEqual(written, sorted(e['onset_us'] - 14_000 for e in events[1:]))
+        self.assertIn('skipped', r['chart'])
+        self.assertNotIn('path', r['chart'])
+        self.assertFalse(list((self.root/'clk'/'m').glob('*.osu')))
 
-    def test_pilot_kit_writes_drafts_on_the_playback_clock(self):
-        from beatfcn.events.osu_mania import parse_osu
+    def test_pilot_kit_marks_mania_drafts_as_skipped(self):
         a = SimpleNamespace(export_dir=self.root/'kshift', pilot_seed=7, pilot_segments=4, audio_dir=None,
                             clock_shifts=lambda chart_id: (14_000, 'receipt.json'))
         kit = wb.write_pilot_kit(a, self.drafts, self.panel, self.refs, self.raw, readout='consensus_8')
@@ -265,10 +264,12 @@ class ExportTests(unittest.TestCase):
         self.assertEqual((seg['clock_shift_us'], seg['clock_shift_source']), (14_000, 'receipt'))
         model = sorted(int(e['onset_us']) for e in self.drafts[seg['song_id']]['events']
                        if seg['start_us'] <= int(e['onset_us']) < seg['end_us'])
-        path = Path(seg['files']['draft']['chart']['path'])
-        written = sorted(e.onset_us for e in parse_osu(path.read_bytes(), 'd.osu').events)
-        self.assertEqual(written, [t - 14_000 for t in model])
-        self.assertIn(f"Bookmarks: {(seg['start_us'] - 14_000)//1000},{(seg['end_us'] - 14_000)//1000}", path.read_text())
+        self.assertEqual(seg['draft_notes'], len(model))
+        for condition in ('draft', 'scratch'):
+            self.assertIn('skipped', seg['files'][condition]['chart'])
+            self.assertIn('no .osu', seg['files'][condition]['chart']['skipped'])
+            self.assertFalse((a.export_dir/'pilot'/'segments'/seg['segment_id']/condition
+                              /f"{seg['segment_id']}-{condition}.osz").exists())
 
     def test_pilot_kit_is_counterbalanced_and_deterministic(self):
         def build(name):
@@ -300,19 +301,25 @@ class ExportTests(unittest.TestCase):
                 self.assertEqual(conds, ['draft', 'scratch'])
             seq = [r['condition'] for r in analysed if r['participant_order'] == order]
             self.assertEqual(seq[1], seq[2])  # ABBA over pairs
-            self.assertTrue(all((self.root/'k1/pilot'/r['file']).is_file() for r in rows if r['participant_order'] == order))
+            for r in rows:
+                if r['participant_order'] != order:
+                    continue
+                path = self.root/'k1/pilot'/r['file']
+                if r['file'].startswith('MISSING'):
+                    self.assertEqual(r['mode'], 'mania_4k')  # mania is intentionally not exported
+                else:
+                    self.assertTrue(path.is_file())
         codes = [r['blind_code'] for r in analysed]
         self.assertEqual(len(set(codes)), len(codes))
-        # The scratch template is empty, the draft holds only notes inside the window, timing identical.
-        from beatfcn.events.osu_mania import parse_osu
-        seg = next(s for s in paired if s['mode'] == 'mania_4k')
-        d = parse_osu(Path(seg['files']['draft']['chart']['path']).read_bytes(), 'd.osu')
-        e = Path(seg['files']['scratch']['chart']['path']).read_text()
-        self.assertTrue(d.events and all(seg['start_us'] <= x.onset_us < seg['end_us'] for x in d.events))
-        self.assertIn(f"Bookmarks: {seg['start_us']//1000},{seg['end_us']//1000}", e)
-        self.assertEqual(e.split('[TimingPoints]')[1].split('[HitObjects]')[0],
-                         Path(seg['files']['draft']['chart']['path']).read_text().split('[TimingPoints]')[1].split('[HitObjects]')[0])
-        self.assertEqual(e.split('[HitObjects]')[1].strip(), '')
+        # Mania is intentionally skipped; Phira keeps an editor-openable package.
+        for seg in paired:
+            for condition in ('draft', 'scratch'):
+                chart = seg['files'][condition]['chart']
+                if seg['mode'] == 'mania_4k':
+                    self.assertIn('skipped', chart)
+                    self.assertNotIn('path', chart)
+                else:
+                    self.assertTrue(Path(chart['path']).is_file())
 
 
 if __name__ == '__main__':

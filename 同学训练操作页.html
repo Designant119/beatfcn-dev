@@ -1242,6 +1242,27 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpSnap.textContent='快照存哪、留几份——连上后端后显示。';
       return;
     }
+    if(p.kind==='tiny'){               /* tiny 的参数名和 evolve 不同，别套 evolve 的详情表 */
+      var tb=[];
+      if(p.steps!=null) tb.push(p.steps+' 步');
+      if(p.lr!=null) tb.push('学习率 '+tpFmtNum(p.lr));
+      if(p.out) tb.push('输出 '+p.out);
+      tpPlanInfo.textContent='tiny · '+(tb.join(' · ')||'（方案里没写关键参数）');
+      var trows=[
+        ['训练步数','steps',p.steps==null?null:p.steps+' 步'],
+        ['学习率','lr',p.lr==null?null:tpFmtNum(p.lr)],
+        ['输入 tape','tape',p.tape],
+        ['特征目录','features',p.features],
+        ['输出目录','out',p.out],
+        ['随机种子','seed',p.seed]
+      ];
+      tpKv.innerHTML=trows.map(function(r){
+        var v=(r[2]==null||r[2]==='')?'未写':String(r[2]);
+        return '<span class="k">'+r[0]+'</span><span class="v">'+esc(v)+'<em>'+r[1]+'</em></span>';
+      }).join('');
+      tpSnap.innerHTML='tiny 是链路自检，不是最终模型；输出在 <b>'+esc(p.out||'（方案没写）')+'</b>，不写 evolve 的 step-*.pt 快照。';
+      return;
+    }
     var bits=[];
     if(p.horizon_updates!=null) bits.push('最多 '+p.horizon_updates+' 步');
     if(p.learning_rate!=null) bits.push('学习率 '+tpFmtNum(p.learning_rate));
@@ -1286,6 +1307,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   function tpShowVals(){               /* 纯读数：有没有方案都要立刻跟上，否则拖了像死机 */
     var wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
     var p=tpPlanObj(), pw=(p&&p.loader_workers!=null)?p.loader_workers:8;
+    if(p&&p.kind==='tiny'){            /* tiny 只吃方案里的 steps/lr/out，这些控件不参与 */
+      tpUpdV.textContent='不生效（方案 '+(p.steps!=null?p.steps:100)+' 步）';
+      tpWkV.textContent='不生效（tiny 不用多进程）';
+      tpWkV.className='tp-val';
+      tpCkV.textContent='不生效';
+      tpHrV.textContent='不生效';
+      tpMbV.textContent='不生效';
+      return;
+    }
+    tpMbV.textContent=tpMb.value+' 条/次';
     tpUpdV.textContent=String(tpUpdVal());
     tpWkV.textContent=wk+' 个 · ≈'+(wk*3)+'GB';
     tpWkV.className='tp-val'+(wk>pw?' tp-warn':'');
@@ -1307,6 +1338,21 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(!tpBusy){ tpStart.disabled=false; tpStart.textContent='开始训练'; }
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
     var p=tpPlanObj(), diff=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck);
+    var isTiny=!!(p&&p.kind==='tiny');
+    [tpUpd,tpUpdR,tpWk,tpCk,tpCkR,tpHr,tpMb,tpDev,tpResume,tpSaveOpt,tpNoComp]
+      .forEach(function(el){ el.disabled=isTiny; });
+    if(isTiny){                        /* tiny 只认方案里的 tape/features/steps/lr/out */
+      var tsteps=(p.steps!=null)?p.steps:100;
+      var tlr=(p.lr!=null)?p.lr:0.001;
+      var txt='# tiny 方案：步数/学习率/输出目录来自方案本身；上面的参数控件对本方案不生效\n'
+        +"tmux new -s train -d 'cd "+tpRepo+" && python -m scripts.train_phira_tiny"
+        +" --tape "+(p.tape||'/tmp/t100')
+        +" --features "+(p.features||'/tmp/f100/features')
+        +" --steps "+tsteps+" --lr "+tlr+" --out "+(p.out||'/tmp/train-tiny')
+        +" 2>&1 | tee -a train.log'";
+      tpCmd.innerHTML=hlCmd(txt);
+      return;
+    }
     var pw=(p&&p.loader_workers!=null)?p.loader_workers:8;     /* 方案里写死的那几个进程，超过它=白拖 */
     var name=tpPlan.value;
     var flags=(tpResume.checked?' --resume':'')+(tpSaveOpt.checked?' --save-optimizer':'')

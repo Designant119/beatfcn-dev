@@ -28,7 +28,12 @@ class ControlLabelTests(unittest.TestCase):
         self.assertEqual(zero[hold, 2], 1.)
         self.assertEqual(unknown[hold, 2], 0.)
         self.assertEqual(unknown[hold, 3], 1.)
-        self.assertTrue((zero[chord] == 0).all())
+        # chord is applicable in phira but unspecified: the row keeps applicable=1
+        # and the request scope; only the band columns stay empty.
+        self.assertEqual(zero[chord, 2], 0.)
+        self.assertEqual(zero[chord, 3], 1.)
+        np.testing.assert_array_equal(zero[chord, :2], np.zeros(2, np.float32))
+        np.testing.assert_allclose(zero[chord, 4:], [0., 8/1200])
         self.assertAlmostEqual(float(zero[hold, 5]), 8/1200)
 
     def test_incoming_hold_and_out_of_scope_heads(self):

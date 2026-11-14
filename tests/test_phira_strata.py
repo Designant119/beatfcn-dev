@@ -18,10 +18,14 @@ class PhiraStrata(unittest.TestCase):
         self.assertEqual([phira_stratum(self.row(difficulty_label=f'{tag} Lv.13'))['key']
                           for tag in ['HD', 'IN', 'AT']], ['HD/13-15', 'IN/13-15', 'AT/13-15'])
 
-    def test_conflicts_and_unknowns_do_not_fill_a_stratum(self):
-        for changes in [dict(difficulty=1), dict(difficulty_label='IN', difficulty=0),
-                        dict(difficulty_label='SP Lv.13')]:
-            self.assertIsNone(phira_stratum(self.row(**changes))['key'])
+    def test_conflicts_and_unknowns_fall_back_to_tag_strata(self):
+        # Policy: every row can enter sampling; a missing/conflicting band falls back to tag/all.
+        cases = [(dict(difficulty=1), 'IN/all'),
+                 (dict(difficulty_label='IN', difficulty=0), 'IN/all'),
+                 (dict(difficulty_label='SP Lv.13'), 'SP/13-15'),
+                 (dict(difficulty_label='', difficulty=0), '?/all')]
+        for changes, key in cases:
+            self.assertEqual(phira_stratum(self.row(**changes))['key'], key)
 
     def test_explicitly_unreviewed_and_boolean_scores_do_not_pass(self):
         self.assertFalse(selected_for_training(self.row(reviewed=False)))

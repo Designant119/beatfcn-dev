@@ -61,14 +61,14 @@ python3 scripts/download_mert.py --out /data/weights/mert --mirror https://hf-mi
 ## 四、准备谱面数据
 
 ```bash
-# 全量下载（9760 包约 60 GB）；只想要高难可以加 --levels IN AT
-python3 scripts/phira_local_download.py --out /data/phira_charts
+# 全量下载（9760 包约 60 GB）；只想要高难可以加 --levels IN,AT
+python3 scripts/phira_local_download.py --dest /data/phira_charts
 
 # 或者只下 IN/AT（约 49 GB，省 11.5 GB）
-python3 scripts/phira_local_download.py --out /data/phira_charts --levels IN AT
+python3 scripts/phira_local_download.py --dest /data/phira_charts --levels IN,AT
 
-# 先看看有多少、多大，不真下
-python3 scripts/phira_local_download.py --out /data/phira_charts --list-only
+# 先看看有多少、多大，不真下（清单 selection.json 仍会写到 --dest 目录）
+python3 scripts/phira_local_download.py --dest /data/phira_charts --list-only
 ```
 
 ## 五、五步流水线

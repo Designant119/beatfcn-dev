@@ -404,7 +404,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--meta", default="phira_charts_meta.json",
                     help="谱面元数据；支持 .json 数组 / .jsonl 一行一条，默认同目录 phira_charts_meta.json")
-    ap.add_argument("--dest", required=True, help="下载到哪个目录")
+    ap.add_argument("--dest", "--out", dest="dest", required=True,
+                    help="下载到哪个目录（--out 是旧文档的兼容别名）")
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--min-rating", type=float, default=0.0)
     ap.add_argument("--min-rc", type=int, default=0)

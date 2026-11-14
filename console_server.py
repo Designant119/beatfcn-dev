@@ -34,6 +34,7 @@
     * 只暴露只读探测 + 白名单动作，绝不提供删除类操作
     * 子进程全部带超时；torch 检测走子进程，本进程永不 import torch
 """
+import errno
 import hashlib
 import json
 import os
@@ -1637,7 +1638,16 @@ def main():
         i = args.index('--token')
         if i + 1 < len(args):
             TOKEN = args[i + 1]
-    srv = ThreadingHTTPServer(('0.0.0.0', port), Handler)
+    try:
+        srv = ThreadingHTTPServer(('0.0.0.0', port), Handler)
+    except OSError as exc:
+        in_use = exc.errno in {errno.EADDRINUSE, getattr(errno, 'WSAEADDRINUSE', -1)} \
+            or getattr(exc, 'winerror', None) == 10048
+        if in_use:
+            print(f'[console] 端口 {port} 已被占用，控制台没有启动。')
+            print(f'[console] 先关掉旧的控制台；或换个端口：python3 console_server.py {port + 1}')
+            sys.exit(1)
+        raise
     win, ips, is_wsl = _lan_ips()
     print(f'[console] 后端已启动: http://localhost:{port}')
     print(f'[console] 访问码: ' + (TOKEN or '未设置（仅限局域网/本机用）'))
