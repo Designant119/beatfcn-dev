@@ -1760,6 +1760,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(saved && typeof saved.x==='number') place(saved.x,saved.y,false);
   }catch(e){}
   function point(e){ return e.touches ? e.touches[0] : e; }
+  function toggle(){ panel.hidden=!panel.hidden; if(!panel.hidden) input.focus(); }
   function begin(e){
     var p=point(e), r=dock.getBoundingClientRect();
     dragging=true; moved=false; sx=p.clientX; sy=p.clientY;
@@ -1770,26 +1771,38 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   function proceed(e){
     if(!dragging) return;
     var p=point(e);
-    if(!moved && Math.abs(p.clientX-sx)+Math.abs(p.clientY-sy) > 4) moved=true;
+    // 手指点一下会有 1~5px 抖动，阈值给到 12px，不然容易把点击判成拖动
+    if(!moved && Math.hypot(p.clientX-sx, p.clientY-sy) > 12) moved=true;
     if(moved) layout(p.clientX-ox, p.clientY-oy);
   }
   function finish(){
     if(!dragging) return;
     dragging=false;
-    if(moved){ place(parseFloat(dock.style.left)||0, parseFloat(dock.style.top)||0, true); }
+    if(moved) place(parseFloat(dock.style.left)||0, parseFloat(dock.style.top)||0, true);
   }
-  fab.addEventListener('mousedown',function(e){ e.preventDefault(); begin(e); });
-  fab.addEventListener('touchstart',function(e){ begin(e); },{passive:true});
+  var touchMode=false;
+  // 鼠标
+  fab.addEventListener('mousedown',function(e){ e.preventDefault(); touchMode=false; begin(e); });
   window.addEventListener('mousemove',proceed);
-  window.addEventListener('touchmove',proceed,{passive:true});
   window.addEventListener('mouseup',finish);
-  window.addEventListener('touchend',finish);
-  window.addEventListener('touchcancel',finish);
   fab.addEventListener('click',function(e){
-    if(moved){ moved=false; e.preventDefault(); return; }  // 刚拖完，这次 click 不当事
+    if(touchMode) return;          // 触摸已经自己处理过
     e.preventDefault();
-    panel.hidden=!panel.hidden; if(!panel.hidden) input.focus();
+    if(moved){ moved=false; return; }   // 刚拖完，这次 click 不算
+    toggle();
   });
+  // 触摸：不等 click，touchend 直接判
+  fab.addEventListener('touchstart',function(e){ touchMode=true; begin(e); },{passive:true});
+  window.addEventListener('touchmove',proceed,{passive:true});
+  fab.addEventListener('touchend',function(e){
+    if(!dragging) return;
+    dragging=false;
+    if(moved){ place(parseFloat(dock.style.left)||0, parseFloat(dock.style.top)||0, true); }
+    else { toggle(); }
+    touchMode=false;
+    e.preventDefault();
+  },{passive:false});
+  window.addEventListener('touchcancel',function(){ dragging=false; });
 })();
 </script>
 </body>
