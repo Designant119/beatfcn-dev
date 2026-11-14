@@ -84,6 +84,20 @@ def main():
     ap.add_argument('--device', default='cpu')
     args = ap.parse_args()
 
+    charts = sorted(Path(args.tape).glob('*-chart.json'))
+    if not charts:
+        raise SystemExit(
+            f'[错误] tape 目录里找不到 *-chart.json：{args.tape}\n'
+            '先跑建库 / tape / full_tape 步骤把谱面清单生成出来，或检查方案里的 tape 路径。')
+    feat_dir = Path(args.features)
+    if not feat_dir.is_dir() or not any(feat_dir.iterdir()):
+        raise SystemExit(f'[错误] 特征目录不存在或为空：{args.features}（先跑提特征步骤）')
+    out_path = Path(args.out)
+    try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise SystemExit(f'[错误] 输出目录建不了：{out_path.parent}（{exc}）')
+
     cfg = FullEventConfig(d=128, heads=4, kv_heads=2, ffn=256, encoder_layers=1,
                           decoder_layers=2, taps=2, bands=1, tap_dim=1024,
                           mel_bins=0, intensity_dim=0)
@@ -91,19 +105,11 @@ def main():
     print(f'参数 {sum(p.numel() for p in model.parameters())/1e6:.2f}M')
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    charts = sorted(Path(args.tape).glob('*-chart.json'))
-    if not charts:
-        raise SystemExit(
-            f'[错误] tape 目录里找不到 *-chart.json：{args.tape}\n'
-            '先跑建库 / tape / full_tape 步骤把谱面清单生成出来，或检查方案里的 tape 路径。')
-    feat_dir = Path(args.features)
-    if not feat_dir.exists() or not any(feat_dir.iterdir()):
-        raise SystemExit(f'[错误] 特征目录不存在或为空：{args.features}（先跑提特征步骤）')
     used = 0
     for step in range(1, args.steps + 1):
         chart = json.loads(charts[step % len(charts)].read_text(encoding='utf-8'))
         tokens = np.load(chart['token_path'], allow_pickle=False)
-        cdir = Path(args.features) / chart['audio_sha256']
+        cdir = feat_dir / chart['audio_sha256']
         row = chart['requests'][min(2, len(chart['requests']) - 1)]
         kw = dict(row['request'])
         kw['known_carry'] = tuple(RhythmEvent(**e) for e in (kw.get('known_carry') or ()))
@@ -124,7 +130,7 @@ def main():
         print(json.dumps(dict(step=step, loss=round(float(loss), 4),
                               tokens=int(seqs['targets'].numel()), chart=chart['chart_id'])))
 
-    torch.save({'config': vars(cfg), 'model': model.state_dict()}, args.out)
+    torch.save({'config': vars(cfg), 'model': model.state_dict()}, str(out_path))
     print(f'ckpt -> {args.out}（训练 {used} 步）')
     return 0
 
