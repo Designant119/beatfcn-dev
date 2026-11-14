@@ -1750,9 +1750,19 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 #aidock{position:fixed;right:18px;bottom:18px;z-index:9999;font-family:inherit;touch-action:none}
 #aifab{width:52px;height:52px;border-radius:50%;border:1px solid #2fe6a0;background:#0b1412;color:#2fe6a0;font-weight:700;letter-spacing:1px;cursor:grab;box-shadow:0 0 18px rgba(47,230,160,.25);user-select:none}
 #aifab:active{cursor:grabbing}
-#aipanel{position:absolute;width:min(360px,86vw);max-height:70vh;display:flex;flex-direction:column;background:#0b1412;border:1px solid #1f3b34;border-radius:12px;overflow:hidden;box-shadow:0 10px 32px rgba(0,0,0,.55);right:0;bottom:64px}
+#aipanel{position:absolute;width:min(360px,86vw);max-width:92vw;max-height:86vh;display:flex;flex-direction:column;background:#0b1412;border:1px solid #1f3b34;border-radius:12px;overflow:hidden;box-shadow:0 10px 32px rgba(0,0,0,.55);right:0;bottom:64px}
 #aipanel[hidden]{display:none}
-#aihead{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #1f3b34;color:#2fe6a0;font-size:13px}
+.aigrip{position:absolute;width:16px;height:16px;touch-action:none;z-index:3}
+.aigrip i{position:absolute;width:10px;height:10px;border:0 solid #2fe6a0;opacity:.7;transition:opacity .15s}
+.aigrip:hover i{opacity:1}
+.aigrip[data-c=tl]{left:0;top:0;cursor:nwse-resize}
+.aigrip[data-c=tl] i{left:3px;top:3px;border-left-width:1px;border-top-width:1px}
+.aigrip[data-c=tr]{right:0;top:0;cursor:nesw-resize}
+.aigrip[data-c=tr] i{right:3px;top:3px;border-right-width:1px;border-top-width:1px}
+.aigrip[data-c=bl]{left:0;bottom:0;cursor:nesw-resize}
+.aigrip[data-c=bl] i{left:3px;bottom:3px;border-left-width:1px;border-bottom-width:1px}
+.aigrip[data-c=br]{right:0;bottom:0;cursor:nwse-resize}
+.aigrip[data-c=br] i{right:3px;bottom:3px;border-right-width:1px;border-bottom-width:1px}
 #aiclose{background:none;border:0;color:#7ea;font-size:18px;cursor:pointer;line-height:1}
 #ailog{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .aimsg{max-width:88%;padding:8px 10px;border-radius:9px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
@@ -1800,6 +1810,56 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   close.addEventListener('click',function(e){ e.stopPropagation(); panel.hidden=true; });
   btn.addEventListener('click',ask);
   input.addEventListener('keydown',function(e){ if(e.key==='Enter') ask(); });
+
+  // ---- 尺寸：四个角都能拖，任意放大缩小，size 记进 localStorage ----
+  var SIZEKEY='phira-ai-size', rs=null;
+  function applySize(w,h,remember){
+    var maxW=Math.max(260,Math.min(window.innerWidth*0.92,880));
+    var maxH=Math.max(190,Math.min(window.innerHeight*0.86,780));
+    w=Math.max(260,Math.min(maxW,w)); h=Math.max(190,Math.min(maxH,h));
+    panel.style.width=w+'px'; panel.style.height=h+'px';
+    if(remember){ try{ localStorage.setItem(SIZEKEY, JSON.stringify({w:w,h:h})); }catch(e){} }
+  }
+  try{
+    var ssz=JSON.parse(localStorage.getItem(SIZEKEY)||'null');
+    if(ssz && typeof ssz.w==='number') applySize(ssz.w,ssz.h,false);
+  }catch(e){}
+  ['tl','tr','bl','br'].forEach(function(c){
+    var g=document.createElement('div');
+    g.className='aigrip'; g.setAttribute('data-c',c);
+    g.appendChild(document.createElement('i'));
+    g.addEventListener('pointerdown',function(e){
+      var r=panel.getBoundingClientRect(), d=dock.getBoundingClientRect();
+      // 拖角前先把盒子钉成 left/top 绝对定位，四个方向才好算
+      panel.style.left=(r.left-d.left)+'px'; panel.style.top=(r.top-d.top)+'px';
+      panel.style.right='auto'; panel.style.bottom='auto';
+      rs={x:e.clientX,y:e.clientY,w:r.width,h:r.height,dl:r.left-d.left,dt:r.top-d.top,c:c};
+      try{ g.setPointerCapture(e.pointerId); }catch(err){}
+      e.preventDefault(); e.stopPropagation();
+    });
+    panel.appendChild(g);
+  });
+  window.addEventListener('pointermove',function(e){
+    if(!rs) return;
+    var dx=e.clientX-rs.x, dy=e.clientY-rs.y;
+    var w,h,l=rs.dl,t=rs.dt;
+    var right=rs.c.indexOf('r')>=0, bottom=rs.c.indexOf('b')>=0;
+    if(right){ w=rs.w+dx; } else { w=rs.w-dx; l=rs.dl+dx; }
+    if(bottom){ h=rs.h+dy; } else { h=rs.h-dy; t=rs.dt+dy; }
+    // 最小尺寸：拉过头时把对边让回来，别让面板反向移动
+    if(w<260){ if(!right) l-=(260-w); w=260; }
+    if(h<190){ if(!bottom) t-=(190-h); h=190; }
+    var d=dock.getBoundingClientRect();
+    var maxW=window.innerWidth-8-d.left-l, maxH=window.innerHeight-8-d.top-t;
+    w=Math.min(w,maxW); h=Math.min(h,maxH);
+    if(l+d.left<8){ l=8-d.left; } if(t+d.top<8){ t=8-d.top; }
+    applySize(w,h,false);
+    panel.style.left=l+'px'; panel.style.top=t+'px';
+  });
+  window.addEventListener('pointerup',function(){
+    if(!rs) return; rs=null; applySize(panel.offsetWidth,panel.offsetHeight,true);
+  });
+  window.addEventListener('pointercancel',function(){ if(rs){ rs=null; applySize(panel.offsetWidth,panel.offsetHeight,true); } });
 
   // ---- 拖动定位：按住圆钮拖，松手记住；点一下（没拖动）才开合 ----
   // 开合不走 window mouseup，避免和 click 撞车；拖完把紧跟的那次 click 吞掉。
