@@ -64,6 +64,7 @@ def main():
     ap.add_argument('--zips', required=True, help='谱面 zip 目录')
     ap.add_argument('--output', required=True, help='摊平后的音频目录')
     ap.add_argument('--every', type=int, default=200)
+    ap.add_argument('--limit', type=int, default=0, help='只处理前 N 个（冒烟用）')
     args = ap.parse_args()
 
     zips = Path(args.zips)
@@ -74,7 +75,9 @@ def main():
     index = json.loads(index_path.read_text(encoding='utf-8')) if index_path.is_file() else {}
     known = {v['sha256'] for v in index.values() if isinstance(v, dict) and v.get('sha256')}
 
-    files = sorted(zips.glob('*.zip'))
+    files = sorted(zips.rglob('*.zip'))
+    if args.limit:
+        files = files[:args.limit]
     written = skipped = failed = 0
     for i, zp in enumerate(files, 1):
         try:

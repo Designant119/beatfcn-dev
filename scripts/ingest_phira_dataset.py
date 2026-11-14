@@ -72,7 +72,7 @@ def main():
     canon_dir.mkdir(parents=True, exist_ok=True)
     meta = load_meta(args.meta)
 
-    files = sorted(p for p in zips_dir.glob('*.zip'))
+    files = sorted(p for p in zips_dir.rglob('*.zip'))
     if args.limit:
         files = files[:args.limit]
 
