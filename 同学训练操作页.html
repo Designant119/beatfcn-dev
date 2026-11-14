@@ -589,7 +589,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
     <div class="btnrow">
       <button type="button" class="btn" id="tpStart">开始训练</button>
-      <button type="button" class="btn danger" id="tpStop">■ 停止训练</button>
+      <button type="button" class="btn danger" id="tpStop" style="display:none">■ 停止训练</button>
       <span class="tp-note" id="tpStartNote"></span>
     </div>
 
@@ -1120,9 +1120,20 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(bits.length){ trProg.textContent=bits.join(' · '); trProg.style.display=''; }
     else { trProg.style.display='none'; trProg.textContent=''; }
   }
+  function tpRunState(phase){
+    /* 同一个按钮位：跑着显示「■ 停止训练」，闲着显示「开始训练」。
+       判据只看后端 progress.phase，不靠前端自己记，刷新也不会错。 */
+    var running = (phase==='train' || phase==='boot');
+    if(running===tpRunning) return;
+    tpRunning=running;
+    tpStart.style.display = running ? 'none' : '';
+    tpStop.style.display  = running ? '' : 'none';
+  }
   function trRender(j){
     if(!j||!j.ok){ trSrc.textContent=(j&&j.note)?j.note:'后端没回 /api/trainlog'; return; }
-    trProgShow(j.progress||{});
+    var pg=j.progress||{};
+    trProgShow(pg);
+    tpRunState(pg.phase);
     var lines=j.lines||[];
     if(!lines.length){
       trSrc.textContent='还没抓到训练输出：训练没起，或日志文件 / tmux train 会话都没有';
@@ -1193,7 +1204,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpStartNote=document.getElementById('tpStartNote');
   var tpDetailBtn=document.getElementById('tpDetailBtn'), tpKv=document.getElementById('tpKv'),
       tpSnap=document.getElementById('tpSnap');
-  var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false, tpKvOpen=false, tpBusy=false;
+  var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false, tpKvOpen=false, tpBusy=false, tpRunning=false;
 
   function tpClamp(el,lo,hi,fb){        /* 数字框读值：越界钳回范围；输入中清空了先按回退值生成命令 */
     var n=parseInt(el.value,10);
