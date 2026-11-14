@@ -76,7 +76,13 @@ def main():
         n = expected_samples(durations[sha])
         info = dict(decoded=len(wave), expected=n)
         if len(wave) < n:
-            return sha, path, None, dict(info, res='short_decode')
+            # 容器时长换算出的样本数与解码器实际输出常差 1 个样本（1/24000 秒），
+            # 这是取整差而不是音频缺内容，补一个零样本即可，不该整包作废。
+            if n - len(wave) <= 1:
+                info['padded'] = n - len(wave)
+                wave = np.pad(wave, (0, n - len(wave)))
+            else:
+                return sha, path, None, dict(info, res='short_decode')
         if len(wave) > n:
             info['truncated'] = len(wave) - n
             wave = wave[:n]
