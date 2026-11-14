@@ -434,6 +434,15 @@ def get_status():
     return {'stages': stages}
 
 
+_USER_SITE = None
+try:
+    import site as _site
+    _USER_SITE = _site.getusersitepackages()
+except Exception:
+    pass
+if not _USER_SITE:
+    _USER_SITE = os.path.expanduser('~/.local/lib/python3.12/site-packages')
+
 # ---------------- 05 训练参数 / 启动（train-plan + train-start） ----------------
 
 _PLAN_NAME_RE = re.compile(r'[A-Za-z0-9._-]+\.json')
@@ -467,10 +476,14 @@ def train_plans():
                     v = cfg.get(key)
                     if isinstance(v, int) and not isinstance(v, bool):
                         rec[key] = v
-                for key in ('out_dir', 'init'):
+                for key in ('out_dir', 'init', 'kind', 'tape', 'features', 'out'):
                     v = cfg.get(key)
                     if isinstance(v, str) and v:
-                        rec[key] = _repoint(v, root)
+                        rec[key] = _repoint(v, root) if key in ('out_dir', 'init', 'tape', 'features', 'out') else v
+                for key in ('steps', 'lr'):
+                    v = cfg.get(key)
+                    if isinstance(v, (int, float)) and not isinstance(v, bool):
+                        rec[key] = v
                 sched = cfg.get('schedule')
                 if isinstance(sched, dict):
                     h = sched.get('horizon_updates')
@@ -631,7 +644,18 @@ def _train_start(body):
 
     deadline_ts = int(time.time() + hours * 3600)
     q = shlex.quote
-    cmd = ('cd {repo} && BEATFCN_MAX_LOADER_WORKERS={workers} python -m scripts.evolve_finetune '
+    if known[plan].get('kind') == 'tiny':
+        t = known[plan]
+        cmd = ('cd {repo} && PYTHONPATH={site} {py} -m scripts.train_phira_tiny'
+               ' --tape {tape} --features {feat} --steps {steps} --lr {lr}'
+               ' --out {out}').format(
+            repo=q(REPO), tape=q(t.get('tape') or '/tmp/t100'),
+            feat=q(t.get('features') or '/tmp/f100/features'),
+            steps=int(t.get('steps') or 100), lr=float(t.get('lr') or 1e-3),
+            out=q(t.get('out') or '/tmp/train-tiny'), py=q(sys.executable),
+            site=q(_USER_SITE))
+    else:
+        cmd = ('cd {repo} && BEATFCN_MAX_LOADER_WORKERS={workers} {py} -m scripts.evolve_finetune '
            '--plan {plan} --updates {updates} --deadline-unix {deadline}'
            .format(repo=q(REPO), workers=workers,
                    plan=q(plan_path),
@@ -642,7 +666,7 @@ def _train_start(body):
         cmd += ' --save-optimizer'
     if flags['no_compile']:
         cmd += ' --no-compile'
-    cmd += ' --device {dev} 2>&1 | tee -a {log}'.format(dev=device, log=q(os.path.join(REPO, 'train.log')))
+    cmd += ' --device {dev} 2>&1 | tee -a {log}'.format(py=q(sys.executable), dev=device, log=q(os.path.join(REPO, 'train.log')))
 
     if dry_run:
         return 200, {'ok': True, 'command': cmd,
