@@ -742,6 +742,162 @@ def _train_stop(body):
                  'note': 'Ctrl-C 没让它退，直接把 tmux 会话 train 收了；自上次存点后的进度会丢'}
 
 
+# ---------------- 04 页：谱面下载 ----------------
+
+PHIRA_LEVELS = ('IN', 'AT', 'SP', 'HD', 'EZ')
+PHIRA_DL_SESSION = 'phira-dl'
+PHIRA_DL_LOG = os.path.join(HERE, 'phira_download.log')
+PHIRA_DL_SCRIPT = os.path.join(HERE, 'scripts', 'phira_local_download.py')
+PHIRA_DL_META = os.path.join(HERE, 'phira_charts_meta.json')
+
+
+def _phira_dl_alive():
+    """tmux 里那个下载会话还在不在。没装 tmux 就当不在。"""
+    try:
+        return subprocess.run(['tmux', 'has-session', '-t', PHIRA_DL_SESSION],
+                              capture_output=True, timeout=6).returncode == 0
+    except Exception:
+        return False
+
+
+def _phira_download_start(body):
+    """04 页「开始下载」。参数逐项白名单，命令一律后端拼，起在 tmux 会话 phira-dl 里。"""
+    def bad(note):
+        return 400, {'ok': False, 'command': '', 'note': note}
+
+    levels = body.get('levels')
+    if isinstance(levels, str):
+        levels = [x.strip().upper() for x in levels.split(',') if x.strip()]
+    if not isinstance(levels, list) or not levels:
+        return bad('难度至少选一个（IN / AT / SP / HD / EZ）')
+    levels = [str(x).strip().upper() for x in levels]
+    unknown = [x for x in levels if x not in PHIRA_LEVELS]
+    if unknown:
+        return bad('难度只接受 IN/AT/SP/HD/EZ，收到 %r' % (unknown,))
+
+    dest = body.get('dest')
+    if not isinstance(dest, str) or not dest.strip():
+        return bad('目标目录要填一个绝对路径，比如 /data/phira_charts 或 /mnt/e/phira_charts')
+    dest = dest.strip()
+    if not os.path.isabs(dest) or '..' in dest or dest.rstrip('/') == '':
+        return bad('目标目录要绝对路径，且不能带 ..（收到 %r）' % (dest,))
+    if os.path.dirname(dest.rstrip('/')) == dest.rstrip('/'):
+        return bad('目标目录不能是根目录：%r' % (dest,))
+
+    workers = body.get('workers')
+    if isinstance(workers, bool) or not isinstance(workers, (int, float)):
+        return bad('workers 要是 1–16 的整数（收到 %r）' % (workers,))
+    workers = int(workers)
+    if not 1 <= workers <= 16:
+        return bad('workers 要是 1–16 的整数（收到 %r）' % (workers,))
+
+    list_only = body.get('list_only', False)
+    if not isinstance(list_only, bool):
+        return bad('list_only 要是布尔（收到 %r）' % (list_only,))
+    hash_audio = body.get('hash_audio', True)
+    if not isinstance(hash_audio, bool):
+        return bad('hash_audio 要是布尔（收到 %r）' % (hash_audio,))
+
+    if not os.path.isfile(PHIRA_DL_SCRIPT):
+        return bad('仓库里没有 scripts/phira_local_download.py，先 git pull')
+    if not os.path.isfile(PHIRA_DL_META):
+        return bad('仓库里没有 phira_charts_meta.json，先 git pull')
+
+    cmd = ('cd {repo} && python3 scripts/phira_local_download.py --dest {dest} '
+           '--levels {lv} --workers {wk}').format(
+        repo=shlex.quote(HERE), dest=shlex.quote(dest),
+        lv=','.join(levels), wk=workers)
+    if list_only:
+        cmd += ' --list-only'
+    if not hash_audio:
+        cmd += ' --no-hash-audio'
+    cmd += ' 2>&1 | tee -a ' + shlex.quote(PHIRA_DL_LOG)
+
+    if list_only:
+        # 出清单只要读 7.8 MB 元数据再筛一遍，几秒钟的事，同步跑完直接回结果，不用进 tmux
+        try:
+            r = subprocess.run(['bash', '-lc', cmd], capture_output=True, text=True, timeout=180)
+        except Exception as e:
+            return 200, {'ok': False, 'command': cmd, 'note': '清单没跑起来：' + str(e)}
+        tail = ((r.stdout or '') + (r.stderr or ''))[-1500:].strip()
+        if r.returncode != 0:
+            return 200, {'ok': False, 'command': cmd, 'output': tail,
+                         'note': '清单生成失败：' + (tail.splitlines()[-1][:200] if tail else '退出码 %d' % r.returncode)}
+        return 200, {'ok': True, 'command': cmd, 'output': tail,
+                     'note': '清单已生成：%s/selection.json（没下载任何包）' % dest.rstrip('/')}
+
+    if _phira_dl_alive():
+        return 200, {'ok': False, 'command': cmd,
+                     'note': '已经有下载在跑（tmux 会话 phira-dl），先停掉再开新的'}
+    try:                                     # 每段任务之间打分隔线，前端只显示最后一段
+        with open(PHIRA_DL_LOG, 'a', encoding='utf-8') as f:
+            f.write('\n===== %s 新任务 levels=%s workers=%d =====\n'
+                    % (time.strftime('%m-%d %H:%M:%S'), ','.join(levels), workers))
+    except Exception:
+        pass
+    try:
+        started = subprocess.run(['tmux', 'new-session', '-d', '-s', PHIRA_DL_SESSION, cmd],
+                                 capture_output=True, text=True, timeout=10)
+    except FileNotFoundError:
+        return 200, {'ok': False, 'command': cmd,
+                     'note': '机器上没有 tmux：sudo apt install -y tmux 装上再点'}
+    except Exception as e:
+        return 200, {'ok': False, 'command': cmd, 'note': 'tmux new-session 没跑起来：' + str(e)}
+    if started.returncode != 0:
+        err = (started.stderr or started.stdout or '').strip()
+        return 200, {'ok': False, 'command': cmd,
+                     'note': 'tmux 启动失败：' + (err or '退出码 %d，无输出' % started.returncode)}
+    return 200, {'ok': True, 'command': cmd,
+                 'note': '已在 tmux 会话 phira-dl 里开跑；tmux attach -t phira-dl 看屏幕，'
+                         'tail -f phira_download.log 看日志。断了重跑会跳过下好的包'}
+
+
+def _phira_download_stop(body):
+    """停下载：先 Ctrl-C，5 秒不退就 kill-session。和停训练一样要 confirm:true。"""
+    if body.get('confirm') is not True:
+        return 400, {'ok': False, 'note': '停止下载要带 confirm:true（页面里是点两次才发）'}
+    if not _phira_dl_alive():
+        return 200, {'ok': False, 'note': '现在没有在跑的下载（tmux 会话 %s 不存在）' % PHIRA_DL_SESSION}
+    try:
+        subprocess.run(['tmux', 'send-keys', '-t', PHIRA_DL_SESSION, 'C-c'],
+                       capture_output=True, timeout=8)
+    except Exception as e:
+        return 200, {'ok': False, 'note': 'tmux send-keys 失败：' + str(e)}
+    t0 = time.time()
+    while time.time() - t0 < 5.0:
+        time.sleep(0.5)
+        if not _phira_dl_alive():
+            return 200, {'ok': True, 'how': 'sigint', 'note': '已发 Ctrl-C，下载自己退了；已下好的包下次会跳过'}
+    try:
+        subprocess.run(['tmux', 'kill-session', '-t', PHIRA_DL_SESSION],
+                       capture_output=True, timeout=8)
+    except Exception as e:
+        return 200, {'ok': False, 'note': 'Ctrl-C 之后它没退，kill-session 也失败：' + str(e)}
+    return 200, {'ok': True, 'how': 'kill', 'note': 'Ctrl-C 没让它退，直接把 tmux 会话收掉了'}
+
+
+def _phira_download_log(lines=30):
+    """下载日志尾部 + 是否在跑 + 已下多少。前端的下载面板就靠这个轮询。"""
+    running = _phira_dl_alive()
+    shown, age = [], None
+    if os.path.isfile(PHIRA_DL_LOG):
+        age = round(time.time() - os.path.getmtime(PHIRA_DL_LOG), 1)
+        try:
+            with open(PHIRA_DL_LOG, encoding='utf-8', errors='replace') as f:
+                alllines = f.readlines()
+            start = 0
+            for i in range(len(alllines) - 1, -1, -1):
+                if alllines[i].startswith('====='):
+                    start = i + 1
+                    break
+            tail = alllines[start:][-lines:]
+            shown = [(l.rstrip('\n')[:400] + '…') if len(l) > 400 else l.rstrip('\n') for l in tail]
+        except Exception:
+            shown = []
+    return {'ok': True, 'running': running, 'lines': shown, 'age_s': age,
+            'session': PHIRA_DL_SESSION, 'log': PHIRA_DL_LOG, 'ts': time.time()}
+
+
 # ---------------- 机器状态（05 页的资源小图） ----------------
 
 _CPU_LOCK = threading.Lock()
@@ -1159,9 +1315,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/ping':
             return self._send(200, {'ok': True, 'authed': self._authed(),
                                     'host': os.uname().nodename, 'ts': time.time()})
-        if path in ('/api/env', '/api/status', '/api/trainlog', '/api/train-plan', '/api/sys'):
+        if path in ('/api/env', '/api/status', '/api/trainlog', '/api/train-plan', '/api/sys',
+                    '/api/downloadlog'):
             if not self._authed():
                 return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码再回车'})
+            if path == '/api/downloadlog':
+                return self._send(200, _phira_download_log())
             if path == '/api/env':
                 return self._send(200, {'ok': True, 'items': get_env()})
             if path == '/api/train-plan':
@@ -1202,6 +1361,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(code, resp)
         if action == 'train-stop':
             code, resp = _train_stop(body)
+            return self._send(code, resp)
+        if action == 'download-start':
+            code, resp = _phira_download_start(body)
+            return self._send(code, resp)
+        if action == 'download-stop':
+            code, resp = _phira_download_stop(body)
             return self._send(code, resp)
         # 阶段动作：只允许 stages.json 里声明过的 start/stop，且命令逐字来自声明
         path_cfg = os.path.join(HERE, 'stages.json')

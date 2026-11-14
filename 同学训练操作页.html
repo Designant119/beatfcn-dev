@@ -440,6 +440,55 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   <section class="view" id="v-l4">
     <div class="vhead"><span class="sid">04</span><h2>数据</h2><span class="vtag">数文件</span></div>
     <p class="hint">一个训练方案跑起来只要两样东西：<b>起始权重</b>（.pt）和 <b>数据集</b>（exposure-*.json）。下面按 05 页那些方案里写的路径，挨个查这两样在不在。</p>
+
+    <!-- 谱面下载 -->
+    <div class="tpanel">
+      <div class="tp-h">PHIRA DATA / 下载谱面（这一步要联网，下完就不用再连了）</div>
+
+      <div class="tp-row">
+        <span class="tp-lab">下哪些难度<small>写谱只写高难，勾 <b>IN</b> 和 <b>AT</b> 就够。这两档约 7930 个包 / 49 GiB；全勾是 9760 个 / 60.6 GiB，多的那些低难度用不上</small></span>
+        <span class="tp-ctl" style="display:block">
+          <div class="tp-flags" style="margin-top:2px">
+            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="IN" checked><span>IN</span></label>
+            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="AT" checked><span>AT</span></label>
+            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="SP"><span>SP</span></label>
+            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="HD"><span>HD</span></label>
+            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="EZ"><span>EZ</span></label>
+          </div>
+        </span>
+        <span class="tp-val" id="dlLvVal">IN+AT · 约 49 GiB</span>
+      </div>
+
+      <div class="tp-row">
+        <span class="tp-lab">下到哪个目录<small>盘上要留够：IN+AT 约 49 GiB，全量 61 GiB。<b>别放在 /mnt/c 那种一层层翻译的路径</b>，越直接的目录越快</small></span>
+        <span class="tp-ctl"><input type="text" id="dlDest" value="/data/phira_charts" spellcheck="false" autocomplete="off"></span>
+      </div>
+
+      <div class="tp-row">
+        <span class="tp-lab">同时下几个<small>默认 4。<b>家宽 100M 以下就用 3-4</b>，调高了不会更快，只会多超时；千兆可以拖到 8-10</small></span>
+        <span class="tp-ctl"><input type="range" id="dlWk" min="1" max="16" step="1" value="4"></span>
+        <span class="tp-val" id="dlWkV">4 个</span>
+      </div>
+
+      <div class="tp-flags">
+        <label class="tp-flag"><input type="checkbox" id="dlHash" checked><span>顺便算音轨指纹<small>训练侧按音频去重要用；不勾的话下载快一点，但下游还得补一遍</small></span></label>
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button type="button" class="btn" id="dlStart">开始下载</button>
+      <button type="button" class="btn" id="dlListBtn">只出清单</button>
+      <button type="button" class="btn danger" id="dlStop">■ 停止下载</button>
+      <span class="tp-note" id="dlNote"></span>
+    </div>
+
+    <div class="cmd"><div class="h"><span>LINUX / 下载命令（随上面控件实时生成）</span><button type="button">COPY</button></div><pre id="dlCmd"></pre></div>
+
+    <div class="result on" id="dlLive" style="display:none">
+      <div class="rh"><span>下载进度 · 后端实测</span><span id="dlStat"></span></div>
+      <pre id="dlOut" style="max-height:240px;overflow:auto;margin:0;font-size:12px;line-height:1.5;white-space:pre-wrap"></pre>
+    </div>
+
     <div class="flag"><span class="k">你要做的</span>别删数据目录里的东西（默认是 <b>/data</b>，换位置就在 run_server.sh 的 DATA_ROOT 里指过去）。盘够不够不用自己算，下面有实测数字。别的不用管。</div>
     <div id="diskLive" style="display:none" class="result on"><div class="rh"><span>盘与数据 · 后端实测</span><span></span></div><div id="diskBody"></div></div>
     <p class="hint">上面每一行都是后端真的去看了那个文件，不是谁口头说“导好了”。数据集和权重全绿、最后一行 <b>可开跑的方案</b> 是满的，就可以进 05 开跑；有红的说明缺文件，红行里写了缺哪个。</p>
@@ -1445,6 +1494,87 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   envTimer=setInterval(function(){
     if(isLive&&document.visibilityState==='visible') pollEnv();
   },POLL_MS);
+})();
+</script>
+<script>
+/* ---------- 04 页：谱面下载 ---------- */
+(function(){
+  var LV={IN:[5660,34.18],AT:[2270,14.91],SP:[265,1.69],HD:[179,1.01],EZ:[78,0.41]};
+  var pcs=document.querySelectorAll('.dl-lv');
+  var dest=document.getElementById('dlDest'), wk=document.getElementById('dlWk');
+  var wkVal=document.getElementById('dlWkV'), lvVal=document.getElementById('dlLvVal');
+  var cmdPre=document.getElementById('dlCmd'), note=document.getElementById('dlNote');
+  var live=document.getElementById('dlLive'), out=document.getElementById('dlOut'), stat=document.getElementById('dlStat');
+  var API=(location.protocol.indexOf('http')===0)?'':('http://'+(location.hostname||'localhost')+':7777');
+  var TOKEN=''; try{ TOKEN=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
+  function tq(p){ return API+p+(TOKEN?((p.indexOf('?')<0?'?':'&')+'token='+encodeURIComponent(TOKEN)):''); }
+  function picked(){
+    var a=[]; Array.prototype.forEach.call(pcs,function(c){ if(c.checked) a.push(c.value); }); return a;
+  }
+  function paint(){
+    var a=picked(), n=0, g=0;
+    a.forEach(function(k){ var v=LV[k]; if(v){ n+=v[0]; g+=v[1]; } });
+    lvVal.textContent=(a.length?a.join('+'):'没选')+(a.length?' · '+(a.length===5?'约 60.6 GiB':'约 '+g.toFixed(1)+' GiB'):'');
+    wkVal.textContent=wk.value+' 个';
+    var cmd='cd <仓库目录> && python3 scripts/phira_local_download.py --dest '+dest.value
+          +' --levels '+(a.length?a.join(','):'IN,AT')+' --workers '+wk.value
+          +(document.getElementById('dlHash').checked?'':' --no-hash-audio');
+    cmdPre.textContent=cmd;
+  }
+  Array.prototype.forEach.call(pcs,function(c){ c.addEventListener('change',paint); });
+  dest.addEventListener('input',paint); wk.addEventListener('input',paint);
+  document.getElementById('dlHash').addEventListener('change',paint);
+
+  function send(body,cb){
+    fetch(tq('/api/action'),{method:'POST',headers:TOKEN?{'X-Token':TOKEN}:{},'Content-Type':'application/json',
+                            body:JSON.stringify(body)})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ cb(j||{}); })
+      .catch(function(){ cb({ok:false,note:'请求没出去：后端连不上'}); });
+  }
+
+  var pollTick=null;
+  function drawLog(j){
+    if(!j||!j.ok){ return; }
+    live.style.display='block';
+    stat.textContent=(j.running?'● 正在下载':'○ 没在跑')+(j.age_s!=null?(' · 日志 '+j.age_s+'s 前更新'):'');
+    if(j.lines&&j.lines.length){ out.textContent=j.lines.join('\n'); out.scrollTop=out.scrollHeight; }
+    else if(!j.lines||!j.lines.length){ out.textContent='还没有输出。点了「开始下载」后这里会滚起来。'; }
+  }
+  function poll(){
+    fetch(tq('/api/downloadlog')).then(function(r){ return r.json(); })
+      .then(function(j){ drawLog(j); if(j&&j.running){ if(!pollTick) pollTick=setInterval(poll,3000); } else { clearInterval(pollTick); pollTick=null; } })
+      .catch(function(){});
+  }
+  document.getElementById('dlStart').addEventListener('click',function(){
+    var a=picked();
+    if(!a.length){ note.textContent='至少勾一个难度'; return; }
+    note.textContent='启动中…';
+    send({id:'download-start',levels:a,dest:dest.value,workers:parseInt(wk.value,10)||4,
+          list_only:false,hash_audio:document.getElementById('dlHash').checked},function(j){
+      note.textContent=(j&&j.note)||'后端没回 note';
+      if(j&&j.ok){ live.style.display='block'; poll(); setTimeout(poll,1500); }
+    });
+  });
+  document.getElementById('dlListBtn').addEventListener('click',function(){
+    var a=picked();
+    if(!a.length){ note.textContent='至少勾一个难度'; return; }
+    note.textContent='生成清单中…';
+    send({id:'download-start',levels:a,dest:dest.value,workers:parseInt(wk.value,10)||4,
+          list_only:true,hash_audio:document.getElementById('dlHash').checked},function(j){
+      note.textContent=(j&&j.note)||'后端没回 note';
+      if(j&&j.ok){ live.style.display='block'; out.textContent=(j.output||j.command||''); }
+    });
+  });
+  document.getElementById('dlStop').addEventListener('click',function(){
+    if(!confirm('确定停掉下载？已下好的包不会丢，下次接着下。')) return;
+    send({id:'download-stop',confirm:true},function(j){ note.textContent=(j&&j.note)||''; poll(); });
+  });
+
+  /* 04 页一露脸就拉一次，别等用户点 */
+  var obs=new MutationObserver(function(){ var v=document.getElementById('v-l4'); if(v&&v.classList.contains('on')) poll(); });
+  obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
+  paint(); poll();
 })();
 </script>
 <script>
