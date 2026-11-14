@@ -32,7 +32,7 @@ def main():
             if doc['audio_sha256']!=sha:raise ValueError('audio identity differs')
             chart=chart_from_canon(doc,model_shift_us(row,True))
             sample=blank_context_excerpt(chart,c0,duration,sha,20261025)
-            errors=validate_request(sample.request,scene_line_ids=set())
+            errors=validate_request(sample.request,scene_line_ids=set(),strict_schema=True)
             if errors:raise ValueError(f'invalid excerpt request: {errors}')
             ex=F.build_core(sample,chart.events,c0,duration,stage_a_arm='legacy')
             if F.check_targets(ex):raise ValueError('illegal excerpt targets')

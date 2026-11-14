@@ -59,7 +59,7 @@ class LocalBundleModel(FullEventModel):
         self.time_score = nn.Linear(small, 1, bias=False)
         self.action_read = nn.Sequential(nn.Linear(d + small, d), nn.SiLU())
         self.action_heads = nn.ModuleDict({name: nn.Linear(d, self.vocab.sizes[FIELDS.index(name)])
-                                          for name in ('kind', 'group', 'member', 'mania')})
+                                          for name in ('kind', 'group', 'member')})
         self.group_size = nn.Linear(d, 1)
         self.last_group_log_count = None
         # Start as a bounded residual; auxiliary count starts at two members.

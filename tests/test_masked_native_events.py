@@ -23,8 +23,8 @@ def toy_inputs(device='cpu'):
         mel=torch.randn(1,32,128,generator=rng)*.1,mel_times=torch.arange(32)[None]*.01,
         mel_valid=torch.ones(1,32,dtype=torch.bool),song=torch.randn(1,8,1024,generator=rng)*.1,
         song_times=torch.arange(8)[None]*.5,song_valid=torch.ones(1,8,dtype=torch.bool),
-        reference=torch.zeros(1,3,16),reference_times=torch.zeros(1,3),reference_valid=torch.tensor([[True,False,False]]),
-        controls=torch.zeros(1,8,6),mode=torch.ones(1,dtype=torch.long))
+        reference=torch.zeros(1,3,FullEventConfig().reference_dim),reference_times=torch.zeros(1,3),reference_valid=torch.tensor([[True,False,False]]),
+        controls=torch.zeros(1,FullEventConfig().controls,FullEventConfig().control_dim),mode=torch.ones(1,dtype=torch.long))
     return {k:v.to(device) for k,v in values.items()}
 
 

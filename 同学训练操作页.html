@@ -1120,10 +1120,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(bits.length){ trProg.textContent=bits.join(' · '); trProg.style.display=''; }
     else { trProg.style.display='none'; trProg.textContent=''; }
   }
-  function tpRunState(phase){
+  function tpRunState(phase, session){
     /* 同一个按钮位：跑着显示「■ 停止训练」，闲着显示「开始训练」。
-       判据只看后端 progress.phase，不靠前端自己记，刷新也不会错。 */
-    var running = (phase==='train' || phase==='boot');
+       判据优先看后端 tmux 会话是否真的存在（true/false）；只有本机没装 tmux、
+       探测失败（null/undefined）才退回 progress.phase。tiny 不写 progress.json，
+       旧逻辑只看 phase=train/boot，导致 tiny 跑到一半页面也没有「停止」按钮。 */
+    var ACTIVE={'start':1,'load_checkpoint':1,'build_panel':1,'build_exposure':1,'start_loader':1,
+                'load_model':1,'load_teacher':1,'compile':1,'warmup':1,'boot':1,'train':1,'checkpoint':1};
+    var running = (session===true) || (session==null && !!ACTIVE[phase]);
     if(running===tpRunning) return;
     tpRunning=running;
     tpStart.style.display = running ? 'none' : '';
@@ -1133,7 +1137,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(!j||!j.ok){ trSrc.textContent=(j&&j.note)?j.note:'后端没回 /api/trainlog'; return; }
     var pg=j.progress||{};
     trProgShow(pg);
-    tpRunState(pg.phase);
+    tpRunState(pg.phase, j.session);
     var lines=j.lines||[];
     if(!lines.length){
       trSrc.textContent='还没抓到训练输出：训练没起，或日志文件 / tmux train 会话都没有';

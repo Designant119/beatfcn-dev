@@ -10,10 +10,12 @@ import numpy as np
 
 from beatfcn.events.canonical import TYPES
 from .event_canvas import ClockLayout, RhythmEvent, CanvasOverflow
+from .full_event_codec import FIELDS as _CODEC_FIELDS
 
-
-FIELDS = ('group', 'head_block', 'head_cell', 'head_ms', 'member', 'kind',
-          'tail_block', 'tail_cell', 'tail_ms', 'lane')
+# 历史 mania 研究路径（encode_sequence / diagnose_member_training）仍在做 lane 决策，
+# 所以字段表 = 当前编解码器字段 + 末尾的 lane。生产路径一律用 full_event_codec.FIELDS，
+# 不再各自硬编码一份，避免两边顺序/数量再次漂移。
+FIELDS = _CODEC_FIELDS + ('lane',)
 END, NEW = 0, 1
 
 

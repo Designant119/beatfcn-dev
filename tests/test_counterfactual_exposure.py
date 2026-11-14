@@ -95,22 +95,18 @@ class RoundingAndCarryTest(unittest.TestCase):
         thin, _ = edit_events_to_multiplier(events, 0, 2_000_000, .5, 'mania_4k', 8_000_000)
         self.assertEqual(len(thin), 4)
 
-    def test_mania_insertions_respect_incoming_holds(self):
+    def test_mania_insertions_are_lane_free_with_known_carry(self):
+        """r5：mania 出谱不预测轨道，known_carry 只作时间上下文（lane 从不参与语法）。"""
         carry = tuple(RhythmEvent(100_000, 1_900_000, 'hold', lane) for lane in (2, 3))
         events = [RhythmEvent(500_000, 1_200_000, 'hold', 0), RhythmEvent(900_000, 900_000, 'tap', 1),
                   RhythmEvent(1_300_000, 1_300_000, 'tap', 1), RhythmEvent(1_500_000, 1_500_000, 'tap', 0)]
         request = EventRequest('mania_4k', 500_000, 2_000_000, 8_000_000, known_carry=carry)
-        thick, _ = edit_events_to_multiplier(events, 500_000, 2_000_000, 2., 'mania_4k',
-                                             8_000_000, seed=0, carry=carry)
-        added = [e for e in thick if e not in events]
-        self.assertTrue(added)
-        self.assertFalse([e for e in added if e.lane in (2, 3) and e.onset_us < 1_900_000])
-        encode_events(thick, request)  # legal with the carry kept in the request
-        unaware, _ = edit_events_to_multiplier(events, 500_000, 2_000_000, 2., 'mania_4k',
-                                               8_000_000, seed=0)
-        self.assertTrue([e for e in unaware if e.lane in (2, 3) and e.onset_us < 1_900_000])
-        with self.assertRaises(ValueError):
-            encode_events(unaware, request)
+        thick, _ = edit_events_to_multiplier(events, 500_000, 2_000_000, 2., 'mania_4k', 8_000_000, seed=0)
+        self.assertGreater(len(thick), len(events))
+        # 目标一律 lane=-1，人类谱面的 lane 不进入训练数据
+        self.assertTrue(all(e.lane == -1 for e in thick))
+        # 带 known_carry 的请求仍能正常编码（incoming hold 是合法的时间上下文）
+        encode_events(thick, request)
 
 
 class ConditionTest(unittest.TestCase):
@@ -137,7 +133,7 @@ class ConditionTest(unittest.TestCase):
 
     def test_controls_are_recomputed_from_the_actual_target(self):
         edited, _ = edit_events_to_multiplier(self.events, 8_000_000, 16_000_000, .5,
-            'mania_4k', 40_000_000, seed=1, carry=self.request.known_carry)
+            'mania_4k', 40_000_000, seed=1)
         bands, raw = target_conditions('mania_4k', edited, self.request, carry=self.request.known_carry)
         self.assertAlmostEqual(raw['density_notes_per_second'], len(edited) / 8)
         self.assertGreater(raw['hold_occupancy_ratio'], 1_000_000 / 8_000_000)  # carry counted

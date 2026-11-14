@@ -11,8 +11,13 @@ TASK_TYPES = ('free', 'curve', 'continuation', 'infill')
 def as_events(rows, mode):
     result = []
     for index, row in enumerate(rows):
-        location = (LaneLoc(int(row.get('lane', 0)))
-                    if mode == 'mania_4k' else LineLoc('0', 'above', 0.))
+        if mode == 'mania_4k':
+            lane = int(row.get('lane', 0))
+            # r5 起 mania 不再预测轨道，-1 是"无 lane"的合法哨兵；LaneLoc 只接受 0..3。
+            # 用 LineLoc 占位，让 score_events 的 lane_blind 判定（getattr(lane,-1)<0）仍然为真。
+            location = LaneLoc(lane) if lane >= 0 else LineLoc('0', 'above', 0.0)
+        else:
+            location = LineLoc('0', 'above', 0.)
         result.append(Event(f'bench:{index}', int(row['onset_us']),
             int(row.get('end_us', row['onset_us'])), row['type'], location))
     return result

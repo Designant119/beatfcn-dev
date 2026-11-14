@@ -28,6 +28,18 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+
+def check_accum_stride(accum_steps, stride, microbatch):
+    """一个 update 由 accum_steps 个「4 请求单元」组成；stride 是每个 loader item 覆盖几个单元。
+    accum 不能被 stride 整除时，range(0, accum, stride) 会多取一份，权重和 >1，等于偷偷放大这一步的梯度。"""
+    accum_steps, stride, microbatch = int(accum_steps), int(stride), int(microbatch)
+    if accum_steps <= 0 or stride <= 0:
+        raise ValueError('accum_steps 和 stride 都必须是正整数（收到 %d / %d）' % (accum_steps, stride))
+    if accum_steps % stride:
+        raise ValueError('accum_steps=%d 不能被 stride=%d 整除（physical_microbatch_requests=%d）；'
+                         '会把一个 update 多算一份梯度' % (accum_steps, stride, microbatch))
+
+
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
@@ -41,6 +53,22 @@ from beatfcn.train.peer_rl import PeerRL  # noqa: E402
 from beatfcn.train.exposure_loader import build_exposure_loader, make_vocabulary, plan_loader_settings  # noqa: E402
 from beatfcn.train.training_objective import update_learning_rate  # noqa: E402
 from scripts.evolve_surgery import file_sha, load_checkpoint_model  # noqa: E402
+
+
+def rng_state():
+    """CPU/CUDA/numpy 三套随机状态；只存已初始化的 CUDA，避免在 CPU 任务里提前建上下文。"""
+    return dict(torch=torch.get_rng_state(),
+                cuda=torch.cuda.get_rng_state_all() if torch.cuda.is_initialized() else [],
+                numpy=np.random.get_state())
+
+
+def restore_rng(state):
+    """恢复 rng_state() 的快照；旧 checkpoint 没这个字段时由调用方回退到 manual_seed。"""
+    torch.set_rng_state(state['torch'])
+    cuda = state.get('cuda') or []
+    if cuda and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all(cuda)
+    np.random.set_state(state['numpy'])
 
 STUCK_GRACE_S = 600.
 SAVE_MARGIN_S = 90.
@@ -209,7 +237,8 @@ def save_checkpoint(out, *, model, ema, optimizer, updates, spec, config, vocabu
     temporary = path.with_suffix('.partial')
     value = dict(schema='beatfcn.evolve-checkpoint.v1', id=spec['id'], config=config, vocabulary=vocabulary, weights='ema',
                  model=ema.model_state_dict(model), raw={k: v.detach().cpu() for k, v in model.state_dict().items()},
-                 ema=dict(decay=ema.decay, updates=ema.updates), updates=updates, init=spec['init'])
+                 ema=dict(decay=ema.decay, updates=ema.updates), updates=updates, init=spec['init'],
+                 rng=rng_state())
     if save_optimizer:
         value['optimizer'] = optimizer.state_dict()
     torch.save(value, temporary)
@@ -247,7 +276,10 @@ def finetune(spec, *, updates, deadline_unix=None, resume=False, device='cuda', 
         progress.update(updates=start_updates, start_updates=start_updates)
         recipe = load_recipe(spec, config)
         torch.set_num_threads(int(recipe.get('cpu_threads', 2)))
-        torch.manual_seed(int(recipe['seed'])+start_updates)
+        if previous is not None and saved.get('rng'):
+            restore_rng(saved['rng'])   # 断点续训沿用当时的随机流，和一口气跑完全程等价
+        else:
+            torch.manual_seed(int(recipe['seed'])+start_updates)
         progress.update(phase='build_panel')
         if panel is None:
             from beatfcn.train.training_panel import build_training_panel
@@ -257,6 +289,7 @@ def finetune(spec, *, updates, deadline_unix=None, resume=False, device='cuda', 
         accum = int(recipe['accum_steps'])
         microbatch = int(recipe.get('physical_microbatch_requests', 4))
         stride = max(1, microbatch//4)
+        check_accum_stride(accum, stride, microbatch)
         # Workers must fork before any CUDA context exists in this process.
         progress.update(phase='start_loader')
         workers = loader_workers(recipe.get('loader_workers', 8)) if device == 'cuda' else 0
@@ -297,6 +330,9 @@ def finetune(spec, *, updates, deadline_unix=None, resume=False, device='cuda', 
         if kd:
             progress.update(phase='load_teacher')
             teacher = load_checkpoint_model(kd['teacher'], device)
+            if teacher.vocab != vocab:
+                raise ValueError('KD teacher vocabulary disagrees with the student checkpoint; '
+                                 'their logits index different tokens, so KL would be meaningless')
         table = token_weight_table(vocab, spec.get('field_weights'), spec.get('kind_class_weights'))
         layerdrop = float(spec.get('layerdrop', 0.))
         loss_settings = recipe['loss']

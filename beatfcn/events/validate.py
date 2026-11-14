@@ -29,6 +29,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import math
+import warnings
 from .canonical import MODE_TYPES, Event, LaneLoc, Chart, check_groups, lane_conflicts, exact_duplicates
 from . import controls as C
 
@@ -53,7 +54,15 @@ def load_schema(path=SCHEMA_PATH):
     return json.loads(p.read_text())
 
 
-def schema_issues(req, schema=None):
+def schema_available(path=SCHEMA_PATH):
+    """健康检查用：schema 文件在不在。生产/CI 可据此在启动时直接报错，而不是等请求进来。"""
+    return Path(path).is_file()
+
+
+_schema_warned = False
+
+
+def schema_issues(req, schema=None, *, strict=False):
     try:
         import jsonschema
     except ImportError:
@@ -61,7 +70,18 @@ def schema_issues(req, schema=None):
     if schema is None:
         schema = load_schema()
     if schema is None:
-        return [issue(0, 'schema_unavailable', detail=f'request schema missing at {SCHEMA_PATH}', severity='warn')]
+        # 没有 schema 就只剩语义检查。默认仍返回 warn（否则整条请求链会被一个缺失的
+        # 设计文件全部拒绝），但第一次缺失必须留下显著告警；strict=True（生产入口）
+        # 直接升级为 error，拒绝在"没有校验依据"的情况下放行。
+        global _schema_warned
+        if not _schema_warned:
+            _schema_warned = True
+            warnings.warn('request.schema.json is missing under design/package_2026-10-22; '
+                          'JSON Schema validation is degraded to semantic checks only',
+                          RuntimeWarning, stacklevel=2)
+        return [issue(0, 'schema_unavailable',
+                      detail=f'request schema missing at {SCHEMA_PATH}; only semantic checks ran',
+                      severity='error' if strict else 'warn')]
     v = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
     return [issue(0, 'schema', '/'.join(map(str, e.absolute_path)), e.message)
             for e in sorted(v.iter_errors(req), key=lambda e: list(map(str, e.absolute_path)))]
@@ -293,10 +313,12 @@ def _check_scene(req, scene_line_ids, extra_events=()):
     return out
 
 
-def validate_request(req, schema=None, chart: Chart | None = None, ref_charts=None, scene_line_ids=None):
+def validate_request(req, schema=None, chart: Chart | None = None, ref_charts=None, scene_line_ids=None,
+                     strict_schema=False):
     """All request-level checks. `chart`: imported target chart (enables check 3);
-    `ref_charts`: {native_chart_ref: Chart} (enables reference completeness); `scene_line_ids`: Phira line ids."""
-    out = schema_issues(req, schema)
+    `ref_charts`: {native_chart_ref: Chart} (enables reference completeness); `scene_line_ids`: Phira line ids;
+    `strict_schema`: missing schema becomes an error instead of a warning (use on production entry points)."""
+    out = schema_issues(req, schema, strict=strict_schema)
     if not isinstance(req, dict):
         return out
     out += _check_regions(req)

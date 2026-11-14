@@ -644,28 +644,31 @@ def _train_start(body):
 
     deadline_ts = int(time.time() + hours * 3600)
     q = shlex.quote
-    if known[plan].get('kind') == 'tiny':
+    kind = known[plan].get('kind')
+    home = os.path.expanduser('~')
+    if kind == 'tiny':
         t = known[plan]
-        cmd = ('cd {repo} && PYTHONPATH={site} {py} -m scripts.train_phira_tiny'
+        cmd = ('cd {repo} && HOME={home} PYTHONPATH={site} {py} -m scripts.train_phira_tiny'
                ' --tape {tape} --features {feat} --steps {steps} --lr {lr}'
                ' --out {out}').format(
-            repo=q(REPO), tape=q(t.get('tape') or '/tmp/t100'),
+            repo=q(REPO), home=q(home), tape=q(t.get('tape') or '/tmp/t100'),
             feat=q(t.get('features') or '/tmp/f100/features'),
             steps=int(t.get('steps') or 100), lr=float(t.get('lr') or 1e-3),
             out=q(t.get('out') or '/tmp/train-tiny'), py=q(sys.executable),
             site=q(_USER_SITE))
     else:
-        cmd = ('cd {repo} && BEATFCN_MAX_LOADER_WORKERS={workers} {py} -m scripts.evolve_finetune '
+        cmd = ('cd {repo} && HOME={home} PYTHONPATH={site} BEATFCN_MAX_LOADER_WORKERS={workers} {py} -m scripts.evolve_finetune '
            '--plan {plan} --updates {updates} --deadline-unix {deadline}'
-           .format(repo=q(REPO), workers=workers,
+           .format(repo=q(REPO), home=q(home), site=q(_USER_SITE), workers=workers, py=q(sys.executable),
                    plan=q(plan_path),
                    updates=updates, deadline=deadline_ts))
-    if flags['resume']:
-        cmd += ' --resume'
-    if flags['save_optimizer']:
-        cmd += ' --save-optimizer'
-    if flags['no_compile']:
-        cmd += ' --no-compile'
+    if kind != 'tiny':  # tiny 脚本的 argparse 不认这三个旗标
+        if flags['resume']:
+            cmd += ' --resume'
+        if flags['save_optimizer']:
+            cmd += ' --save-optimizer'
+        if flags['no_compile']:
+            cmd += ' --no-compile'
     cmd += ' --device {dev} 2>&1 | tee -a {log}'.format(py=q(sys.executable), dev=device, log=q(os.path.join(REPO, 'train.log')))
 
     if dry_run:
@@ -1184,6 +1187,15 @@ def _run_all(cmd, timeout=10):
         return ''
 
 
+def _tmux_session_state(name):
+    """True/False = 会话在/不在；None = 本机没 tmux 或探测失败（调用方退回 progress 判据）。"""
+    try:
+        return subprocess.run(['tmux', 'has-session', '-t', name],
+                              capture_output=True, timeout=8).returncode == 0
+    except Exception:
+        return None
+
+
 def _train_log_tail():
     """抓训练输出尾部。来源按优先级：
     1. 环境变量 BEATFCN_TRAIN_LOG 指的日志文件
@@ -1506,6 +1518,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {'ok': True, 'source': src, 'age_s': age,
                                         'lines': shown, 'metrics': metrics,
                                         'progress': _run_progress(),
+                                        'session': _tmux_session_state('train'),
                                         'ts': time.time()})
             return self._send(200, {'ok': True, **get_status()})
         return self._send(404, {'ok': False, 'note': 'no such endpoint'})

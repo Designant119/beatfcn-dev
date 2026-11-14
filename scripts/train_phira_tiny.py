@@ -39,20 +39,25 @@ def collate_sequences(seqs):
     return out
 
 
-def build_inputs(cdir, sha, lo, hi, controls):
+def build_inputs(cdir, sha, start_us, end_us, controls, mode):
     L12 = np.load(cdir / 'L12.npy', mmap_mode='r')
     L23 = np.load(cdir / 'L23.npy', mmap_mode='r')
+    # 25 fps -> 40 ms/帧；用整数除法，别让浮点截断差一帧
+    lo, hi = max(0, start_us // 40_000), min(len(L12), end_us // 40_000)
     lo, hi = max(0, lo - 4), min(len(L12), hi + 4)
     local = np.stack([np.asarray(L12[lo:hi], np.float32), np.asarray(L23[lo:hi], np.float32)])  # [2,T,1024]
     local = local[None, ..., None, :]                                     # [1,2,T,1,1024]
     song = np.asarray(L12[lo:hi], np.float32).mean(0, keepdims=True)[None]  # [1,1,1024]
     ref = np.zeros((1, 1, 12), np.float32)
-    ref[0, 0, 1] = (hi - lo) * 0.04
+    # reference 契约：时间列是相对请求起点的 (end-origin)/TIME_SCALE_US，不是秒数
+    ref[0, 0, 1] = (end_us - start_us) / 1_200_000_000
     ref[0, 0, -1] = 1.0
     T = hi - lo
+    # 解码器 query 时间相对 request.start_us；特征时钟也必须减同一个基准
+    times = (np.arange(lo, hi) * 0.04 + 0.02 - start_us / 1e6).astype(np.float32)
     return dict(
         local=torch.from_numpy(local),
-        local_times=torch.from_numpy((np.arange(T)*0.04+0.02).astype(np.float32)[None]),
+        local_times=torch.from_numpy(times[None]),
         local_valid=torch.ones(1, T, dtype=torch.bool),
         song=torch.from_numpy(song),
         song_times=torch.zeros(1, 1),
@@ -64,7 +69,7 @@ def build_inputs(cdir, sha, lo, hi, controls):
         reference_times=torch.zeros(1, 1),
         reference_valid=torch.ones(1, 1, dtype=torch.bool),
         controls=torch.from_numpy(np.asarray(controls, np.float32)[None]),
-        mode=torch.zeros(1, dtype=torch.int64),
+        mode=torch.tensor([0 if mode == 'mania_4k' else 1], dtype=torch.int64),
     )
 
 
@@ -98,16 +103,15 @@ def main():
         req = EventRequest(**kw)
         seg = [int(t) for t in tokens[row['token_start']:row['token_stop']]]
         seq = teacher_sequence(seg, req)
-        n_frames = len(np.load(cdir / 'L12.npy', mmap_mode='r'))
-        lo = max(0, int(int(kw['start_us']) / 1_000_000 * 25))
-        hi = min(n_frames, int(int(kw['end_us']) / 1_000_000 * 25))
-        inputs = build_inputs(cdir, chart['audio_sha256'], lo, hi, row['controls'])
+        inputs = build_inputs(cdir, chart['audio_sha256'], int(kw['start_us']), int(kw['end_us']),
+                              row['controls'], kw['mode'])
         seqs = {k: torch.from_numpy(v[None]) if isinstance(v, np.ndarray) else v for k, v in seq.items()}
         seqs['allowed'] = seqs['allowed'].bool()
         seqs['targets'] = seqs['targets'].long()
         losses, _, _ = token_losses(model, inputs, seqs)
-        jump = torch.tensor([float(seqs['allowed'].sum().item())])
-        loss = (losses.sum() / torch.clamp(jump, min=1)).mean()
+        # token_losses 返回逐 token CE；分母必须是 token 数，不是 allowed 的 (N,V) 合法槽位数
+        valid = seqs['valid'].float()
+        loss = (losses * valid).sum() / valid.sum().clamp(min=1)
         opt.zero_grad(); loss.backward(); opt.step()
         used += 1
         print(json.dumps(dict(step=step, loss=round(float(loss), 4),

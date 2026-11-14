@@ -193,9 +193,17 @@ class BenchmarkV2PatternProfile(unittest.TestCase):
 
 
 def osu_bytes(notes, points):
-    from beatfcn.events.chart_export import osu_mania_bytes
-    return osu_mania_bytes([dict(onset_us=a, end_us=b, type=k, lane=l) for a, b, k, l in notes],
-                           timing_points=points)[0]
+    """最小 4K osu 文件：旧 chart_export.osu_mania_bytes 已随 r5 迁移删除，这里改用 osu_mania 的逐行写入。"""
+    from beatfcn.events.canonical import Event, LaneLoc
+    from beatfcn.events.osu_mania import hit_object_line
+    lines = ['osu file format v14', '', '[General]', 'Mode: 3', '',
+             '[Difficulty]', 'CircleSize: 4', '', '[TimingPoints]']
+    for t, bpm in points:
+        lines.append('%g,%g,4,2,1,100,1,0' % (t, 60000.0/bpm))
+    lines += ['', '[HitObjects]']
+    for i, (a, b, k, l) in enumerate(notes):
+        lines.append(hit_object_line(Event('t%d' % i, a, b, k, LaneLoc(l), 'test')).decode())
+    return ('\n'.join(lines) + '\n').encode('utf-8')
 
 
 class ClockShiftedGrid(unittest.TestCase):

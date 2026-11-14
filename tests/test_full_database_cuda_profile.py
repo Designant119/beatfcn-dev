@@ -3,6 +3,12 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+
+try:
+    import modal  # noqa: F401  （云端作业依赖；没装就整模块跳过）
+except ModuleNotFoundError:
+    raise unittest.SkipTest('modal is not installed in this environment')
+
 import wave
 import zipfile
 

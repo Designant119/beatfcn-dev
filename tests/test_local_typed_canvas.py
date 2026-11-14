@@ -39,8 +39,8 @@ class TypedCanvasTests(unittest.TestCase):
         x=dict(local=torch.randn(1,3,2,4,16),local_times=torch.tensor([[.02,.06]]),local_valid=torch.ones(1,2,dtype=torch.bool),
                song=torch.randn(1,4,16),song_times=torch.arange(4)[None]*.5+.25,song_valid=torch.ones(1,4,dtype=torch.bool),
                mel=torch.randn(1,8,8),mel_times=torch.arange(8)[None]*.01+.005,mel_valid=torch.ones(1,8,dtype=torch.bool),
-               reference=torch.zeros(1,1,16),reference_times=torch.zeros(1,1),reference_valid=torch.ones(1,1,dtype=torch.bool),
-               controls=torch.zeros(1,8,6),mode=torch.tensor([1]))
+               reference=torch.zeros(1,1,cfg.reference_dim),reference_times=torch.zeros(1,1),reference_valid=torch.ones(1,1,dtype=torch.bool),
+               controls=torch.zeros(1,cfg.controls,cfg.control_dim),mode=torch.tensor([1]))
         x.update({k:torch.from_numpy(np.asarray(v))[None] for k,v in request_layout(r).items()})
         target=encode_canvas([RhythmEvent(4_000,2_012_000,'hold'),RhythmEvent(5_000,5_000,'flick')],r)
         t={k:torch.from_numpy(v)[None] for k,v in target.items()}

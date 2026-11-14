@@ -5,7 +5,11 @@ import unittest
 
 from beatfcn.ingest.coverage import native_tier, phira_native_difficulty, quota_report, policy_identity
 
-POLICY = json.loads((Path(__file__).resolve().parents[1] / 'bench/rhythm-v2/data-scale-policy-v1.json').read_text())
+POLICY_PATH = Path(__file__).resolve().parents[1] / 'bench/rhythm-v2/data-scale-policy-v1.json'
+if not POLICY_PATH.is_file():
+    raise unittest.SkipTest('bench/rhythm-v2/data-scale-policy-v1.json is not committed')
+
+POLICY = json.loads(POLICY_PATH.read_text())
 
 
 def example(**changes):
