@@ -14,6 +14,7 @@
 """
 import json
 import os
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -67,6 +68,42 @@ def _call(messages):
         return None, '模型返回结构不认识：' + json.dumps(payload, ensure_ascii=False)[:200]
 
 
+def _extract_json(text):
+    """从模型输出里挖出那个 JSON 对象，容忍 Markdown 包裹和前后解释文字。
+
+    模型很爱干两件事：把 JSON 包进 ```json 代码块，或者在 JSON 前后唠一句
+    “好的，我来帮你……”。这两种都不能当成失败——挖出那个对象就行。
+    """
+    if not text:
+        return None
+    m = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.S)
+    if m:
+        return m.group(1)
+    start = text.find('{')
+    while start >= 0:
+        depth, in_str, esc = 0, False, False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == '\\':
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+            elif ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
+        start = text.find('{', start + 1)
+    return None
+
+
 def _state_brief():
     st = status()
     done = [k for k in ORDER if st[k]['done']]
@@ -88,9 +125,10 @@ def respond(message, history=None):
     if err:
         return dict(ok=False, reply=err, action='error')
 
-    raw = text.strip()
-    if raw.startswith('```'):
-        raw = raw.strip('`').split('\n', 1)[-1]
+    raw = _extract_json(text)
+    if raw is None:
+        # 模型完全没给 JSON，那就把它说的话原样回给用户，不硬猜动作
+        return dict(ok=True, action='answer', reply=text.strip()[:500])
     try:
         decision = json.loads(raw)
     except json.JSONDecodeError:

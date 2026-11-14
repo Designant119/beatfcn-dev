@@ -1706,8 +1706,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var fab=document.getElementById('aifab'), panel=document.getElementById('aipanel'),
       logEl=document.getElementById('ailog'), input=document.getElementById('aiinput'),
       btn=document.getElementById('aisend'), close=document.getElementById('aiclose');
+  function fmt(t){
+    // 模型爱回 markdown：先转义再只认几种最轻的语法，别让 <script> 混进来
+    var s=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    s=s.replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
+    s=s.replace(/`([^`\n]+)`/g,'<code style="background:#0b201b;padding:1px 4px;border-radius:4px">$1</code>');
+    s=s.replace(/^[-*] (.+)$/gm,'• $1');
+    return s;
+  }
   function show(role,text){
-    var d=document.createElement('div'); d.className='aimsg '+role; d.textContent=text; logEl.appendChild(d);
+    var d=document.createElement('div'); d.className='aimsg '+role; d.innerHTML=fmt(text); logEl.appendChild(d);
     logEl.scrollTop=logEl.scrollHeight;
   }
   function ask(){
