@@ -1,0 +1,20 @@
+# 运行这套流程所需的最小依赖。
+#
+# torch 用哪个版本要看你的机器：
+#   纯 CPU  → pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   NVIDIA  → pip install torch --index-url https://download.pytorch.org/whl/cu121
+# torchaudio 必须和 torch 大版本对齐；对不齐通常也能 import（本机实测
+# torch 2.15.0+cpu 配 torchaudio 2.11.1+cpu 可用），但优先找匹配版本。
+#
+# 直接 pip install -r requirements.txt 会装 CPU 版 torch（最省事）。
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch>=2.4
+torchaudio>=2.4
+transformers==4.57.6
+tokenizers>=0.22
+safetensors>=0.4
+huggingface_hub>=0.30
+numpy>=1.26,<2
+scipy>=1.11
