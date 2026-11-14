@@ -1731,8 +1731,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       btn.disabled=false; btn.textContent='发送';
     }).catch(function(){ show('err','后端连不上，刷新一下页面再试'); btn.disabled=false; btn.textContent='发送'; });
   }
-  fab.addEventListener('click',function(){ panel.hidden=!panel.hidden; if(!panel.hidden) input.focus(); });
-  close.addEventListener('click',function(){ panel.hidden=true; });
+  // 开合统一交给下面的 up()：点一下=开合，拖一下=挪位置。
+  // 这里再绑 click 就会一次点击 toggle 两遍，看起来像关不掉。
+  close.addEventListener('click',function(e){ e.stopPropagation(); panel.hidden=true; });
   btn.addEventListener('click',ask);
   input.addEventListener('keydown',function(e){ if(e.key==='Enter') ask(); });
 
