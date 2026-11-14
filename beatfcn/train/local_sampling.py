@@ -20,10 +20,16 @@ class LocalRequestSampler:
             songs[mode].add(song)
             charts[(mode, song)].add(chart)
             requests[(mode, song, chart)].append(index)
-        for mode in ('phira', 'mania_4k'):
-            if not songs[mode]:
-                raise ValueError('Both registered training modes require admitted songs')
+        # 批次配比按实际有数据的 mode 来定：过去写死 phira 3 + mania_4k 1，
+        # 没有 mania 语料时这条线根本起不来。现在只有 phira 就整批 phira，
+        # 两者都有时仍保持原来的 3:1。
+        self.modes = tuple(m for m in ('phira', 'mania_4k') if songs[m])
+        if not self.modes:
+            raise ValueError('No admitted training mode has any song')
+        for mode in self.modes:
             self.pools[('song', mode)] = sorted(songs[mode])
+        self.batch_modes = (('phira',) * 4 if self.modes == ('phira',)
+                            else ('phira', 'phira', 'phira', 'mania_4k'))
         for (mode, song), values in charts.items():
             self.pools[('chart', mode, song)] = sorted(values)
         for (mode, song, chart), values in requests.items():
@@ -39,7 +45,7 @@ class LocalRequestSampler:
 
     def next_batch(self):
         indices = []
-        for mode in ('phira', 'phira', 'phira', 'mania_4k'):
+        for mode in self.batch_modes:
             song = self._take(('song', mode))
             chart = self._take(('chart', mode, song))
             index = self._take(('request', mode, song, chart))
