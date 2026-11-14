@@ -898,6 +898,140 @@ def _phira_download_log(lines=30):
             'session': PHIRA_DL_SESSION, 'log': PHIRA_DL_LOG, 'ts': time.time()}
 
 
+# 子进程（tmux 里起的）会丢掉后端自己的 user site-packages：tmux server 的 HOME 可能
+# 不是后端进程的 HOME，于是 ~/.local/lib/pythonX.Y/site-packages 不在 sys.path 里，
+# torch 就 import 不到。这里把后端 sys.path 里的 site-packages 项拼成 PYTHONPATH 带过去。
+_EXTRA_PYTHONPATH = ':'.join(p for p in sys.path if p and 'site-packages' in p)
+
+PHIRA_INGEST_SESSION = 'phira-ingest'
+PHIRA_INGEST_LOG = os.path.join(HERE, 'phira_ingest.log')
+
+
+def _phira_ingest_alive():
+    try:
+        return subprocess.run(['tmux', 'has-session', '-t', PHIRA_INGEST_SESSION],
+                              capture_output=True, timeout=6).returncode == 0
+    except Exception:
+        return False
+
+
+def _phira_ingest_start(body):
+    """04 页「建数据集」：把 zip 目录建成 full database。单进程，不占 GPU。"""
+    def bad(note):
+        return 400, {'ok': False, 'command': '', 'note': note}
+
+    def want_dir(key, label):
+        v = body.get(key)
+        if not isinstance(v, str) or not v.strip():
+            return None, '%s 要填一个绝对路径' % label
+        v = v.strip()
+        if not os.path.isabs(v) or '..' in v:
+            return None, '%s 要绝对路径，且不能带 ..（收到 %r）' % (label, v)
+        return v, None
+
+    zips, err = want_dir('zips', '谱面目录')
+    if err:
+        return bad(err)
+    out, err = want_dir('out', '数据集目录')
+    if err:
+        return bad(err)
+    if not os.path.isdir(zips):
+        return bad('谱面目录不存在：%s（先把上面的下载跑完）' % zips)
+
+    limit = body.get('limit', 0)
+    if isinstance(limit, bool) or not isinstance(limit, (int, float)):
+        return bad('limit 要是整数（收到 %r）' % (limit,))
+    limit = int(limit)
+    if limit < 0 or limit > 100000:
+        return bad('limit 要是 0–100000（0 表示全量）')
+
+    script = os.path.join(HERE, 'scripts', 'ingest_phira_dataset.py')
+    if not os.path.isfile(script):
+        return bad('仓库里没有 scripts/ingest_phira_dataset.py，先 git pull')
+
+    # 两处环境坑：tmux 的 login shell 里 python3 未必是后端这个；tmux 的 HOME 也可能不是
+    # 后端进程的 HOME，而 torch 往往装在 ~/.local/lib/pythonX.Y/site-packages 下。
+    # 所以解释器用 sys.executable 绝对路径，HOME 显式带过去。
+    cmd = ('cd {repo} && HOME={home} PYTHONPATH={pp} {py} -m scripts.ingest_phira_dataset '
+           '--zips {z} --meta {m} --out {o}'
+           ).format(repo=shlex.quote(HERE), home=shlex.quote(os.environ.get('HOME', '')),
+                    pp=shlex.quote(_EXTRA_PYTHONPATH), py=shlex.quote(sys.executable),
+                    z=shlex.quote(zips), m=shlex.quote(PHIRA_DL_META), o=shlex.quote(out))
+    if limit:
+        cmd += ' --limit %d' % limit
+    cmd += ' 2>&1 | tee -a ' + shlex.quote(PHIRA_INGEST_LOG)
+
+    if _phira_ingest_alive():
+        return 200, {'ok': False, 'command': cmd,
+                     'note': '已经有建库任务在跑（tmux 会话 phira-ingest），先停掉再开新的'}
+    try:
+        with open(PHIRA_INGEST_LOG, 'a', encoding='utf-8') as f:
+            f.write('\n===== %s 新任务 zips=%s out=%s =====\n'
+                    % (time.strftime('%m-%d %H:%M:%S'), zips, out))
+    except Exception:
+        pass
+    try:
+        started = subprocess.run(['tmux', 'new-session', '-d', '-s', PHIRA_INGEST_SESSION, cmd],
+                                 capture_output=True, text=True, timeout=10)
+    except FileNotFoundError:
+        return 200, {'ok': False, 'command': cmd,
+                     'note': '机器上没有 tmux：sudo apt install -y tmux 装上再点'}
+    except Exception as e:
+        return 200, {'ok': False, 'command': cmd, 'note': 'tmux new-session 没跑起来：' + str(e)}
+    if started.returncode != 0:
+        err = (started.stderr or started.stdout or '').strip()
+        return 200, {'ok': False, 'command': cmd,
+                     'note': 'tmux 启动失败：' + (err or '退出码 %d，无输出' % started.returncode)}
+    return 200, {'ok': True, 'command': cmd,
+                 'note': '已在 tmux 会话 phira-ingest 里开跑；zip 只读，产物写到 %s。'
+                         '断开重跑会跳过已建好的谱面' % out}
+
+
+def _phira_ingest_stop(body):
+    if body.get('confirm') is not True:
+        return 400, {'ok': False, 'note': '停止建库要带 confirm:true（页面里是点两次才发）'}
+    if not _phira_ingest_alive():
+        return 200, {'ok': False, 'note': '现在没有在跑的建库任务（tmux 会话 %s 不存在）' % PHIRA_INGEST_SESSION}
+    try:
+        subprocess.run(['tmux', 'send-keys', '-t', PHIRA_INGEST_SESSION, 'C-c'],
+                       capture_output=True, timeout=8)
+    except Exception as e:
+        return 200, {'ok': False, 'note': 'tmux send-keys 失败：' + str(e)}
+    t0 = time.time()
+    while time.time() - t0 < 5.0:
+        time.sleep(0.5)
+        if not _phira_ingest_alive():
+            return 200, {'ok': True, 'how': 'sigint',
+                         'note': '已发 Ctrl-C，建库自己退了；已建好的不会重做'}
+    try:
+        subprocess.run(['tmux', 'kill-session', '-t', PHIRA_INGEST_SESSION],
+                       capture_output=True, timeout=8)
+    except Exception as e:
+        return 200, {'ok': False, 'note': 'Ctrl-C 之后它没退，kill-session 也失败：' + str(e)}
+    return 200, {'ok': True, 'how': 'kill', 'note': 'Ctrl-C 没让它退，直接把 tmux 会话收掉了'}
+
+
+def _phira_ingest_log(lines=30):
+    running = _phira_ingest_alive()
+    shown, age = [], None
+    if os.path.isfile(PHIRA_INGEST_LOG):
+        age = round(time.time() - os.path.getmtime(PHIRA_INGEST_LOG), 1)
+        try:
+            with open(PHIRA_INGEST_LOG, encoding='utf-8', errors='replace') as f:
+                alllines = f.readlines()
+            start = 0
+            for i in range(len(alllines) - 1, -1, -1):
+                if alllines[i].startswith('====='):
+                    start = i + 1
+                    break
+            shown = [(l.rstrip('\n')[:400] + '…') if len(l) > 400 else l.rstrip('\n')
+                     for l in alllines[start:][-lines:]]
+        except Exception:
+            shown = []
+    return {'ok': True, 'running': running, 'lines': shown, 'age_s': age,
+            'session': PHIRA_INGEST_SESSION, 'log': PHIRA_INGEST_LOG, 'ts': time.time()}
+
+
 # ---------------- 机器状态（05 页的资源小图） ----------------
 
 _CPU_LOCK = threading.Lock()
@@ -1316,11 +1450,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {'ok': True, 'authed': self._authed(),
                                     'host': os.uname().nodename, 'ts': time.time()})
         if path in ('/api/env', '/api/status', '/api/trainlog', '/api/train-plan', '/api/sys',
-                    '/api/downloadlog'):
+                    '/api/downloadlog', '/api/ingestlog'):
             if not self._authed():
                 return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码再回车'})
             if path == '/api/downloadlog':
                 return self._send(200, _phira_download_log())
+            if path == '/api/ingestlog':
+                return self._send(200, _phira_ingest_log())
             if path == '/api/env':
                 return self._send(200, {'ok': True, 'items': get_env()})
             if path == '/api/train-plan':
@@ -1367,6 +1503,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(code, resp)
         if action == 'download-stop':
             code, resp = _phira_download_stop(body)
+            return self._send(code, resp)
+        if action == 'ingest-start':
+            code, resp = _phira_ingest_start(body)
+            return self._send(code, resp)
+        if action == 'ingest-stop':
+            code, resp = _phira_ingest_stop(body)
             return self._send(code, resp)
         # 阶段动作：只允许 stages.json 里声明过的 start/stop，且命令逐字来自声明
         path_cfg = os.path.join(HERE, 'stages.json')

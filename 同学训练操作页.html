@@ -489,6 +489,38 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       <pre id="dlOut" style="max-height:240px;overflow:auto;margin:0;font-size:12px;line-height:1.5;white-space:pre-wrap"></pre>
     </div>
 
+    <!-- 建数据集 -->
+    <div class="tpanel">
+      <div class="tp-h">BUILD / 建数据集（下完才能点，不用显卡）</div>
+
+      <div class="tp-row">
+        <span class="tp-lab">谱面目录<small>就是上面下到的那个目录，别改错</small></span>
+        <span class="tp-ctl"><input type="text" id="igZips" value="/data/phira_charts" spellcheck="false" autocomplete="off"></span>
+      </div>
+
+      <div class="tp-row">
+        <span class="tp-lab">数据集目录<small>建出来的 canon 和 filtered.npy 放这儿，每个谱面约 2 MB 上下</small></span>
+        <span class="tp-ctl"><input type="text" id="igOut" value="/data/phira_db" spellcheck="false" autocomplete="off"></span>
+      </div>
+
+      <div class="flag" style="margin:8px 0 0"><span class="k">会丢一部分</span>
+        Phira 上约 20% 的包把 <b>PEC 文本塞在 .json 里</b>，仓库的解析器明确不收这种格式。
+        这些会记进 <code class="mono">ingest_report.json</code> 的失败清单，不影响其它的；想补要另做转换器。</div>
+    </div>
+
+    <div class="btnrow">
+      <button type="button" class="btn" id="igStart">开始建库</button>
+      <button type="button" class="btn danger" id="igStop">■ 停止建库</button>
+      <span class="tp-note" id="igNote"></span>
+    </div>
+
+    <div class="cmd"><div class="h"><span>LINUX / 建库命令</span><button type="button">COPY</button></div><pre id="igCmd"></pre></div>
+
+    <div class="result on" id="igLive" style="display:none">
+      <div class="rh"><span>建库进度 · 后端实测</span><span id="igStat"></span></div>
+      <pre id="igOutLog" style="max-height:240px;overflow:auto;margin:0;font-size:12px;line-height:1.5;white-space:pre-wrap"></pre>
+    </div>
+
     <div class="flag"><span class="k">你要做的</span>别删数据目录里的东西（默认是 <b>/data</b>，换位置就在 run_server.sh 的 DATA_ROOT 里指过去）。盘够不够不用自己算，下面有实测数字。别的不用管。</div>
     <div id="diskLive" style="display:none" class="result on"><div class="rh"><span>盘与数据 · 后端实测</span><span></span></div><div id="diskBody"></div></div>
     <p class="hint">上面每一行都是后端真的去看了那个文件，不是谁口头说“导好了”。数据集和权重全绿、最后一行 <b>可开跑的方案</b> 是满的，就可以进 05 开跑；有红的说明缺文件，红行里写了缺哪个。</p>
@@ -1572,6 +1604,57 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   });
 
   /* 04 页一露脸就拉一次，别等用户点 */
+  var obs=new MutationObserver(function(){ var v=document.getElementById('v-l4'); if(v&&v.classList.contains('on')) poll(); });
+  obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
+  paint(); poll();
+})();
+</script>
+<script>
+/* ---------- 04 页：建数据集 ---------- */
+(function(){
+  var zips=document.getElementById('igZips'), out=document.getElementById('igOut');
+  var cmdPre=document.getElementById('igCmd'), note=document.getElementById('igNote');
+  var live=document.getElementById('igLive'), logPre=document.getElementById('igOutLog'), stat=document.getElementById('igStat');
+  var API=(location.protocol.indexOf('http')===0)?'':('http://'+(location.hostname||'localhost')+':7777');
+  var TOKEN=''; try{ TOKEN=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
+  function tq(p){ return API+p+(TOKEN?((p.indexOf('?')<0?'?':'&')+'token='+encodeURIComponent(TOKEN)):''); }
+  function paint(){
+    cmdPre.textContent='cd <仓库目录> && python3 -m scripts.ingest_phira_dataset --zips '+zips.value
+                      +' --meta phira_charts_meta.json --out '+out.value;
+  }
+  zips.addEventListener('input',paint); out.addEventListener('input',paint);
+  function send(body,cb){
+    fetch(tq('/api/action'),{method:'POST',headers:TOKEN?{'X-Token':TOKEN}:{},'Content-Type':'application/json',
+                            body:JSON.stringify(body)})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ cb(j||{}); })
+      .catch(function(){ cb({ok:false,note:'请求没出去：后端连不上'}); });
+  }
+  var tick=null;
+  function drawLog(j){
+    if(!j||!j.ok) return;
+    live.style.display='block';
+    stat.textContent=(j.running?'● 正在建库':'○ 没在跑')+(j.age_s!=null?(' · 日志 '+j.age_s+'s 前更新'):'');
+    if(j.lines&&j.lines.length){ logPre.textContent=j.lines.join('\n'); logPre.scrollTop=logPre.scrollHeight; }
+    else { logPre.textContent='还没有输出。点了「开始建库」后这里会出进度。'; }
+  }
+  function poll(){
+    fetch(tq('/api/ingestlog')).then(function(r){ return r.json(); })
+      .then(function(j){ drawLog(j);
+        if(j&&j.running){ if(!tick) tick=setInterval(poll,4000); } else { clearInterval(tick); tick=null; } })
+      .catch(function(){});
+  }
+  document.getElementById('igStart').addEventListener('click',function(){
+    note.textContent='启动中…';
+    send({id:'ingest-start',zips:zips.value,out:out.value},function(j){
+      note.textContent=(j&&j.note)||'后端没回 note';
+      if(j&&j.ok){ live.style.display='block'; poll(); setTimeout(poll,1500); }
+    });
+  });
+  document.getElementById('igStop').addEventListener('click',function(){
+    if(!confirm('确定停掉建库？已经建好的谱面不会重做。')) return;
+    send({id:'ingest-stop',confirm:true},function(j){ note.textContent=(j&&j.note)||''; poll(); });
+  });
   var obs=new MutationObserver(function(){ var v=document.getElementById('v-l4'); if(v&&v.classList.contains('on')) poll(); });
   obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
   paint(); poll();
