@@ -82,6 +82,9 @@
   .console .t{color:#5c665f}
   .tprog{font-family:var(--mono,monospace);font-size:12px;line-height:1.6;color:#8dff9b;
     background:rgba(0,255,120,.05);border-left:2px solid #22c55e;padding:6px 9px;margin-bottom:8px;word-break:break-word}
+  .tprog.pgdone{color:var(--ph);border-left-color:var(--ph);background:rgba(61,255,124,.07)}
+  .tprog.pgdead{color:var(--warn);border-left-color:var(--warn);background:rgba(216,179,106,.07)}
+  .tprog.pgfail{color:var(--bad);border-left-color:var(--bad);background:rgba(201,112,93,.08)}
   .console .tmetrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;
     background:var(--line);border-bottom:1px solid var(--line)}
   .console .tmetrics div{background:#0a0d0c;padding:6px 10px;min-width:0}
@@ -91,16 +94,24 @@
 
   /* 05 页 MACHINE：CPU / 内存 / 显存 / 显卡 / 硬盘 小折线 */
   .syswrap{padding:8px 10px 4px}
-  .sysrow{display:grid;grid-template-columns:11em 1fr;gap:12px;align-items:center;padding:5px 0}
+  .lg-err{color:var(--bad);font-weight:600}
+  .lg-warn{color:var(--warn)}
+  .lg-ok{color:var(--ph)}
+  .lg-metric{color:var(--live)}
+  .lg-dim{color:var(--dim)}
+  .sysrow{display:grid;grid-template-columns:13.5em 1fr;gap:12px;align-items:center;padding:5px 0}
   .sysrow .sk{font-size:10.5px;color:var(--dim);line-height:1.35;min-width:0}
   .sysrow .sk b{display:block;font-family:var(--mono);font-size:12.5px;color:var(--text);font-weight:400;
-    overflow-wrap:anywhere;word-break:break-word}
-  .sysrow svg{width:100%;height:68px;display:block}
+    overflow-wrap:anywhere;word-break:break-word;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sysrow svg{width:100%;height:116px;display:block}
   .sysrow svg line{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
   .sysrow svg line.lim{stroke:var(--bad);stroke-dasharray:5 4;opacity:.4}
   .sysrow svg path{fill:none;stroke:var(--ph);stroke-width:1.4;vector-effect:non-scaling-stroke}
   .sysrow.syshot svg path{stroke:var(--bad)}
   .sysrow.syshot .sk b{color:var(--bad)}
+  .sysrow.syswarn svg path{stroke:#e0a642}
+  .sysrow.syswarn .sk b{color:#e0a642}
+  .sysrow .sk small{display:block;font-size:9.5px;color:var(--dim);letter-spacing:.02em;margin-top:1px;opacity:.85}
   @media (min-width:820px){
     .rail{display:block;overflow:visible;position:sticky;top:0;padding:12px 0;float:left;width:170px;margin-right:22px}
     .rail a{display:block;margin-bottom:6px}
@@ -148,6 +159,10 @@
   .btn.ghost{background:transparent;color:var(--ph);border:1px solid var(--ph)}
   .btn.ghost:hover{background:rgba(61,255,124,.08)}
   .btn[disabled]{background:#3a423d;color:#707a72;cursor:not-allowed}
+  .btn.danger{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+  .btn.danger:hover{background:rgba(201,112,93,.14)}
+  .btn.danger.armed{background:var(--bad);color:#0d100f;border-color:var(--bad)}
+  .btn.danger[disabled]{background:transparent;color:#5c4a44;border-color:#4a3d38;cursor:not-allowed}
   .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
 
   /* ---------- 判定表 ---------- */
@@ -493,6 +508,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
     <div class="btnrow">
       <button type="button" class="btn" id="tpStart">开始训练</button>
+      <button type="button" class="btn danger" id="tpStop">■ 停止训练</button>
       <span class="tp-note" id="tpStartNote"></span>
     </div>
 
@@ -523,11 +539,13 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
           <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
         <div class="sysrow" data-k="gpu"><div class="sk"><span>显卡使用率</span><b id="sysGpuV">—</b></div>
           <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
+        <div class="sysrow" data-k="temp"><div class="sk"><span>显卡温度</span><small>80℃ 留意 · 88℃ 停下</small><b id="sysTempV">—</b></div>
+          <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
         <div class="sysrow" data-k="disk"><div class="sk"><span>硬盘</span><b id="sysDiskV">—</b></div>
           <svg viewBox="0 0 100 50" preserveAspectRatio="none"><path d=""/></svg></div>
       </div>
     </div>
-    <p class="hint" style="margin-top:8px">每条曲线是最近 120 次采样（5 秒一次，约 10 分钟）。任何一条贴着 95% 并且变红，说明顶到天花板了：CPU 满了会拖慢数据加载，显存满了训练会直接退出，硬盘满了存快照会失败。</p>
+    <p class="hint" style="margin-top:8px">每条曲线是最近 480 次采样（5 秒一次，约 40 分钟）。任何一条贴着 95% 并且变红，说明顶到天花板了：CPU 满了会拖慢数据加载，显存满了训练会直接退出，硬盘满了存快照会失败。<b>温度那条是摄氏度：80℃ 变黄就留意，88℃ 变红就停下，别硬扛。</b></p>
 
     <div class="console">
       <div class="h"><span>TRAIN OUT / 训练输出</span>
@@ -883,7 +901,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var trProg=document.getElementById('trProg');
 
   /* ---------- 机器状态（MACHINE 小图） ---------- */
-  var sysHist={cpu:[],mem:[],vram:[],gpu:[],disk:[]};
+  var sysHist={cpu:[],mem:[],vram:[],gpu:[],disk:[],temp:[]};
   var sysSrc=document.getElementById('sysSrc');
   function sysUrl(p){ return apiBase+p+(apiToken?((p.indexOf('?')<0?'?':'&')+'token='+encodeURIComponent(apiToken)):''); }
   function sysDraw(kind){
@@ -897,12 +915,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       d+=(i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2);
     }
     path.setAttribute('d',d);
-    row.classList.toggle('syshot',(arr[n-1]||0)>=90);
+    var hot=kind==='temp'?88:90, warn=kind==='temp'?80:null;
+    row.classList.toggle('syshot',(arr[n-1]||0)>=hot);
+    row.classList.toggle('syswarn',warn!==null&&(arr[n-1]||0)>=warn&&(arr[n-1]||0)<hot);
   }
   function sysPush(kind,v){
     if(v==null||!isFinite(v)) return;
     var hist=sysHist[kind]; hist.push(Math.round(v));
-    if(hist.length>120) hist.shift();
+    if(hist.length>480) hist.shift();
     sysDraw(kind);
   }
   function sysGB(mb){ return (mb/1024).toFixed(1); }
@@ -920,12 +940,23 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       sysPush('mem',m.pct);
     }
     if(g){
-      document.getElementById('sysVramV').textContent=sysGB(g.mem_used_mb)+' / '+sysGB(g.mem_total_mb)+' GB'
-        +(g.temp_c!=null?' · '+g.temp_c+'℃':'');
-      document.getElementById('sysGpuV').textContent=g.util+'%';
+      document.getElementById('sysVramV').textContent=sysGB(g.mem_used_mb)+' / '+sysGB(g.mem_total_mb)+' GB';
+      document.getElementById('sysGpuV').textContent=Math.round(g.util)+'%';
+      var tv=document.getElementById('sysTempV');
+      if(g.temp_c!=null){
+        var tb=[Math.round(g.temp_c)+'℃'];
+        if(g.temp_mem_c!=null) tb.push('显存 '+Math.round(g.temp_mem_c)+'℃');
+        if(g.power_w!=null) tb.push(Math.round(g.power_w)+(g.power_limit_w?('/'+Math.round(g.power_limit_w)):'')+'W');
+        tv.textContent=tb.join(' · ');
+        sysPush('temp',g.temp_c);
+      }else{
+        tv.textContent='没读到温度';
+        var trow=document.querySelector('.sysrow[data-k="temp"]');
+        if(trow){ trow.classList.remove('syswarn'); trow.classList.remove('syshot'); }
+      }
       sysPush('vram',g.pct); sysPush('gpu',g.util);
     }else{
-      ['vram','gpu'].forEach(function(k){
+      ['vram','gpu','temp'].forEach(function(k){
         var row=document.querySelector('.sysrow[data-k="'+k+'"]');
         if(row) row.style.display='none';
       });
@@ -979,7 +1010,11 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     return hot.length+2;                        // 其余按日志里的原序殿后
   }
   var TR_PHASE={'start':'刚启动','load_checkpoint':'正在加载权重','build_panel':'正在读数据清单',
-    'build_exposure':'正在生成训练数据（这步可能最久）','train':'正在训练'};
+    'build_exposure':'正在生成训练数据（这步可能最久）','start_loader':'正在起数据流','load_model':'正在搭模型',
+    'load_teacher':'正在加载教师','compile':'正在编译','warmup':'预热中','boot':'启动中',
+    'checkpoint':'正在存快照','train':'正在训练',
+    'done':'跑满预算 · 完成','deadline':'到点停下 · 可续跑',
+    'stuck_past_deadline':'卡死超时 · 没在动','failed':'失败退出'};
   function trEta(s){
     if(s<60) return Math.round(s)+' 秒';
     if(s<3600) return Math.round(s/60)+' 分钟';
@@ -988,8 +1023,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   }
   function trProgShow(pg){
     if(!pg||typeof pg!=='object'){ trProg.style.display='none'; return; }
-    var bits=[];
-    if(pg.phase in TR_PHASE && pg.phase!=='train') bits.push(TR_PHASE[pg.phase]);
+    var bits=[], st=(pg.phase||'');
+    if(st in TR_PHASE && st!=='train' && st!=='boot') bits.push(TR_PHASE[st]);
+    var pcls=st==='done'?' pgdone':((st==='failed'||st==='stuck_past_deadline')?' pgfail':(st==='deadline'?' pgdead':''));
+    trProg.className='tprog'+pcls;
     if(typeof pg.updates==='number'&&(pg.updates>0||pg.phase==='train')){
       var tgt=(typeof pg.target_updates==='number'&&pg.target_updates>0)?pg.target_updates:null;
       bits.push('第 '+tpFmtNum(pg.updates)+(tgt?' / '+tpFmtNum(tgt):'')+' 步');
@@ -1032,8 +1069,23 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     }else{
       trMetrics.style.display='none';
     }
-    trBody.textContent=lines.join('\n');
+    var out=[], nErr=0;
+    for(var i=0;i<lines.length;i++){
+      var ln=lines[i], cls=logCls(ln);
+      if(cls==='lg-err') nErr++;
+      out.push(cls?'<span class="'+cls+'">'+esc(ln)+'</span>':esc(ln));
+    }
+    trBody.innerHTML=out.join('\n');
+    if(nErr) trSrc.textContent=trSrc.textContent+' · '+nErr+' 行报错';
     trBody.scrollTop=trBody.scrollHeight;
+  }
+  /* 日志按行分色：报错红、警告黄、保存/完成绿、指标青、其余灰 */
+  function logCls(s){
+    if(/\b(error|errors|exception|traceback|failed|failure|fatal|panic|oom|out of memory|cuda error|assert|nan|错误|失败|报错|崩)\b/i.test(s)) return 'lg-err';
+    if(/\b(warn|warning|deprecat|skip|retry|retrying|stall|stalled|timeout|警告|跳过|重试|超时)\b/i.test(s)) return 'lg-warn';
+    if(/\b(saved|save|checkpoint|snapshot|done|finished|complete|completed|best|已保存|保存)\b/i.test(s)) return 'lg-ok';
+    if(/\b(loss|mae|mse|rmse|f1|acc|precision|recall|lr|epoch|step|iter|train|eval|val|updates)\b/i.test(s)) return 'lg-metric';
+    return '';
   }
   function pollTrain(){
     var url=apiBase+'/api/trainlog'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
@@ -1056,6 +1108,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var tpResume=document.getElementById('tpResume'), tpSaveOpt=document.getElementById('tpSaveOpt'),
       tpNoComp=document.getElementById('tpNoComp'), tpDev=document.getElementById('tpDev');
   var tpCmd=document.getElementById('tpCmd'), tpStart=document.getElementById('tpStart'),
+      tpStop=document.getElementById('tpStop'),
       tpStartNote=document.getElementById('tpStartNote');
   var tpDetailBtn=document.getElementById('tpDetailBtn'), tpKv=document.getElementById('tpKv'),
       tpSnap=document.getElementById('tpSnap');
@@ -1246,6 +1299,64 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         tpStartNote.textContent='请求没出去：后端连不上';
         outLine('bad','ERR /api/action train-start');
       });
+  });
+  /* 停止训练：点一下先锁 4 秒（按钮点不动）→ 解锁后再给 10 秒点第二下。
+     10 秒内没人点就自己收回，训练照跑；后端照样要 confirm:true。 */
+  var tpStopState='idle', tpStopTick=null, tpStopWindow=null;   /* idle / locked / armed */
+  function tpStopClear(){
+    if(tpStopTick){ clearInterval(tpStopTick); tpStopTick=null; }
+    if(tpStopWindow){ clearTimeout(tpStopWindow); tpStopWindow=null; }
+  }
+  function tpStopIdle(msg){
+    tpStopClear();
+    tpStopState='idle'; tpStop.disabled=false;
+    tpStop.classList.remove('armed'); tpStop.textContent='■ 停止训练';
+    if(msg) tpStartNote.textContent=msg;
+  }
+  function tpStopFire(){
+    tpStop.disabled=true; tpStop.textContent='停止中…';
+    var url=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
+    fetch(url,{method:'POST',headers:apiToken?{'X-Token':apiToken}:{},'Content-Type':'application/json',
+               body:JSON.stringify({id:'train-stop',confirm:true})})
+      .then(function(r){ outLine(r.ok?'ok':'bad',r.status+' /api/action train-stop'); return r.json(); })
+      .then(function(j){
+        tpStop.disabled=false; tpStop.textContent='■ 停止训练';
+        var note=(j&&j.note)?String(j.note):'后端没回 note';
+        tpStartNote.textContent=note;
+        outLine(j&&j.ok?'ok':'bad',(j&&j.ok?'停止：':'train-stop 拒绝：')+note);
+        pollTrain();
+      })
+      .catch(function(){
+        tpStop.disabled=false; tpStop.textContent='■ 停止训练';
+        tpStartNote.textContent='请求没出去：后端连不上';
+        outLine('bad','ERR /api/action train-stop');
+      });
+  }
+  function tpStopUnlock(){                      /* 4 秒锁完：解锁，开 10 秒窗口 */
+    tpStopState='armed';
+    tpStop.disabled=false; tpStop.classList.add('armed');
+    tpStop.textContent='再点一次 = 真停训练';
+    tpStartNote.textContent='10 秒内点第二下才真停；不点就自己收回，训练继续。';
+    tpStopWindow=setTimeout(function(){
+      tpStopIdle('10 秒没人点，已收回，训练继续。');
+      outLine('ok','train-stop 超时收回（没点第二下）');
+    },10000);
+  }
+  tpStop.addEventListener('click',function(){
+    if(tpStopState==='locked') return;          /* 锁定期点了没反应 */
+    if(tpStopState==='armed'){                  /* 第二下：真停 */
+      tpStopClear(); tpStopState='idle'; tpStopFire(); return;
+    }
+    var left=4;                                 /* 第一下：锁 4 秒 */
+    tpStopState='locked'; tpStop.disabled=true;
+    tpStop.classList.add('armed');
+    tpStop.textContent=left+' 秒后才能点…';
+    tpStartNote.textContent='第一下已记下。这 4 秒按钮点不动，之后 10 秒内再点一次才真停。';
+    tpStopTick=setInterval(function(){
+      left--;
+      if(left>0){ tpStop.textContent=left+' 秒后才能点…'; return; }
+      clearInterval(tpStopTick); tpStopTick=null; tpStopUnlock();
+    },1000);
   });
   tpPlan.innerHTML='<option value="">（连上后端后自动列出）</option>';
   tpPaint();
