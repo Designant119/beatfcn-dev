@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -310,6 +311,16 @@ def stream(message, history=None):
                                           'Authorization': 'Bearer ' + cfg['key']})
     try:
         resp = urllib.request.urlopen(req, timeout=120)
+    except urllib.error.HTTPError as exc:
+        # 429/401 这类要把它返回的那句人话捞出来，别甩一串 HTTPError
+        detail = ''
+        try:
+            payload = json.loads(exc.read().decode('utf-8', 'replace'))
+            detail = ((payload.get('error') or {}).get('message')) or ''
+        except Exception:                      # noqa: BLE001
+            pass
+        yield dict(type='error', text=f'模型服务报错 HTTP {exc.code}：{detail or exc.reason}')
+        return
     except Exception as exc:                      # noqa: BLE001
         yield dict(type='error', text=f'调用模型失败：{type(exc).__name__}: {exc}')
         return
