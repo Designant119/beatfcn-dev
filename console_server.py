@@ -776,7 +776,22 @@ def _train_stop(body):
 
 PHIRA_LEVELS = ('IN', 'AT', 'SP', 'HD', 'EZ')
 PHIRA_DL_SESSION = 'phira-dl'
-PHIRA_DL_LOG = os.path.join(HERE, 'phira_download.log')
+
+
+def _session_log(session):
+    """各步日志统一放 harness 的日志目录（.harness/logs）。
+
+    网页按钮和 AI/harness 起的是同一个 tmux 会话，日志必须同一个文件，
+    否则一边跑、另一边的进度面板永远是“还没有输出”。
+    """
+    try:
+        from scripts.harness import _state_dir
+        return os.path.join(str(_state_dir()), 'logs', session + '.log')
+    except Exception:                          # noqa: BLE001
+        return os.path.join(HERE, session + '.log')
+
+
+PHIRA_DL_LOG = _session_log(PHIRA_DL_SESSION)
 PHIRA_DL_SCRIPT = os.path.join(HERE, 'scripts', 'phira_local_download.py')
 PHIRA_DL_META = os.path.join(HERE, 'phira_charts_meta.json')
 
@@ -934,7 +949,7 @@ def _phira_download_log(lines=30):
 _EXTRA_PYTHONPATH = ':'.join(p for p in sys.path if p and 'site-packages' in p)
 
 PHIRA_INGEST_SESSION = 'phira-ingest'
-PHIRA_INGEST_LOG = os.path.join(HERE, 'phira_ingest.log')
+PHIRA_INGEST_LOG = _session_log(PHIRA_INGEST_SESSION)
 
 
 def _phira_ingest_alive():

@@ -56,8 +56,9 @@ STEPS = {
     'download': dict(
         module='scripts.phira_local_download', session='phira-dl',
         args={'dest': ('/data/phira_charts', True, str),
-              'levels': (None, False, list), 'jobs': (6, False, int),
-              'hash_audio': (True, False, bool), 'list_only': (False, False, bool)},
+              'levels': (None, False, list), 'workers': (6, False, int),
+              'no_hash_audio': (False, False, bool),
+              'list_only': (False, False, bool)},
         outputs=('dest',),
     ),
     'ingest': dict(
@@ -176,7 +177,8 @@ def build(step, args):
             if value:
                 parts.append(flag)
         elif isinstance(value, list):
-            parts.append(flag + ' ' + ' '.join(str(v) for v in value))
+            # --levels 这类参数收的是一个逗号串，不能按 shell 多参数摊开
+            parts.append(flag + ' ' + _quote(','.join(str(v) for v in value)))
         else:
             parts.append(flag + ' ' + _quote(str(value)))
     return 'cd ' + _quote(str(ROOT)) + ' && ' + ' '.join(parts)
@@ -214,9 +216,18 @@ def start(step, args, *, dry_run=False):
     if started.returncode != 0:
         return dict(ok=False, step=step, command=cmd,
                     errors=[('tmux 启动失败：' + (started.stderr or '无输出'))[:200]])
+    time.sleep(0.6)          # 参数不对的脚本会秒退，别急着报“已启动”
+    alive = running(step)
+    tail = [l.rstrip() for l in log(step, 10).splitlines() if l.strip()]
+    blow = '\n'.join(tail)
+    crashed = any(k in blow for k in ('Traceback', 'error:', 'unrecognized arguments',
+                                      'No such file', 'Permission denied'))
+    if not alive and crashed:
+        return dict(ok=False, step=step, command=cmd, session=session, alive=False,
+                    errors=['启动后立刻就退了：' + (tail[-1][:200] if tail else '无输出')])
     (_state_dir() / 'state' / f'{step}.json').write_text(
         json.dumps(filled, ensure_ascii=False), encoding='utf-8')
-    return dict(ok=True, step=step, command=cmd, session=session,
+    return dict(ok=True, step=step, command=cmd, session=session, alive=alive,
                 log=f'tmux attach -t {session}')
 
 
