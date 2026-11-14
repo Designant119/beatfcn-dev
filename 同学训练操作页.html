@@ -1672,5 +1672,61 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   });
 })();
 </script>
+<div id="aidock">
+  <button id="aifab" type="button" title="问 AI">AI</button>
+  <div id="aipanel" hidden>
+    <div id="aihead"><span>问 AI</span><button id="aiclose" type="button">×</button></div>
+    <div id="ailog"><div class="aimsg bot">不知道点哪个按钮、看不懂报错，都可以直接问。比如“帮我下载 IN/AT 的谱面”“现在跑到哪一步了”。</div></div>
+    <div id="airow">
+      <input id="aiinput" type="text" placeholder="说说你想干什么…" autocomplete="off">
+      <button id="aisend" type="button">发送</button>
+    </div>
+  </div>
+</div>
+<style>
+#aidock{position:fixed;right:18px;bottom:18px;z-index:9999;font-family:inherit}
+#aifab{width:52px;height:52px;border-radius:50%;border:1px solid #2fe6a0;background:#0b1412;color:#2fe6a0;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 0 18px rgba(47,230,160,.25)}
+#aipanel{position:absolute;right:0;bottom:64px;width:min(360px,86vw);max-height:70vh;display:flex;flex-direction:column;background:#0b1412;border:1px solid #1f3b34;border-radius:12px;overflow:hidden;box-shadow:0 10px 32px rgba(0,0,0,.55)}
+#aihead{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #1f3b34;color:#2fe6a0;font-size:13px}
+#aiclose{background:none;border:0;color:#7ea;font-size:18px;cursor:pointer;line-height:1}
+#ailog{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.aimsg{max-width:88%;padding:8px 10px;border-radius:9px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.aimsg.bot{background:#10201c;color:#cfe;border:1px solid #1f3b34;align-self:flex-start}
+.aimsg.me{background:#14352b;color:#e8fff7;align-self:flex-end}
+.aimsg.err{background:#2a1214;color:#ffb3b3;border:1px solid #5a1f22;align-self:flex-start}
+#airow{display:flex;gap:6px;padding:8px;border-top:1px solid #1f3b34}
+#aiinput{flex:1;background:#08100e;border:1px solid #1f3b34;color:#dff;padding:7px 9px;border-radius:7px;font-size:13px;outline:none}
+#aisend{background:#14352b;border:1px solid #2fe6a0;color:#2fe6a0;padding:7px 12px;border-radius:7px;font-size:13px;cursor:pointer}
+</style>
+<script>
+(function(){
+  var TOKEN=''; try{ TOKEN=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
+  var hist=[];
+  var fab=document.getElementById('aifab'), panel=document.getElementById('aipanel'),
+      logEl=document.getElementById('ailog'), input=document.getElementById('aiinput'),
+      btn=document.getElementById('aisend'), close=document.getElementById('aiclose');
+  function show(role,text){
+    var d=document.createElement('div'); d.className='aimsg '+role; d.textContent=text; logEl.appendChild(d);
+    logEl.scrollTop=logEl.scrollHeight;
+  }
+  function ask(){
+    var msg=(input.value||'').trim(); if(!msg) return;
+    input.value=''; show('me',msg); hist.push({role:'user',content:msg});
+    btn.disabled=true; btn.textContent='…';
+    fetch('/api/action'+(TOKEN?('?token='+encodeURIComponent(TOKEN)):''),{
+      method:'POST', headers:Object.assign({'Content-Type':'application/json'}, TOKEN?{'X-Token':TOKEN}:{}),
+      body:JSON.stringify({id:'chat',message:msg,history:hist.slice(-8)})
+    }).then(function(r){return r.json();}).then(function(j){
+      var ok=j&&j.ok, text=(j&&j.reply)||(j&&j.note)||'没回应';
+      show(ok?'bot':'err',text); hist.push({role:'assistant',content:text});
+      btn.disabled=false; btn.textContent='发送';
+    }).catch(function(){ show('err','后端连不上，刷新一下页面再试'); btn.disabled=false; btn.textContent='发送'; });
+  }
+  fab.addEventListener('click',function(){ panel.hidden=!panel.hidden; if(!panel.hidden) input.focus(); });
+  close.addEventListener('click',function(){ panel.hidden=true; });
+  btn.addEventListener('click',ask);
+  input.addEventListener('keydown',function(e){ if(e.key==='Enter') ask(); });
+})();
+</script>
 </body>
 </html>
