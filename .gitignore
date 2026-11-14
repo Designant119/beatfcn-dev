@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
+# harness 状态与日志（放 repo 内，但不入库）
+.harness/
 # 字体（商业授权，不入库）
 fonts/
 # 数据与产物（体积大，不入库）

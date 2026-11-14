@@ -1,8 +1,11 @@
-"""五步流水线的统一驱动层：把每一步包成一条可启动、可查日志、可查状态的命令。
+"""八步流水线的统一驱动层：把每一步包成一条可启动、可查日志、可查状态的命令。
 
-网页按钮、命令行、以及将来的对话式操作都调这里，避免三套逻辑各写一份。
+网页按钮、命令行、以及对话式操作（chat_agent）都调这里，避免三套逻辑各写一份。
 每一步都在独立 tmux 会话里跑，跟在 console_server 里已有的下载/建库同一种方式，
 断连不中断、可以随时读日志。
+
+状态和日志不再写 /tmp（临时盘会被回收，一回收 status 就全报 false），
+落在 repo 下的 .harness/（已 gitignore），可用 PHIRA_HARNESS_HOME 指到别处。
 
   python -m scripts.harness --status
   python -m scripts.harness --step audio --args '{"audio_dir": "/data/phira_audio"}'
@@ -19,6 +22,34 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+_HOME = {}
+
+
+def _state_dir():
+    """状态与日志落盘位置。
+
+    /tmp 是临时盘、重启会被回收；状态一丢 status 全报 false、日志也读不到。
+    优先 repo 下的 .harness/（已 gitignore），repo 不可写就退到 ~/.phira-harness。
+    想换地方直接设 PHIRA_HARNESS_HOME。
+    """
+    if 'dir' in _HOME:
+        return _HOME['dir']
+    candidates = []
+    env = os.environ.get('PHIRA_HARNESS_HOME')
+    if env:
+        candidates.append(Path(env))
+    candidates += [ROOT / '.harness', Path.home() / '.phira-harness']
+    for cand in candidates:
+        try:
+            (cand / 'state').mkdir(parents=True, exist_ok=True)
+            (cand / 'logs').mkdir(parents=True, exist_ok=True)
+        except OSError:
+            continue
+        _HOME['dir'] = cand
+        return cand
+    _HOME['dir'] = Path('/tmp')          # 最后兜底，至少不耽误跑
+    return _HOME['dir']
 
 # 每一步：脚本、会话名、参数表（默认值 + 必填标记 + 类型）
 STEPS = {
@@ -173,7 +204,7 @@ def start(step, args, *, dry_run=False):
     if has.returncode == 0:
         return dict(ok=False, step=step, command=cmd,
                     errors=[f'已有 {session} 在跑，先 tmux attach -t {session} 看看'])
-    log_path = Path('/tmp') / f'{session}.log'
+    log_path = _state_dir() / 'logs' / f'{session}.log'
     wrapped = f'{cmd} 2>&1 | tee {log_path}'
     try:
         started = subprocess.run(['tmux', 'new-session', '-d', '-s', session, wrapped],
@@ -183,7 +214,7 @@ def start(step, args, *, dry_run=False):
     if started.returncode != 0:
         return dict(ok=False, step=step, command=cmd,
                     errors=[('tmux 启动失败：' + (started.stderr or '无输出'))[:200]])
-    (Path('/tmp') / f'phira-harness-{step}.json').write_text(
+    (_state_dir() / 'state' / f'{step}.json').write_text(
         json.dumps(filled, ensure_ascii=False), encoding='utf-8')
     return dict(ok=True, step=step, command=cmd, session=session,
                 log=f'tmux attach -t {session}')
@@ -191,7 +222,7 @@ def start(step, args, *, dry_run=False):
 
 def log(step, lines=40):
     session = STEPS[step]['session'] if step in STEPS else step
-    path = Path('/tmp') / f'{session}.log'
+    path = _state_dir() / 'logs' / f'{session}.log'
     if not path.is_file():
         return ''
     return '\n'.join(path.read_text(errors='replace').splitlines()[-lines:])
@@ -217,7 +248,7 @@ def status():
             if default is not None:
                 args[name] = default
         # 上次真跑过就按那次的实际参数查产物，否则默认路径会误报
-        saved = Path('/tmp') / f'phira-harness-{step}.json'
+        saved = _state_dir() / 'state' / f'{step}.json'
         if saved.is_file():
             try:
                 args.update(json.loads(saved.read_text(encoding='utf-8')))

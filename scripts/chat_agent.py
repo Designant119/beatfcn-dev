@@ -2,15 +2,18 @@
 
 设计上的三条硬规矩：
 
-1. key 只从环境变量读，永不落盘、永不进前端。网页只能调本模块，看不到凭据。
+1. key 只从环境变量或 ~/.config/phira/chat.json 读，永不进仓库、永不进前端。
+   网页只能调本模块，看不到凭据。
 2. 模型能做的事被限制在 harness 的八个步骤里。它不能拼 shell、不能删文件、
    不能改路径白名单之外的目录——所有参数都再过一遍 harness.validate。
 3. 拿不准就问，不要猜。模型输出不合法时如实告诉用户，不硬塞一个动作进去。
 
-环境变量：
+配置（环境变量优先，其次配置文件；文件形如 {"key": "...", "base": "...", "model": "..."}，
+放在 ~/.config/phira/chat.json 并 chmod 600，别放进仓库）：
   PHIRA_CHAT_KEY    必填，模型服务凭据
   PHIRA_CHAT_BASE   默认 https://open.bigmodel.cn/api/paas/v4/chat/completions
   PHIRA_CHAT_MODEL  默认 glm-4-flash
+  PHIRA_CHAT_CONFIG 可选，配置文件路径（默认 ~/.config/phira/chat.json）
 """
 import json
 import os
@@ -47,12 +50,39 @@ TOOL_DOC = """你可以调用八个步骤，每个步骤对应流水线的一段
 """
 
 
+def _config():
+    """凭据与端点：环境变量优先，其次 ~/.config/phira/chat.json。
+
+    文件放在用户目录、不进仓库，也不回传网页；环境变量永远盖过文件，
+    方便临时换 key 或换模型不用改文件。
+    """
+    cfg = {}
+    path = Path(os.environ.get('PHIRA_CHAT_CONFIG')
+                or Path.home() / '.config' / 'phira' / 'chat.json')
+    if path.is_file():
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+            if isinstance(data, dict):
+                cfg.update({k: v for k, v in data.items() if v})
+        except Exception:                     # noqa: BLE001
+            pass                              # 文件坏了就当没配，别把服务带崩
+    for env_name, name in (('PHIRA_CHAT_KEY', 'key'),
+                           ('PHIRA_CHAT_BASE', 'base'),
+                           ('PHIRA_CHAT_MODEL', 'model')):
+        value = os.environ.get(env_name)
+        if value:
+            cfg[name] = value
+    return cfg
+
+
 def _call(messages):
-    key = os.environ.get('PHIRA_CHAT_KEY')
+    cfg = _config()
+    key = cfg.get('key')
     if not key:
-        return None, '后端没有配置 PHIRA_CHAT_KEY，AI 助手不可用。把 key 放到后端环境变量里再试。'
-    base = os.environ.get('PHIRA_CHAT_BASE', 'https://open.bigmodel.cn/api/paas/v4/chat/completions')
-    model = os.environ.get('PHIRA_CHAT_MODEL', 'glm-4-flash')
+        return None, ('后端没有配置 PHIRA_CHAT_KEY，AI 助手不可用。'
+                      '把 key 写进后端环境变量，或放到 ~/.config/phira/chat.json 再试。')
+    base = cfg.get('base') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+    model = cfg.get('model') or 'glm-4-flash'
     body = json.dumps({'model': model, 'messages': messages, 'temperature': 0.2}, ensure_ascii=False)
     req = urllib.request.Request(base, data=body.encode(), method='POST',
                                  headers={'Content-Type': 'application/json',

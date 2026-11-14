@@ -71,7 +71,19 @@ python3 scripts/phira_local_download.py --dest /data/phira_charts --levels IN,AT
 python3 scripts/phira_local_download.py --dest /data/phira_charts --list-only
 ```
 
-## 五、五步流水线
+## 五、流水线（手动逐条跑）
+
+整条链路一共八步：`download / ingest / audio / tape / features / full_tape / exposure / train`。
+嫌一条条敲麻烦就用统一驱动层（网页按钮和 AI 助手走的也是它）：
+
+```bash
+python3 -m scripts.harness --status                      # 哪步跑完了、哪步还在跑
+python3 -m scripts.harness --step audio --args '{"audio_dir": "/data/phira_audio"}'
+python3 -m scripts.harness --step train --args '{"tape":"/data/tape","features":"/data/features/features","out":"/data/ckpt/tiny.pt"}' --dry-run
+```
+
+状态和日志默认落在仓库的 `.harness/`（已 gitignore），重启回收 `/tmp` 也不会丢；
+要换位置设 `PHIRA_HARNESS_HOME`。
 
 ```bash
 DATA=/data/phira_charts
@@ -195,3 +207,19 @@ stratum 同理，`build_phira_exposure` 加了 `--canon` 按 `chart_id` 回查 `
 ├── weights/mert/        MERT 权重 4 个文件
 └── ckpt/                tiny.pt
 ```
+
+## 十、AI 助手（可选）
+
+页面上的浮窗把自然语言翻成 harness 调用。没配 key 时会明说"不可用"，其他功能不受影响。
+
+```bash
+mkdir -p ~/.config/phira
+cat > ~/.config/phira/chat.json <<'EOF'
+{"key": "<你的 key>", "base": "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions", "model": "glm-5.3"}
+EOF
+chmod 600 ~/.config/phira/chat.json
+```
+
+- 文件放用户目录、不进仓库、不回传前端；环境变量 `PHIRA_CHAT_KEY` / `PHIRA_CHAT_BASE` / `PHIRA_CHAT_MODEL` 优先级更高，临时换 key 不用改文件。
+- 普通 paas 端点是 `https://open.bigmodel.cn/api/paas/v4/chat/completions`。**Coding Plan 套餐的 key 必须走 coding 端点**（上面那条），走错会报"套餐已到期"，看着像 key 废了其实没废。
+- 模型能做的只有这八步，不能拼 shell、不能删文件；认不出意图时会反问，不硬塞动作。
