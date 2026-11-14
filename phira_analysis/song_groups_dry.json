@@ -1,0 +1,4032 @@
+[
+ {
+  "group_id": 0,
+  "name": "Hyperspace",
+  "composer": "Phuture Noize",
+  "members": [
+   3
+  ],
+  "kept": 3,
+  "audio_file": "84252720.mp3",
+  "audio_sha": "ea548bda_3718626",
+  "self_audio_sha": "ea548bda_3718626"
+ },
+ {
+  "group_id": 1,
+  "name": "撥条少女時計",
+  "composer": "Drop/葉月ゆら/初音ミク",
+  "members": [
+   4
+  ],
+  "kept": 4,
+  "audio_file": "65168361.mp3",
+  "audio_sha": "e6f1bf36_2034043",
+  "self_audio_sha": "e6f1bf36_2034043"
+ },
+ {
+  "group_id": 2,
+  "name": " 銀河鉄道のペンギン  (Stripe_P Remix)",
+  "composer": "Stripe.P/Aiobahn/Yunomi/nicamoq",
+  "members": [
+   5
+  ],
+  "kept": 5,
+  "audio_file": "59584920.mp3",
+  "audio_sha": "475f2201_3890985",
+  "self_audio_sha": "475f2201_3890985"
+ },
+ {
+  "group_id": 3,
+  "name": "新•轮回尘世",
+  "composer": "Colbert hytwfy,Romend raff,Aine S ",
+  "members": [
+   6
+  ],
+  "kept": 6,
+  "audio_file": "4676245.mp3",
+  "audio_sha": "4db2c675_7487048",
+  "self_audio_sha": "4db2c675_7487048"
+ },
+ {
+  "group_id": 4,
+  "name": "Wizdomiot",
+  "composer": "LeaF",
+  "members": [
+   9,
+   20535
+  ],
+  "kept": 20535,
+  "audio_file": "64908611.ogg",
+  "audio_sha": "dffc949e_3287189",
+  "self_audio_sha": "dffc949e_3287189"
+ },
+ {
+  "group_id": 5,
+  "name": "CO5M1C R4ILR0AD",
+  "composer": "kanone",
+  "members": [
+   11,
+   28801,
+   28958,
+   30244,
+   57672
+  ],
+  "kept": 28801,
+  "audio_file": "4060588211466014.mp3",
+  "audio_sha": "2c9d0316_3240689",
+  "self_audio_sha": "2c9d0316_3240689"
+ },
+ {
+  "group_id": 6,
+  "name": "Nyarlathotep's Dreamland",
+  "composer": "Raimukun",
+  "members": [
+   13,
+   24,
+   1139,
+   13780,
+   30496,
+   32332,
+   44934,
+   46634
+  ],
+  "kept": 46634,
+  "audio_file": "1575740358038977.mp3",
+  "audio_sha": "f7c03362_7022774",
+  "self_audio_sha": "f7c03362_7022774"
+ },
+ {
+  "group_id": 7,
+  "name": "sus;apple",
+  "composer": "takehirotei",
+  "members": [
+   26
+  ],
+  "kept": 26,
+  "audio_file": "susapple.mp3",
+  "audio_sha": "537a6e74_4863121",
+  "self_audio_sha": "537a6e74_4863121"
+ },
+ {
+  "group_id": 8,
+  "name": "Haerkzs",
+  "composer": "NceS",
+  "members": [
+   28
+  ],
+  "kept": 28,
+  "audio_file": "97673329.mp3",
+  "audio_sha": "beb2146e_5970158",
+  "self_audio_sha": "beb2146e_5970158"
+ },
+ {
+  "group_id": 9,
+  "name": "夏花",
+  "composer": "枫音Atsuko feat.洛天依",
+  "members": [
+   30
+  ],
+  "kept": 30,
+  "audio_file": "42282389.mp3",
+  "audio_sha": "efbd201c_9999563",
+  "self_audio_sha": "efbd201c_9999563"
+ },
+ {
+  "group_id": 10,
+  "name": "Seattle物语 II",
+  "composer": "Ddickky feat.洛天依&乐正绫",
+  "members": [
+   39
+  ],
+  "kept": 39,
+  "audio_file": "57094670.mp3",
+  "audio_sha": "9ebf2c8b_3960775",
+  "self_audio_sha": "9ebf2c8b_3960775"
+ },
+ {
+  "group_id": 11,
+  "name": "Muspelheim",
+  "composer": "Columba(Daily vs. Roon_kun)",
+  "members": [
+   48
+  ],
+  "kept": 48,
+  "audio_file": "49655251.mp3",
+  "audio_sha": "4074758b_6350812",
+  "self_audio_sha": "4074758b_6350812"
+ },
+ {
+  "group_id": 12,
+  "name": "Fading Wind",
+  "composer": "Feint",
+  "members": [
+   51,
+   20598,
+   47865,
+   75115
+  ],
+  "kept": 47865,
+  "audio_file": "76662427.mp3",
+  "audio_sha": "a288de13_11991642",
+  "self_audio_sha": "a288de13_11991642"
+ },
+ {
+  "group_id": 13,
+  "name": "らくらく安楽死",
+  "composer": "ぺぽよ/初音ミク ",
+  "members": [
+   58,
+   41359
+  ],
+  "kept": 58,
+  "audio_file": "65665425.mp3",
+  "audio_sha": "9b172fca_3930792",
+  "self_audio_sha": "9b172fca_3930792"
+ },
+ {
+  "group_id": 14,
+  "name": "GOODWORLD",
+  "composer": "EBIMAYO",
+  "members": [
+   64,
+   36568,
+   49064,
+   51837,
+   66286,
+   68325
+  ],
+  "kept": 64,
+  "audio_file": "38938403.ogg",
+  "audio_sha": "1551d00d_5626407",
+  "self_audio_sha": "1551d00d_5626407"
+ },
+ {
+  "group_id": 15,
+  "name": "珐露珊：机巧深诣",
+  "composer": "HOYO-MiX",
+  "members": [
+   65
+  ],
+  "kept": 65,
+  "audio_file": "48174225.mp3",
+  "audio_sha": "9739623d_3136532",
+  "self_audio_sha": "9739623d_3136532"
+ },
+ {
+  "group_id": 16,
+  "name": "sterelogue",
+  "composer": "VeetaCrush",
+  "members": [
+   68,
+   1449,
+   2120,
+   4155,
+   26750,
+   52527
+  ],
+  "kept": 2120,
+  "audio_file": "Sterelogue.mp3",
+  "audio_sha": "02cde3f0_6511863",
+  "self_audio_sha": "02cde3f0_6511863"
+ },
+ {
+  "group_id": 17,
+  "name": "六兆年と一夜物語",
+  "composer": "Kemu",
+  "members": [
+   70,
+   7458
+  ],
+  "kept": 7458,
+  "audio_file": "81009755.mp3",
+  "audio_sha": "cd3f548a_9459381",
+  "self_audio_sha": "cd3f548a_9459381"
+ },
+ {
+  "group_id": 18,
+  "name": "%UnDeciphered-CryptoGraph in the Edifice%",
+  "composer": "seatrus",
+  "members": [
+   72
+  ],
+  "kept": 72,
+  "audio_file": "27074839.mp3",
+  "audio_sha": "ec2e642e_1945568",
+  "self_audio_sha": "ec2e642e_1945568"
+ },
+ {
+  "group_id": 19,
+  "name": "Star Fall in Evernight City",
+  "composer": "Reku Mochizuki",
+  "members": [
+   74,
+   689,
+   8758,
+   8815,
+   13082,
+   37649,
+   82003
+  ],
+  "kept": 37649,
+  "audio_file": "1875686622041153.ogg",
+  "audio_sha": "bc0bf080_5922655",
+  "self_audio_sha": "bc0bf080_5922655"
+ },
+ {
+  "group_id": 20,
+  "name": "罂粟花冠 Forgotten ver.",
+  "composer": "JUSF周存",
+  "members": [
+   97
+  ],
+  "kept": 97,
+  "audio_file": "90536056.mp3",
+  "audio_sha": "959cabfb_4451091",
+  "self_audio_sha": "959cabfb_4451091"
+ },
+ {
+  "group_id": 21,
+  "name": "The Next Arcady",
+  "composer": "Sephid",
+  "members": [
+   98,
+   11174,
+   17049
+  ],
+  "kept": 98,
+  "audio_file": "41048816.mp3",
+  "audio_sha": "a3cbb83b_5044926",
+  "self_audio_sha": "a3cbb83b_5044926"
+ },
+ {
+  "group_id": 22,
+  "name": "Sanctuary",
+  "composer": "t+pazolite",
+  "members": [
+   99,
+   47997
+  ],
+  "kept": 47997,
+  "audio_file": "8670386346857472.mp3",
+  "audio_sha": "c84f2b39_4929872",
+  "self_audio_sha": "c84f2b39_4929872"
+ },
+ {
+  "group_id": 23,
+  "name": "New York Back Raise",
+  "composer": "saaa + kei_iwata + stuv + わかどり",
+  "members": [
+   108
+  ],
+  "kept": 108,
+  "audio_file": "90882683.mp3",
+  "audio_sha": "7531aa6c_3096703",
+  "self_audio_sha": "7531aa6c_3096703"
+ },
+ {
+  "group_id": 24,
+  "name": "Flowers",
+  "composer": " Dirty Palm、Conor Ross、Chandler Blasé、Chandler Blasé",
+  "members": [
+   125,
+   28986
+  ],
+  "kept": 125,
+  "audio_file": "10272453.mp3",
+  "audio_sha": "8e789a9a_4110698",
+  "self_audio_sha": "8e789a9a_4110698"
+ },
+ {
+  "group_id": 25,
+  "name": "Internet Overdose",
+  "composer": "Aiobahn feat. KOTOKO",
+  "members": [
+   126,
+   34717,
+   46331
+  ],
+  "kept": 46331,
+  "audio_file": "5179729082676403.mp3",
+  "audio_sha": "cc42e000_9043063",
+  "self_audio_sha": "cc42e000_9043063"
+ },
+ {
+  "group_id": 26,
+  "name": "Ēvocator",
+  "composer": "Evin'a k",
+  "members": [
+   128,
+   36913,
+   41913,
+   56645
+  ],
+  "kept": 36913,
+  "audio_file": "89520850.mp3",
+  "audio_sha": "f5fd6710_7062064",
+  "self_audio_sha": "f5fd6710_7062064"
+ },
+ {
+  "group_id": 27,
+  "name": "浮水净华-Lumo-(Original_Mix)",
+  "composer": "EndCat-终猫",
+  "members": [
+   129
+  ],
+  "kept": 129,
+  "audio_file": "15210409.mp3",
+  "audio_sha": "ecd6f273_6120687",
+  "self_audio_sha": "ecd6f273_6120687"
+ },
+ {
+  "group_id": 28,
+  "name": "Inverted World",
+  "composer": "ARForest",
+  "members": [
+   130,
+   13050,
+   17662,
+   19517,
+   23980,
+   28189,
+   35133,
+   38288,
+   41616,
+   42867,
+   51024,
+   52679,
+   53039,
+   53476,
+   55972,
+   56417,
+   65640
+  ],
+  "kept": 17662,
+  "audio_file": "82226923.wav",
+  "audio_sha": "5bd9e038_25280806",
+  "self_audio_sha": "5bd9e038_25280806"
+ },
+ {
+  "group_id": 29,
+  "name": "Cryheart",
+  "composer": "RAI & 夜行者行不归",
+  "members": [
+   131,
+   49704
+  ],
+  "kept": 49704,
+  "audio_file": "52733528.mp3",
+  "audio_sha": "42b6801e_6268548",
+  "self_audio_sha": "42b6801e_6268548"
+ },
+ {
+  "group_id": 30,
+  "name": "Keep Going",
+  "composer": "ChakYoun9",
+  "members": [
+   140
+  ],
+  "kept": 140,
+  "audio_file": "75768886.mp3",
+  "audio_sha": "1f04688c_2272893",
+  "self_audio_sha": "1f04688c_2272893"
+ },
+ {
+  "group_id": 31,
+  "name": "Re：End of a Dream",
+  "composer": "uma vs. モリモリあつし",
+  "members": [
+   144,
+   232,
+   15729,
+   16305,
+   19885,
+   24406,
+   25198,
+   27157,
+   31653,
+   50731,
+   53338
+  ],
+  "kept": 19885,
+  "audio_file": "19821867.wav",
+  "audio_sha": "0bbd4a94_24964388",
+  "self_audio_sha": "0bbd4a94_24964388"
+ },
+ {
+  "group_id": 32,
+  "name": "Avalanx",
+  "composer": "隣の庭は青い(庭師+Aoi)",
+  "members": [
+   148
+  ],
+  "kept": 148,
+  "audio_file": "avalanx.mp3",
+  "audio_sha": "2125d945_2103164",
+  "self_audio_sha": "2125d945_2103164"
+ },
+ {
+  "group_id": 33,
+  "name": "钢琴-アイデン貞貞メルトダウン",
+  "composer": "YXYPianoCovers   原：えなこ feat. P丸様",
+  "members": [
+   157
+  ],
+  "kept": 157,
+  "audio_file": "66910340.mp3",
+  "audio_sha": "fa5e3c9c_2990130",
+  "self_audio_sha": "fa5e3c9c_2990130"
+ },
+ {
+  "group_id": 34,
+  "name": "春娇与志明",
+  "composer": "街道办、欧阳耀莹",
+  "members": [
+   160
+  ],
+  "kept": 160,
+  "audio_file": "48713844.mp3",
+  "audio_sha": "e50d9323_5805544",
+  "self_audio_sha": "e50d9323_5805544"
+ },
+ {
+  "group_id": 35,
+  "name": "Crossing Delta",
+  "composer": "t+pazolite × ginkiha × Hommarju",
+  "members": [
+   162
+  ],
+  "kept": 162,
+  "audio_file": "13910921.mp3",
+  "audio_sha": "53ed019b_5449212",
+  "self_audio_sha": "53ed019b_5449212"
+ },
+ {
+  "group_id": 36,
+  "name": "THE GOVERNMENT KNOWS",
+  "composer": "KNOWER",
+  "members": [
+   163
+  ],
+  "kept": 163,
+  "audio_file": "32043739.ogg",
+  "audio_sha": "196dd8cb_3100442",
+  "self_audio_sha": "196dd8cb_3100442"
+ },
+ {
+  "group_id": 37,
+  "name": "* Erm, could it be a Spatiotemporal ShockWAVE Syndrome...?",
+  "composer": "かめりあ",
+  "members": [
+   165
+  ],
+  "kept": 165,
+  "audio_file": "57828624.mp3",
+  "audio_sha": "278ca876_5304415",
+  "self_audio_sha": "278ca876_5304415"
+ },
+ {
+  "group_id": 38,
+  "name": "Wildfire",
+  "composer": "USAO",
+  "members": [
+   167
+  ],
+  "kept": 167,
+  "audio_file": "9122358.mp3",
+  "audio_sha": "e12a183f_1596717",
+  "self_audio_sha": "e12a183f_1596717"
+ },
+ {
+  "group_id": 39,
+  "name": "踏山河",
+  "composer": "是七叙呢",
+  "members": [
+   170
+  ],
+  "kept": 170,
+  "audio_file": "93140529.ogg",
+  "audio_sha": "0c3a3384_2679042",
+  "self_audio_sha": "0c3a3384_2679042"
+ },
+ {
+  "group_id": 40,
+  "name": "隔岸 (DJ完整版)",
+  "composer": "姚六一",
+  "members": [
+   173
+  ],
+  "kept": 173,
+  "audio_file": "99551842.ogg",
+  "audio_sha": "fcf3dae4_2670613",
+  "self_audio_sha": "fcf3dae4_2670613"
+ },
+ {
+  "group_id": 41,
+  "name": "ガヴリールドロップキック",
+  "composer": "ガヴリールドロップアウト製作委員会",
+  "members": [
+   174
+  ],
+  "kept": 174,
+  "audio_file": "34745875.mp3",
+  "audio_sha": "71c4fcc5_2551165",
+  "self_audio_sha": "71c4fcc5_2551165"
+ },
+ {
+  "group_id": 42,
+  "name": "Requiem Cataclysm",
+  "composer": "5KiLOBYTE & Raphiiel",
+  "members": [
+   179,
+   6600,
+   7137,
+   14328,
+   28495,
+   34166
+  ],
+  "kept": 179,
+  "audio_file": "rc.mp3",
+  "audio_sha": "f764d901_6019424",
+  "self_audio_sha": "f764d901_6019424"
+ },
+ {
+  "group_id": 43,
+  "name": "夜航星",
+  "composer": "三体宇宙/不才",
+  "members": [
+   181
+  ],
+  "kept": 181,
+  "audio_file": "24427861.mp3",
+  "audio_sha": "d036954c_1949963",
+  "self_audio_sha": "d036954c_1949963"
+ },
+ {
+  "group_id": 44,
+  "name": "★Transcendence",
+  "composer": "SSkent",
+  "members": [
+   185,
+   190
+  ],
+  "kept": 185,
+  "audio_file": "57649733.mp3",
+  "audio_sha": "7e108a16_5155387",
+  "self_audio_sha": "7e108a16_5155387"
+ },
+ {
+  "group_id": 45,
+  "name": "Saintelmo",
+  "composer": "Aoi",
+  "members": [
+   188,
+   7593,
+   12963,
+   47514
+  ],
+  "kept": 47514,
+  "audio_file": "46369171.mp3",
+  "audio_sha": "54621e28_2146216",
+  "self_audio_sha": "54621e28_2146216"
+ },
+ {
+  "group_id": 46,
+  "name": "Be With Me",
+  "composer": "UK",
+  "members": [
+   191
+  ],
+  "kept": 191,
+  "audio_file": "Be With Me.mp3",
+  "audio_sha": "cbfa0f41_3410311",
+  "self_audio_sha": "cbfa0f41_3410311"
+ },
+ {
+  "group_id": 47,
+  "name": "Terrasphere",
+  "composer": "Plum",
+  "members": [
+   193,
+   10322,
+   19186,
+   21979,
+   22129,
+   27294,
+   28836,
+   34817,
+   35153,
+   35540,
+   46429,
+   51722,
+   53267,
+   53286
+  ],
+  "kept": 19186,
+  "audio_file": "64923998.mp3",
+  "audio_sha": "f136a40f_7789788",
+  "self_audio_sha": "f136a40f_7789788"
+ },
+ {
+  "group_id": 48,
+  "name": "PANDORA PARADOXXX",
+  "composer": "Sakuzyo",
+  "members": [
+   202,
+   1639,
+   9883,
+   13449,
+   13510,
+   20007,
+   21448,
+   30506
+  ],
+  "kept": 20007,
+  "audio_file": "86984006.mp3",
+  "audio_sha": "29656f7c_7145442",
+  "self_audio_sha": "29656f7c_7145442"
+ },
+ {
+  "group_id": 49,
+  "name": "灰色鹦鹉",
+  "composer": "ChiliChill feat.洛天依",
+  "members": [
+   205
+  ],
+  "kept": 205,
+  "audio_file": "53604803.mp3",
+  "audio_sha": "142eb280_8418211",
+  "self_audio_sha": "142eb280_8418211"
+ },
+ {
+  "group_id": 50,
+  "name": "POLKAMAИIA",
+  "composer": "かめりあ feat. ななひら",
+  "members": [
+   208
+  ],
+  "kept": 208,
+  "audio_file": "72829942.mp3",
+  "audio_sha": "dd594bc5_1945226",
+  "self_audio_sha": "dd594bc5_1945226"
+ },
+ {
+  "group_id": 51,
+  "name": "Options",
+  "composer": "Frums",
+  "members": [
+   213,
+   36995
+  ],
+  "kept": 36995,
+  "audio_file": "92554415.mp3",
+  "audio_sha": "0ff3013b_5375751",
+  "self_audio_sha": "0ff3013b_5375751"
+ },
+ {
+  "group_id": 52,
+  "name": "失態生態実験体",
+  "composer": "Pepoyo",
+  "members": [
+   215,
+   35433
+  ],
+  "kept": 35433,
+  "audio_file": "7436967638888695.mp3",
+  "audio_sha": "ee65869b_8015047",
+  "self_audio_sha": "ee65869b_8015047"
+ },
+ {
+  "group_id": 53,
+  "name": "T+ VS SHARK",
+  "composer": "t+pazolite",
+  "members": [
+   217,
+   297,
+   1209,
+   2252,
+   18346,
+   28031,
+   46248
+  ],
+  "kept": 217,
+  "audio_file": "5160188.mp3",
+  "audio_sha": "99420797_7423025",
+  "self_audio_sha": "99420797_7423025"
+ },
+ {
+  "group_id": 54,
+  "name": "Aurora",
+  "composer": "Lime",
+  "members": [
+   225,
+   7550,
+   10203,
+   13110,
+   15767,
+   16739,
+   17671,
+   17808,
+   17891
+  ],
+  "kept": 225,
+  "audio_file": "67854096.mp3",
+  "audio_sha": "5d294fe2_5676982",
+  "self_audio_sha": "5d294fe2_5676982"
+ },
+ {
+  "group_id": 55,
+  "name": "目が覚めた時",
+  "composer": "Gasai_Tomoya/TAOTIE",
+  "members": [
+   226
+  ],
+  "kept": 226,
+  "audio_file": "81320238.mp3",
+  "audio_sha": "66e4d102_2381740",
+  "self_audio_sha": "66e4d102_2381740"
+ },
+ {
+  "group_id": 56,
+  "name": "PUPA",
+  "composer": "モリモリあつし",
+  "members": [
+   227,
+   10210,
+   10247,
+   12668,
+   13653,
+   14796,
+   14950,
+   15297,
+   15745,
+   17382,
+   21356,
+   25403,
+   28060,
+   28457,
+   31092,
+   51207,
+   61371,
+   65413
+  ],
+  "kept": 13653,
+  "audio_file": "62558444.mp3",
+  "audio_sha": "e0ecc24a_6789736",
+  "self_audio_sha": "e0ecc24a_6789736"
+ },
+ {
+  "group_id": 57,
+  "name": "核心共振",
+  "composer": "烈风",
+  "members": [
+   228,
+   486,
+   4503,
+   18029,
+   21708
+  ],
+  "kept": 21708,
+  "audio_file": "41430192.mp3",
+  "audio_sha": "113fc524_6159750",
+  "self_audio_sha": "113fc524_6159750"
+ },
+ {
+  "group_id": 58,
+  "name": "Chronostasis 2021",
+  "composer": "黒皇帝",
+  "members": [
+   229
+  ],
+  "kept": 229,
+  "audio_file": "黒皇帝 - Chronostasis (2021 Remaster).mp3",
+  "audio_sha": "796a2887_5653103",
+  "self_audio_sha": "796a2887_5653103"
+ },
+ {
+  "group_id": 59,
+  "name": "獅子舞",
+  "composer": "UK",
+  "members": [
+   237
+  ],
+  "kept": 237,
+  "audio_file": "lion.mp3",
+  "audio_sha": "9abe5453_2161556",
+  "self_audio_sha": "9abe5453_2161556"
+ },
+ {
+  "group_id": 60,
+  "name": "ω4",
+  "composer": "穴山大輔,光吉猛修,Kai",
+  "members": [
+   238,
+   3757,
+   43495
+  ],
+  "kept": 43495,
+  "audio_file": "30324078.ogg",
+  "audio_sha": "6b36efa2_9525123",
+  "self_audio_sha": "6b36efa2_9525123"
+ },
+ {
+  "group_id": 61,
+  "name": "Materialize Anything",
+  "composer": "anubasu-anubasu",
+  "members": [
+   239,
+   10532
+  ],
+  "kept": 10532,
+  "audio_file": "21460979.mp3",
+  "audio_sha": "6503775c_5508004",
+  "self_audio_sha": "6503775c_5508004"
+ },
+ {
+  "group_id": 62,
+  "name": "無意識レクイエム",
+  "composer": "森羅万象",
+  "members": [
+   243
+  ],
+  "kept": 243,
+  "audio_file": "無意識レクイエム.ogg",
+  "audio_sha": "1ec6a77e_9421792",
+  "self_audio_sha": "1ec6a77e_9421792"
+ },
+ {
+  "group_id": 63,
+  "name": "w=addict",
+  "composer": "ああああ",
+  "members": [
+   245
+  ],
+  "kept": 245,
+  "audio_file": "24768332.mp3",
+  "audio_sha": "34f14a98_4288097",
+  "self_audio_sha": "34f14a98_4288097"
+ },
+ {
+  "group_id": 64,
+  "name": "not hummmman",
+  "composer": "loaux",
+  "members": [
+   259
+  ],
+  "kept": 259,
+  "audio_file": "72458098.mp3",
+  "audio_sha": "fdf8afb5_3537169",
+  "self_audio_sha": "fdf8afb5_3537169"
+ },
+ {
+  "group_id": 65,
+  "name": "Akiba",
+  "composer": "Synthion",
+  "members": [
+   260
+  ],
+  "kept": 260,
+  "audio_file": "30955877.mp3",
+  "audio_sha": "8bdc941c_3761702",
+  "self_audio_sha": "8bdc941c_3761702"
+ },
+ {
+  "group_id": 66,
+  "name": "PANDORA PARADOXXX",
+  "composer": "削除",
+  "members": [
+   262,
+   20693,
+   26820,
+   35555
+  ],
+  "kept": 35555,
+  "audio_file": "86984006.mp3",
+  "audio_sha": "29656f7c_7145442",
+  "self_audio_sha": "29656f7c_7145442"
+ },
+ {
+  "group_id": 67,
+  "name": "Daisycutter",
+  "composer": "ETIA.",
+  "members": [
+   264,
+   55034
+  ],
+  "kept": 55034,
+  "audio_file": "45301677.mp3",
+  "audio_sha": "30b276b2_2940906",
+  "self_audio_sha": "30b276b2_2940906"
+ },
+ {
+  "group_id": 68,
+  "name": "Aragami",
+  "composer": "xi",
+  "members": [
+   265
+  ],
+  "kept": 265,
+  "audio_file": "aragami.mp3",
+  "audio_sha": "f113cbd0_5042174",
+  "self_audio_sha": "f113cbd0_5042174"
+ },
+ {
+  "group_id": 69,
+  "name": "Quietus Ray",
+  "composer": "xi",
+  "members": [
+   285
+  ],
+  "kept": 285,
+  "audio_file": "Quietus Ray.mp3",
+  "audio_sha": "cfc65fa0_2059957",
+  "self_audio_sha": "cfc65fa0_2059957"
+ },
+ {
+  "group_id": 70,
+  "name": "Shore in the Rain",
+  "composer": "Antistar",
+  "members": [
+   288,
+   11504
+  ],
+  "kept": 288,
+  "audio_file": "Shore in the Rain.mp3",
+  "audio_sha": "f8cad64f_2158714",
+  "self_audio_sha": "f8cad64f_2158714"
+ },
+ {
+  "group_id": 71,
+  "name": "Groove Battle 2",
+  "composer": "Cyranek",
+  "members": [
+   290
+  ],
+  "kept": 290,
+  "audio_file": "Groove Battle 2.mp3",
+  "audio_sha": "b8b42a9a_4500876",
+  "self_audio_sha": "b8b42a9a_4500876"
+ },
+ {
+  "group_id": 72,
+  "name": "Plumes ~Phase Hope~",
+  "composer": "LunA fused with ATSUKi",
+  "members": [
+   291
+  ],
+  "kept": 291,
+  "audio_file": "21190317.mp3",
+  "audio_sha": "e15fe61d_10051300",
+  "self_audio_sha": "e15fe61d_10051300"
+ },
+ {
+  "group_id": 73,
+  "name": "Àqua Prism",
+  "composer": "Laur",
+  "members": [
+   292,
+   295
+  ],
+  "kept": 292,
+  "audio_file": "14045622.mp3",
+  "audio_sha": "0098a349_3572367",
+  "self_audio_sha": "0098a349_3572367"
+ },
+ {
+  "group_id": 74,
+  "name": "XODUS",
+  "composer": "DJ Myosuke & Gram",
+  "members": [
+   294,
+   18333,
+   38276,
+   41501,
+   57716
+  ],
+  "kept": 38276,
+  "audio_file": "8373963937532664.mp3",
+  "audio_sha": "e574d9f8_6016538",
+  "self_audio_sha": "e574d9f8_6016538"
+ },
+ {
+  "group_id": 75,
+  "name": "Forgotten Emotions",
+  "composer": "影虎。",
+  "members": [
+   299
+  ],
+  "kept": 299,
+  "audio_file": "..mp3",
+  "audio_sha": "3084b575_5286685",
+  "self_audio_sha": "3084b575_5286685"
+ },
+ {
+  "group_id": 76,
+  "name": "骤雨の狭间",
+  "composer": "Silentroom",
+  "members": [
+   300
+  ],
+  "kept": 300,
+  "audio_file": "27337550.mp3",
+  "audio_sha": "7a137a73_3630465",
+  "self_audio_sha": "7a137a73_3630465"
+ },
+ {
+  "group_id": 77,
+  "name": "SILENT BLUE",
+  "composer": "かねこちはる",
+  "members": [
+   305,
+   2098,
+   4649
+  ],
+  "kept": 2098,
+  "audio_file": "Silent.mp3",
+  "audio_sha": "d34d394e_3371008",
+  "self_audio_sha": "d34d394e_3371008"
+ },
+ {
+  "group_id": 78,
+  "name": "Möbius(无异象)",
+  "composer": "Camellia vs. USAO",
+  "members": [
+   306
+  ],
+  "kept": 306,
+  "audio_file": "65532763.mp3",
+  "audio_sha": "aec42c1c_5834570",
+  "self_audio_sha": "aec42c1c_5834570"
+ },
+ {
+  "group_id": 79,
+  "name": "我在",
+  "composer": "刘欢",
+  "members": [
+   307
+  ],
+  "kept": 307,
+  "audio_file": "46617012.mp3",
+  "audio_sha": "4fa6dbec_3062300",
+  "self_audio_sha": "4fa6dbec_3062300"
+ },
+ {
+  "group_id": 80,
+  "name": "Babaroque (Original Mix)",
+  "composer": "cYsmix",
+  "members": [
+   308
+  ],
+  "kept": 308,
+  "audio_file": "67469763.mp3",
+  "audio_sha": "5e24709f_6268725",
+  "self_audio_sha": "5e24709f_6268725"
+ },
+ {
+  "group_id": 81,
+  "name": "Mermaid girl-秋葉工房 MIX-",
+  "composer": "DJ Command",
+  "members": [
+   309
+  ],
+  "kept": 309,
+  "audio_file": "25801432.mp3",
+  "audio_sha": "1e6931ad_6344163",
+  "self_audio_sha": "1e6931ad_6344163"
+ },
+ {
+  "group_id": 82,
+  "name": "King Atlantis",
+  "composer": "Aoi",
+  "members": [
+   319,
+   30692
+  ],
+  "kept": 30692,
+  "audio_file": "34456657.mp3",
+  "audio_sha": "bd28c6a3_12288781",
+  "self_audio_sha": "bd28c6a3_12288781"
+ },
+ {
+  "group_id": 83,
+  "name": "黄道、知希朋友と紡ぎありく。",
+  "composer": "APO11O \"FIXEDSTAR\" PROGRAM",
+  "members": [
+   322
+  ],
+  "kept": 322,
+  "audio_file": "13336010.mp3",
+  "audio_sha": "23ffe397_6498542",
+  "self_audio_sha": "23ffe397_6498542"
+ },
+ {
+  "group_id": 84,
+  "name": "Giselle",
+  "composer": "Widowmaker",
+  "members": [
+   327,
+   15134,
+   17543,
+   59571
+  ],
+  "kept": 59571,
+  "audio_file": "9568337116324705.mp3",
+  "audio_sha": "14e7ebcf_5935952",
+  "self_audio_sha": "14e7ebcf_5935952"
+ },
+ {
+  "group_id": 85,
+  "name": "Eggdrasil",
+  "composer": "Aoi",
+  "members": [
+   348,
+   53930,
+   54020,
+   73526
+  ],
+  "kept": 348,
+  "audio_file": "Eggdrasil.mp3",
+  "audio_sha": "038c3109_8348840",
+  "self_audio_sha": "038c3109_8348840"
+ },
+ {
+  "group_id": 86,
+  "name": "Antler",
+  "composer": "Juggernaut.",
+  "members": [
+   351,
+   2568,
+   11877,
+   15472,
+   31279,
+   44688
+  ],
+  "kept": 31279,
+  "audio_file": "53064860.mp3",
+  "audio_sha": "51d57df4_9677741",
+  "self_audio_sha": "51d57df4_9677741"
+ },
+ {
+  "group_id": 87,
+  "name": "Mare Maris",
+  "composer": "M2U",
+  "members": [
+   367,
+   53975
+  ],
+  "kept": 367,
+  "audio_file": "Mare Maris.mp3",
+  "audio_sha": "081e99f4_5876265",
+  "self_audio_sha": "081e99f4_5876265"
+ },
+ {
+  "group_id": 88,
+  "name": "Astaroth",
+  "composer": "Team Grimoire",
+  "members": [
+   370,
+   12140,
+   15019,
+   19915,
+   43373
+  ],
+  "kept": 370,
+  "audio_file": "88907034.mp3",
+  "audio_sha": "b6999391_7135289",
+  "self_audio_sha": "b6999391_7135289"
+ },
+ {
+  "group_id": 89,
+  "name": "Hemisphere",
+  "composer": "ARforest",
+  "members": [
+   372,
+   12599
+  ],
+  "kept": 12599,
+  "audio_file": "Hemisphere.ogg",
+  "audio_sha": "909eafb6_4762607",
+  "self_audio_sha": "909eafb6_4762607"
+ },
+ {
+  "group_id": 90,
+  "name": "Apollo",
+  "composer": "TJ.hangneil",
+  "members": [
+   373,
+   5518,
+   26180,
+   33175,
+   34051,
+   37216,
+   41242
+  ],
+  "kept": 37216,
+  "audio_file": "8205474949143359.mp3",
+  "audio_sha": "4f8dfe5d_6649898",
+  "self_audio_sha": "4f8dfe5d_6649898"
+ },
+ {
+  "group_id": 91,
+  "name": "Horizon Blue",
+  "composer": "Nothing But Requiem",
+  "members": [
+   377
+  ],
+  "kept": 377,
+  "audio_file": "61519689.mp3",
+  "audio_sha": "5d890c2f_6641082",
+  "self_audio_sha": "5d890c2f_6641082"
+ },
+ {
+  "group_id": 92,
+  "name": "Anniv.",
+  "composer": "Mwk",
+  "members": [
+   383,
+   12432,
+   46471
+  ],
+  "kept": 383,
+  "audio_file": "8062231.mp3",
+  "audio_sha": "b229e694_8371408",
+  "self_audio_sha": "b229e694_8371408"
+ },
+ {
+  "group_id": 93,
+  "name": "Acriter",
+  "composer": "Yacky",
+  "members": [
+   388
+  ],
+  "kept": 388,
+  "audio_file": "Acriter.mp3",
+  "audio_sha": "0171968b_1987795",
+  "self_audio_sha": "0171968b_1987795"
+ },
+ {
+  "group_id": 94,
+  "name": "アイデン貞貞メルトダウン",
+  "composer": "えなこ feat.P丸様。",
+  "members": [
+   393,
+   37392
+  ],
+  "kept": 393,
+  "audio_file": "55360614.mp3",
+  "audio_sha": "5568b307_2161356",
+  "self_audio_sha": "5568b307_2161356"
+ },
+ {
+  "group_id": 95,
+  "name": "でんでん心電図",
+  "composer": "ぺぽよ",
+  "members": [
+   400
+  ],
+  "kept": 400,
+  "audio_file": "shindenzu.mp3",
+  "audio_sha": "7851e358_7806492",
+  "self_audio_sha": "7851e358_7806492"
+ },
+ {
+  "group_id": 96,
+  "name": "Avantgarde",
+  "composer": "Raimukun",
+  "members": [
+   407,
+   919,
+   2708,
+   3547,
+   3774,
+   8341,
+   9954,
+   11011,
+   13067,
+   14141,
+   18480,
+   20035,
+   27021,
+   33062,
+   37500,
+   45394,
+   54491,
+   59402
+  ],
+  "kept": 37500,
+  "audio_file": "90911348.ogg",
+  "audio_sha": "8a3eeccb_15757860",
+  "self_audio_sha": "8a3eeccb_15757860"
+ },
+ {
+  "group_id": 97,
+  "name": "躯樹の墓守",
+  "composer": "隣の庭は青い(庭師+Aoi)",
+  "members": [
+   410,
+   55124,
+   65885
+  ],
+  "kept": 55124,
+  "audio_file": "50282543.mp3",
+  "audio_sha": "51590f42_5500950",
+  "self_audio_sha": "51590f42_5500950"
+ },
+ {
+  "group_id": 98,
+  "name": "记念",
+  "composer": "RAiNBOW计划、雷雨心",
+  "members": [
+   414
+  ],
+  "kept": 414,
+  "audio_file": "81730812.mp3",
+  "audio_sha": "c1d12aff_8132594",
+  "self_audio_sha": "c1d12aff_8132594"
+ },
+ {
+  "group_id": 99,
+  "name": "Between Boundaries",
+  "composer": "DJ Counterforce",
+  "members": [
+   422,
+   15547,
+   49573
+  ],
+  "kept": 15547,
+  "audio_file": "66545277.mp3",
+  "audio_sha": "beb4b7a5_3012826",
+  "self_audio_sha": "beb4b7a5_3012826"
+ },
+ {
+  "group_id": 100,
+  "name": "Inferno",
+  "composer": "F-777",
+  "members": [
+   425
+  ],
+  "kept": 425,
+  "audio_file": "63356737.mp3",
+  "audio_sha": "ff2edba7_4932991",
+  "self_audio_sha": "ff2edba7_4932991"
+ },
+ {
+  "group_id": 101,
+  "name": "GOODMEGALO",
+  "composer": "Flowesans",
+  "members": [
+   428
+  ],
+  "kept": 428,
+  "audio_file": "GOODMEGALO.mp3",
+  "audio_sha": "a6f4d5c6_6622852",
+  "self_audio_sha": "a6f4d5c6_6622852"
+ },
+ {
+  "group_id": 102,
+  "name": "Break Through Myself",
+  "composer": "DJ Myosuke & Laur",
+  "members": [
+   439
+  ],
+  "kept": 439,
+  "audio_file": "47660734.mp3",
+  "audio_sha": "69df71dc_5877088",
+  "self_audio_sha": "69df71dc_5877088"
+ },
+ {
+  "group_id": 103,
+  "name": "EON BREAK",
+  "composer": "Virtual Self",
+  "members": [
+   440
+  ],
+  "kept": 440,
+  "audio_file": "EON BREAK.mp3",
+  "audio_sha": "d7f83940_3538923",
+  "self_audio_sha": "d7f83940_3538923"
+ },
+ {
+  "group_id": 104,
+  "name": "Bad Apple!! (Camellia's \"Bad Psy!!\" Remix) ",
+  "composer": "のみこ / かめりあ",
+  "members": [
+   442
+  ],
+  "kept": 442,
+  "audio_file": "67879646.mp3",
+  "audio_sha": "500d4aa2_8177194",
+  "self_audio_sha": "500d4aa2_8177194"
+ },
+ {
+  "group_id": 105,
+  "name": "Secret Lie",
+  "composer": "Osanzi",
+  "members": [
+   450
+  ],
+  "kept": 450,
+  "audio_file": "81383336.mp3",
+  "audio_sha": "f9555362_8290369",
+  "self_audio_sha": "f9555362_8290369"
+ },
+ {
+  "group_id": 106,
+  "name": "Hello (BPM) 2023",
+  "composer": "かめりあ",
+  "members": [
+   459,
+   44144
+  ],
+  "kept": 459,
+  "audio_file": "75244528.mp3",
+  "audio_sha": "cbcc691b_6702045",
+  "self_audio_sha": "cbcc691b_6702045"
+ },
+ {
+  "group_id": 107,
+  "name": "sense",
+  "composer": "BilliumMoto × Silentroom",
+  "members": [
+   468,
+   7480,
+   48935
+  ],
+  "kept": 7480,
+  "audio_file": "44150155.mp3",
+  "audio_sha": "936bbe5f_6136514",
+  "self_audio_sha": "936bbe5f_6136514"
+ },
+ {
+  "group_id": 108,
+  "name": "Extra Stage (Octopus Dance)",
+  "composer": "Ryo Nagamatsu",
+  "members": [
+   471
+  ],
+  "kept": 471,
+  "audio_file": "47687423.mp3",
+  "audio_sha": "053fa390_1568581",
+  "self_audio_sha": "053fa390_1568581"
+ },
+ {
+  "group_id": 109,
+  "name": "Brainiac Maniac (Re)",
+  "composer": "Laura Shigihara",
+  "members": [
+   488
+  ],
+  "kept": 488,
+  "audio_file": "7625632.mp3",
+  "audio_sha": "e60494b8_4052575",
+  "self_audio_sha": "e60494b8_4052575"
+ },
+ {
+  "group_id": 110,
+  "name": "ギターと孤独と蒼い惑星",
+  "composer": "結束バンド",
+  "members": [
+   489,
+   50294
+  ],
+  "kept": 489,
+  "audio_file": "Guitar&Lonely&Blue Planet.mp3",
+  "audio_sha": "f43f0b5c_6170178",
+  "self_audio_sha": "f43f0b5c_6170178"
+ },
+ {
+  "group_id": 111,
+  "name": "回レ! 雪月花",
+  "composer": "Hige Driver/歌組雪月花",
+  "members": [
+   523
+  ],
+  "kept": 523,
+  "audio_file": "89077296.mp3",
+  "audio_sha": "36a23c6a_2407046",
+  "self_audio_sha": "36a23c6a_2407046"
+ },
+ {
+  "group_id": 112,
+  "name": "1116",
+  "composer": "BEMANI Sound Team 'Dustup'",
+  "members": [
+   527,
+   64313
+  ],
+  "kept": 64313,
+  "audio_file": "1383757382646894.mp3",
+  "audio_sha": "cdef747a_4763107",
+  "self_audio_sha": "cdef747a_4763107"
+ },
+ {
+  "group_id": 113,
+  "name": "可愛くてごめん",
+  "composer": "HoneyWorks",
+  "members": [
+   528,
+   1660
+  ],
+  "kept": 528,
+  "audio_file": "12366345.mp3",
+  "audio_sha": "23345b06_8768910",
+  "self_audio_sha": "23345b06_8768910"
+ },
+ {
+  "group_id": 114,
+  "name": "廻り巡る",
+  "composer": "1ZLAND",
+  "members": [
+   566
+  ],
+  "kept": 566,
+  "audio_file": "ÅhñΩ╤▓ñδ.mp3",
+  "audio_sha": "90fe1344_2172177",
+  "self_audio_sha": "90fe1344_2172177"
+ },
+ {
+  "group_id": 115,
+  "name": "ティアドロップス(Tear Drops)",
+  "composer": "Poppin'Party",
+  "members": [
+   570
+  ],
+  "kept": 570,
+  "audio_file": "66124837.mp3",
+  "audio_sha": "f64ea46d_6013440",
+  "self_audio_sha": "f64ea46d_6013440"
+ },
+ {
+  "group_id": 116,
+  "name": "cyanine",
+  "composer": "jioyi",
+  "members": [
+   580,
+   2466,
+   2778,
+   4806,
+   6050,
+   20475,
+   21041,
+   22171,
+   25988,
+   28317,
+   30303,
+   35999,
+   37556
+  ],
+  "kept": 22171,
+  "audio_file": "94544042.mp3",
+  "audio_sha": "fded9626_10165502",
+  "self_audio_sha": "fded9626_10165502"
+ },
+ {
+  "group_id": 117,
+  "name": "R.I.P.",
+  "composer": "eicateve",
+  "members": [
+   609,
+   837,
+   946,
+   1402,
+   1890,
+   5233,
+   6882,
+   13395,
+   13407,
+   18280,
+   28337,
+   28873,
+   31914,
+   32805
+  ],
+  "kept": 13395,
+  "audio_file": "47100650.mp3",
+  "audio_sha": "b9802067_7433073",
+  "self_audio_sha": "b9802067_7433073"
+ },
+ {
+  "group_id": 118,
+  "name": "Psychedelic Music",
+  "composer": "Cheetah Moblie",
+  "members": [
+   616
+  ],
+  "kept": 616,
+  "audio_file": "Psychedelic Music.mp3",
+  "audio_sha": "3edc5bf1_2029424",
+  "self_audio_sha": "3edc5bf1_2029424"
+ },
+ {
+  "group_id": 119,
+  "name": "アイドル(Idol)",
+  "composer": "YOASOBI",
+  "members": [
+   638
+  ],
+  "kept": 638,
+  "audio_file": "48684644.mp3",
+  "audio_sha": "ac53a576_5327958",
+  "self_audio_sha": "ac53a576_5327958"
+ },
+ {
+  "group_id": 120,
+  "name": "Ride on",
+  "composer": "李敬浩Hao/宫奇Gon",
+  "members": [
+   654,
+   13206
+  ],
+  "kept": 654,
+  "audio_file": "50110286.mp3",
+  "audio_sha": "d53ec46a_3597348",
+  "self_audio_sha": "d53ec46a_3597348"
+ },
+ {
+  "group_id": 121,
+  "name": "Never Gonna Give You Up(Camellia Remix)",
+  "composer": "Camellia",
+  "members": [
+   669
+  ],
+  "kept": 669,
+  "audio_file": "31310912.mp3",
+  "audio_sha": "603a9e55_6962154",
+  "self_audio_sha": "603a9e55_6962154"
+ },
+ {
+  "group_id": 122,
+  "name": "Destr0yer -Afterwar-",
+  "composer": "Sakuzyo",
+  "members": [
+   671
+  ],
+  "kept": 671,
+  "audio_file": "73996963.mp3",
+  "audio_sha": "11bb6cd3_7498538",
+  "self_audio_sha": "11bb6cd3_7498538"
+ },
+ {
+  "group_id": 123,
+  "name": "Era Breath",
+  "composer": "MYUKKE.",
+  "members": [
+   692,
+   9935,
+   11756,
+   15657,
+   36035,
+   53411,
+   77764
+  ],
+  "kept": 77764,
+  "audio_file": "2751247670653243.mp3",
+  "audio_sha": "30f2af58_5236263",
+  "self_audio_sha": "30f2af58_5236263"
+ },
+ {
+  "group_id": 124,
+  "name": "封焔の135秒",
+  "composer": "大国奏音",
+  "members": [
+   702,
+   26960,
+   59762
+  ],
+  "kept": 59762,
+  "audio_file": "9268005395234764.mp3",
+  "audio_sha": "9114fe9a_6217955",
+  "self_audio_sha": "9114fe9a_6217955"
+ },
+ {
+  "group_id": 125,
+  "name": "Ice Flower",
+  "composer": "浅蓝",
+  "members": [
+   711
+  ],
+  "kept": 711,
+  "audio_file": "94148080.ogg",
+  "audio_sha": "c058fc73_2901391",
+  "self_audio_sha": "c058fc73_2901391"
+ },
+ {
+  "group_id": 126,
+  "name": "Le Porteur d'Ombre",
+  "composer": "黒皇帝 feat. AKA",
+  "members": [
+   713,
+   1025,
+   1868,
+   7328,
+   9452,
+   11366,
+   11499,
+   11517,
+   13717,
+   17303,
+   25009,
+   47654,
+   54169,
+   76072
+  ],
+  "kept": 9452,
+  "audio_file": "80617878.mp3",
+  "audio_sha": "f7b00aa6_7209124",
+  "self_audio_sha": "f7b00aa6_7209124"
+ },
+ {
+  "group_id": 127,
+  "name": "驟雨の狭間",
+  "composer": "Silentroom",
+  "members": [
+   732,
+   2613,
+   9528,
+   10585,
+   17037,
+   26672,
+   30337,
+   47489,
+   50308,
+   52078,
+   54079
+  ],
+  "kept": 47489,
+  "audio_file": "5913208808780197.mp3",
+  "audio_sha": "534028b2_10768146",
+  "self_audio_sha": "534028b2_10768146"
+ },
+ {
+  "group_id": 128,
+  "name": "Rush E",
+  "composer": "Sheet Music Boss",
+  "members": [
+   745,
+   6832
+  ],
+  "kept": 745,
+  "audio_file": "76413683.mp3",
+  "audio_sha": "5da901b4_5768925",
+  "self_audio_sha": "5da901b4_5768925"
+ },
+ {
+  "group_id": 129,
+  "name": "Shin Takarajima Elevator",
+  "composer": "The Musical Ghost",
+  "members": [
+   754
+  ],
+  "kept": 754,
+  "audio_file": "75315176.ogg",
+  "audio_sha": "96e7708a_1695355",
+  "self_audio_sha": "96e7708a_1695355"
+ },
+ {
+  "group_id": 130,
+  "name": "マシンガンポエムドール",
+  "composer": "cosMo＠暴走P",
+  "members": [
+   755
+  ],
+  "kept": 755,
+  "audio_file": "35081849.mp3",
+  "audio_sha": "384136f5_5625715",
+  "self_audio_sha": "384136f5_5625715"
+ },
+ {
+  "group_id": 131,
+  "name": "Soulwind",
+  "composer": "HyuN",
+  "members": [
+   759,
+   24158
+  ],
+  "kept": 24158,
+  "audio_file": "7412040.mp3",
+  "audio_sha": "a802e871_9045824",
+  "self_audio_sha": "a802e871_9045824"
+ },
+ {
+  "group_id": 132,
+  "name": "Dice 20",
+  "composer": "Daily天利",
+  "members": [
+   771
+  ],
+  "kept": 771,
+  "audio_file": "61001006.mp3",
+  "audio_sha": "f0d84d8d_6180526",
+  "self_audio_sha": "f0d84d8d_6180526"
+ },
+ {
+  "group_id": 133,
+  "name": "Last Judgement",
+  "composer": "Laur & Juggernaut.",
+  "members": [
+   772,
+   39905
+  ],
+  "kept": 772,
+  "audio_file": "Last Judgement.mp3",
+  "audio_sha": "1b4f4393_5716706",
+  "self_audio_sha": "1b4f4393_5716706"
+ },
+ {
+  "group_id": 134,
+  "name": "蜘蛛糸モノポリ",
+  "composer": "ササクレ・ユーケイ/初音ミク",
+  "members": [
+   778
+  ],
+  "kept": 778,
+  "audio_file": "37889510.mp3",
+  "audio_sha": "46d31c68_10893131",
+  "self_audio_sha": "46d31c68_10893131"
+ },
+ {
+  "group_id": 135,
+  "name": "The art of war",
+  "composer": "Chipzel",
+  "members": [
+   782
+  ],
+  "kept": 782,
+  "audio_file": "20260896.mp3",
+  "audio_sha": "9cd8c213_2017208",
+  "self_audio_sha": "9cd8c213_2017208"
+ },
+ {
+  "group_id": 136,
+  "name": "Never Gonna Give You Up(speed 1.25)",
+  "composer": "Rick Astley",
+  "members": [
+   784
+  ],
+  "kept": 784,
+  "audio_file": "22981542.mp3",
+  "audio_sha": "9c1af02c_6815913",
+  "self_audio_sha": "9c1af02c_6815913"
+ },
+ {
+  "group_id": 137,
+  "name": "Dubwoofer Substep",
+  "composer": "Omnitica",
+  "members": [
+   789
+  ],
+  "kept": 789,
+  "audio_file": "3439860.mp3",
+  "audio_sha": "d42a28a4_2573929",
+  "self_audio_sha": "d42a28a4_2573929"
+ },
+ {
+  "group_id": 138,
+  "name": "田中",
+  "composer": "立秋 feat.ちょこ",
+  "members": [
+   795
+  ],
+  "kept": 795,
+  "audio_file": "feat..mp3",
+  "audio_sha": "71f920a2_5505632",
+  "self_audio_sha": "71f920a2_5505632"
+ },
+ {
+  "group_id": 139,
+  "name": "窒碍难行",
+  "composer": "茶奶星玖",
+  "members": [
+   801
+  ],
+  "kept": 801,
+  "audio_file": "27822315.mp3",
+  "audio_sha": "fd3af858_7385219",
+  "self_audio_sha": "fd3af858_7385219"
+ },
+ {
+  "group_id": 140,
+  "name": "匿名M",
+  "composer": "ピノキオピー",
+  "members": [
+   826
+  ],
+  "kept": 826,
+  "audio_file": "38722820.mp3",
+  "audio_sha": "cc2e6818_2560142",
+  "self_audio_sha": "cc2e6818_2560142"
+ },
+ {
+  "group_id": 141,
+  "name": "Termination of Desires",
+  "composer": "HoYo—Mix",
+  "members": [
+   844,
+   16820
+  ],
+  "kept": 844,
+  "audio_file": "Termination of Desires.mp3",
+  "audio_sha": "9da0d7f8_6950615",
+  "self_audio_sha": "9da0d7f8_6950615"
+ },
+ {
+  "group_id": 142,
+  "name": "不老不死",
+  "composer": "巨型岩史莱姆&梓漓゛&三国杀绿帽&辰琦",
+  "members": [
+   846
+  ],
+  "kept": 846,
+  "audio_file": "57390814.mp3",
+  "audio_sha": "37dda96f_8594482",
+  "self_audio_sha": "37dda96f_8594482"
+ },
+ {
+  "group_id": 143,
+  "name": "Lanterns",
+  "composer": "Xomu",
+  "members": [
+   877,
+   13797
+  ],
+  "kept": 13797,
+  "audio_file": "12929371.mp3",
+  "audio_sha": "ba245e97_10979261",
+  "self_audio_sha": "ba245e97_10979261"
+ },
+ {
+  "group_id": 144,
+  "name": "ねぇねぇねぇ",
+  "composer": "ピノキオピ-",
+  "members": [
+   879
+  ],
+  "kept": 879,
+  "audio_file": "ñ═ñºñ═ñºñ═ñº.mp3",
+  "audio_sha": "5db83e2e_3406584",
+  "self_audio_sha": "5db83e2e_3406584"
+ },
+ {
+  "group_id": 145,
+  "name": "拝啓",
+  "composer": "ぺぽよ / 初音ミク",
+  "members": [
+   886
+  ],
+  "kept": 886,
+  "audio_file": "67851502.mp3",
+  "audio_sha": "8a168175_10846345",
+  "self_audio_sha": "8a168175_10846345"
+ },
+ {
+  "group_id": 146,
+  "name": "太空电梯",
+  "composer": "阿鲲",
+  "members": [
+   891
+  ],
+  "kept": 891,
+  "audio_file": "84447696.mp3",
+  "audio_sha": "b64e8f7b_3017630",
+  "self_audio_sha": "b64e8f7b_3017630"
+ },
+ {
+  "group_id": 147,
+  "name": "BATTLE NO.1 (DJ Myosuke remix)",
+  "composer": "DJ Myosuke",
+  "members": [
+   901
+  ],
+  "kept": 901,
+  "audio_file": "70393109.mp3",
+  "audio_sha": "fc589687_2562861",
+  "self_audio_sha": "fc589687_2562861"
+ },
+ {
+  "group_id": 148,
+  "name": "ドリアン爆弾(feat. Roon_kun)",
+  "composer": "Daily天利（feat.Roon_kun）",
+  "members": [
+   906
+  ],
+  "kept": 906,
+  "audio_file": "98272432.ogg",
+  "audio_sha": "fc4f8d63_3121901",
+  "self_audio_sha": "fc4f8d63_3121901"
+ },
+ {
+  "group_id": 149,
+  "name": "コトダマ紬ぐ未来",
+  "composer": "紫社",
+  "members": [
+   908
+  ],
+  "kept": 908,
+  "audio_file": "88622068.ogg",
+  "audio_sha": "5e6c57f9_2571552",
+  "self_audio_sha": "5e6c57f9_2571552"
+ },
+ {
+  "group_id": 150,
+  "name": "ウミユリ海底谭",
+  "composer": "n-buna",
+  "members": [
+   909
+  ],
+  "kept": 909,
+  "audio_file": "19152280.mp3",
+  "audio_sha": "f113cb88_4197355",
+  "self_audio_sha": "f113cb88_4197355"
+ },
+ {
+  "group_id": 151,
+  "name": "バグ (Game ver.)",
+  "composer": "かいりきベア",
+  "members": [
+   927
+  ],
+  "kept": 927,
+  "audio_file": "37764113.mp3",
+  "audio_sha": "de73f9cd_5126269",
+  "self_audio_sha": "de73f9cd_5126269"
+ },
+ {
+  "group_id": 152,
+  "name": "Journey To The Rainbows",
+  "composer": "Ardolf",
+  "members": [
+   929,
+   2716
+  ],
+  "kept": 929,
+  "audio_file": "69592362.mp3",
+  "audio_sha": "aab0aadf_5881774",
+  "self_audio_sha": "aab0aadf_5881774"
+ },
+ {
+  "group_id": 153,
+  "name": "ショウタイム・ルーラー (Game ver.)",
+  "composer": "烏屋茶房",
+  "members": [
+   930
+  ],
+  "kept": 930,
+  "audio_file": "87421739.mp3",
+  "audio_sha": "4c67115a_4354090",
+  "self_audio_sha": "4c67115a_4354090"
+ },
+ {
+  "group_id": 154,
+  "name": "Ängstlicher Vermeidender",
+  "composer": "Jehezukiel",
+  "members": [
+   936
+  ],
+  "kept": 936,
+  "audio_file": "Ängstlicher Vermeidender.mp3",
+  "audio_sha": "ae0af213_3460164",
+  "self_audio_sha": "ae0af213_3460164"
+ },
+ {
+  "group_id": 155,
+  "name": "私は、私達は (Game ver.)",
+  "composer": "Guiano",
+  "members": [
+   955
+  ],
+  "kept": 955,
+  "audio_file": "66707776.mp3",
+  "audio_sha": "105ce7c7_2597580",
+  "self_audio_sha": "105ce7c7_2597580"
+ },
+ {
+  "group_id": 156,
+  "name": "Amnéhilesie",
+  "composer": "MisomyL",
+  "members": [
+   963,
+   35532,
+   50213,
+   50321,
+   57590
+  ],
+  "kept": 35532,
+  "audio_file": "1946569154310830.mp3",
+  "audio_sha": "6d28ad13_6289735",
+  "self_audio_sha": "6d28ad13_6289735"
+ },
+ {
+  "group_id": 157,
+  "name": "ozma",
+  "composer": "TJ.hangneil vs Jackz",
+  "members": [
+   966
+  ],
+  "kept": 966,
+  "audio_file": "ozma.mp3",
+  "audio_sha": "0a3560aa_5083615",
+  "self_audio_sha": "0a3560aa_5083615"
+ },
+ {
+  "group_id": 158,
+  "name": "777",
+  "composer": "RoughSketch",
+  "members": [
+   971,
+   77787
+  ],
+  "kept": 77787,
+  "audio_file": "3745807846704558.ogg",
+  "audio_sha": "82915c35_7530247",
+  "self_audio_sha": "82915c35_7530247"
+ },
+ {
+  "group_id": 159,
+  "name": "MARENOL",
+  "composer": "LeaF",
+  "members": [
+   989,
+   24310,
+   31082,
+   39192,
+   45087,
+   57312
+  ],
+  "kept": 31082,
+  "audio_file": "7738606413668800.mp3",
+  "audio_sha": "ba30f837_6321004",
+  "self_audio_sha": "ba30f837_6321004"
+ },
+ {
+  "group_id": 160,
+  "name": "初音未来的消失",
+  "composer": "cosMo(暴走P)\n",
+  "members": [
+   993,
+   38294
+  ],
+  "kept": 993,
+  "audio_file": "89938212(1).mp3",
+  "audio_sha": "8e69ba83_5501431",
+  "self_audio_sha": "8e69ba83_5501431"
+ },
+ {
+  "group_id": 161,
+  "name": "アイドル",
+  "composer": "YOASOBI",
+  "members": [
+   1000,
+   4459,
+   7145,
+   16090
+  ],
+  "kept": 16090,
+  "audio_file": "70572567.mp3",
+  "audio_sha": "bbb1d0e2_8535746",
+  "self_audio_sha": "bbb1d0e2_8535746"
+ },
+ {
+  "group_id": 162,
+  "name": "Lose Control",
+  "composer": "Hedley",
+  "members": [
+   1027,
+   52480
+  ],
+  "kept": 1027,
+  "audio_file": "25749363.mp3",
+  "audio_sha": "a98c0592_9075054",
+  "self_audio_sha": "a98c0592_9075054"
+ },
+ {
+  "group_id": 163,
+  "name": "Catalinesie",
+  "composer": "MisomyL",
+  "members": [
+   1046
+  ],
+  "kept": 1046,
+  "audio_file": "Catalinesie.mp3",
+  "audio_sha": "8b6991dc_2679973",
+  "self_audio_sha": "8b6991dc_2679973"
+ },
+ {
+  "group_id": 164,
+  "name": "666",
+  "composer": "RoughSketch",
+  "members": [
+   1051,
+   6257,
+   7465,
+   11655,
+   16119,
+   71712
+  ],
+  "kept": 1051,
+  "audio_file": "25131396.mp3",
+  "audio_sha": "ec906e7d_6620671",
+  "self_audio_sha": "ec906e7d_6620671"
+ },
+ {
+  "group_id": 165,
+  "name": "The Spectre",
+  "composer": "Alan Walker",
+  "members": [
+   1053,
+   1390,
+   20430,
+   31311,
+   78621
+  ],
+  "kept": 20430,
+  "audio_file": "91158335.mp3",
+  "audio_sha": "1a17ba65_7754314",
+  "self_audio_sha": "1a17ba65_7754314"
+ },
+ {
+  "group_id": 166,
+  "name": "-Rebirth-",
+  "composer": "Banshi",
+  "members": [
+   1058
+  ],
+  "kept": 1058,
+  "audio_file": "48078296.mp3",
+  "audio_sha": "31e32216_5542605",
+  "self_audio_sha": "31e32216_5542605"
+ },
+ {
+  "group_id": 167,
+  "name": "強風オールバック",
+  "composer": "ゆこぴ",
+  "members": [
+   1067
+  ],
+  "kept": 1067,
+  "audio_file": "60938789.mp3",
+  "audio_sha": "6a4b7a81_5480924",
+  "self_audio_sha": "6a4b7a81_5480924"
+ },
+ {
+  "group_id": 168,
+  "name": "水底游歩道",
+  "composer": "UK",
+  "members": [
+   1068
+  ],
+  "kept": 1068,
+  "audio_file": "86896232.mp3",
+  "audio_sha": "5b44ea9f_6908935",
+  "self_audio_sha": "5b44ea9f_6908935"
+ },
+ {
+  "group_id": 169,
+  "name": "WATER",
+  "composer": "A-39 / 沙包P",
+  "members": [
+   1072,
+   48784,
+   49359
+  ],
+  "kept": 48784,
+  "audio_file": "4329741602166316.wav",
+  "audio_sha": "6e384f78_27647276",
+  "self_audio_sha": "6e384f78_27647276"
+ },
+ {
+  "group_id": 170,
+  "name": "Hello (BPM) 2023",
+  "composer": "Camellia",
+  "members": [
+   1084,
+   19711
+  ],
+  "kept": 1084,
+  "audio_file": "53601219.mp3",
+  "audio_sha": "74f2646f_6625278",
+  "self_audio_sha": "74f2646f_6625278"
+ },
+ {
+  "group_id": 171,
+  "name": "Frey's philosophy",
+  "composer": "powerless",
+  "members": [
+   1086,
+   17304,
+   46708
+  ],
+  "kept": 1086,
+  "audio_file": "12253524.mp3",
+  "audio_sha": "4fc4ff58_18416206",
+  "self_audio_sha": "4fc4ff58_18416206"
+ },
+ {
+  "group_id": 172,
+  "name": "Cherry Fragment",
+  "composer": "Cream VS. Tapion",
+  "members": [
+   1090
+  ],
+  "kept": 1090,
+  "audio_file": "28148312.mp3",
+  "audio_sha": "6042dfcc_5846491",
+  "self_audio_sha": "6042dfcc_5846491"
+ },
+ {
+  "group_id": 173,
+  "name": "Get Dat",
+  "composer": "Righten",
+  "members": [
+   1116
+  ],
+  "kept": 1116,
+  "audio_file": "34176719.mp3",
+  "audio_sha": "8f9cdb6b_4924105",
+  "self_audio_sha": "8f9cdb6b_4924105"
+ },
+ {
+  "group_id": 174,
+  "name": "S.T.A.Y. (Delta Heavy Tribute)",
+  "composer": "Hans Zimmer/Delta Heavy",
+  "members": [
+   1118
+  ],
+  "kept": 1118,
+  "audio_file": "time.ogg",
+  "audio_sha": "24d95701_4817163",
+  "self_audio_sha": "24d95701_4817163"
+ },
+ {
+  "group_id": 175,
+  "name": "WORLDINVADER",
+  "composer": "EBIMAYO",
+  "members": [
+   1124
+  ],
+  "kept": 1124,
+  "audio_file": "41992716.mp3",
+  "audio_sha": "e582d817_3386695",
+  "self_audio_sha": "e582d817_3386695"
+ },
+ {
+  "group_id": 176,
+  "name": "story（《异世界舅舅》op）",
+  "composer": "前島麻由",
+  "members": [
+   1125
+  ],
+  "kept": 1125,
+  "audio_file": "17515883.mp3",
+  "audio_sha": "956ff01a_2124695",
+  "self_audio_sha": "956ff01a_2124695"
+ },
+ {
+  "group_id": 177,
+  "name": "乙女解刨",
+  "composer": "DECO*27",
+  "members": [
+   1161
+  ],
+  "kept": 1161,
+  "audio_file": "44117006.mp3",
+  "audio_sha": "091a7e49_2640736",
+  "self_audio_sha": "091a7e49_2640736"
+ },
+ {
+  "group_id": 178,
+  "name": "Big Daddy",
+  "composer": "USAO",
+  "members": [
+   1162,
+   2508
+  ],
+  "kept": 2508,
+  "audio_file": "USAO-Big Daddy(cat).mp3",
+  "audio_sha": "38f65fad_6299093",
+  "self_audio_sha": "38f65fad_6299093"
+ },
+ {
+  "group_id": 179,
+  "name": "GENOCIDER",
+  "composer": "DJ Myosuke",
+  "members": [
+   1193
+  ],
+  "kept": 1193,
+  "audio_file": "91332093.wav",
+  "audio_sha": "29fd6a45_24385468",
+  "self_audio_sha": "29fd6a45_24385468"
+ },
+ {
+  "group_id": 180,
+  "name": "City of Ashes",
+  "composer": "RAI ",
+  "members": [
+   1197,
+   6278
+  ],
+  "kept": 6278,
+  "audio_file": "40827711.mp3",
+  "audio_sha": "779462c4_7337298",
+  "self_audio_sha": "779462c4_7337298"
+ },
+ {
+  "group_id": 181,
+  "name": "Carnival",
+  "composer": "HOYO-MiX",
+  "members": [
+   1207
+  ],
+  "kept": 1207,
+  "audio_file": "91268544.mp3",
+  "audio_sha": "30b7ea24_700334",
+  "self_audio_sha": "30b7ea24_700334"
+ },
+ {
+  "group_id": 182,
+  "name": "Orca",
+  "composer": "UK",
+  "members": [
+   1213
+  ],
+  "kept": 1213,
+  "audio_file": "Orca.mp3",
+  "audio_sha": "27b6da7c_6550535",
+  "self_audio_sha": "27b6da7c_6550535"
+ },
+ {
+  "group_id": 183,
+  "name": "TruE",
+  "composer": "UK",
+  "members": [
+   1218
+  ],
+  "kept": 1218,
+  "audio_file": "68586550.mp3",
+  "audio_sha": "c0317855_3980975",
+  "self_audio_sha": "c0317855_3980975"
+ },
+ {
+  "group_id": 184,
+  "name": "Da Capo",
+  "composer": "蔡近翰Zoe(HOYO-MiX)",
+  "members": [
+   1219
+  ],
+  "kept": 1219,
+  "audio_file": "15942491.mp3",
+  "audio_sha": "082ad940_5957720",
+  "self_audio_sha": "082ad940_5957720"
+ },
+ {
+  "group_id": 185,
+  "name": "Pixel Journey",
+  "composer": "chell rui",
+  "members": [
+   1236
+  ],
+  "kept": 1236,
+  "audio_file": "Pixel Journey.mp3",
+  "audio_sha": "8489f606_4116375",
+  "self_audio_sha": "8489f606_4116375"
+ },
+ {
+  "group_id": 186,
+  "name": "四月の雨",
+  "composer": "cubesato",
+  "members": [
+   1237,
+   22065,
+   48679
+  ],
+  "kept": 48679,
+  "audio_file": "4954627877514281.mp3",
+  "audio_sha": "ce5f0c16_5240298",
+  "self_audio_sha": "ce5f0c16_5240298"
+ },
+ {
+  "group_id": 187,
+  "name": "MarbleBlue.",
+  "composer": "MisoilePunch♪",
+  "members": [
+   1251,
+   38880,
+   40034,
+   49800,
+   52982,
+   53049,
+   61763,
+   73385
+  ],
+  "kept": 49800,
+  "audio_file": "9753609532565852.ogg",
+  "audio_sha": "8cdb23cc_7396876",
+  "self_audio_sha": "8cdb23cc_7396876"
+ },
+ {
+  "group_id": 188,
+  "name": "BZenith",
+  "composer": "xh白女士hx",
+  "members": [
+   1259
+  ],
+  "kept": 1259,
+  "audio_file": "bz.mp3",
+  "audio_sha": "10851a60_4998239",
+  "self_audio_sha": "10851a60_4998239"
+ },
+ {
+  "group_id": 189,
+  "name": "THE WORLD REVOLVING",
+  "composer": "Toby Fox",
+  "members": [
+   1267
+  ],
+  "kept": 1267,
+  "audio_file": "1541865473.ogg",
+  "audio_sha": "a3f46dbb_2120370",
+  "self_audio_sha": "a3f46dbb_2120370"
+ },
+ {
+  "group_id": 190,
+  "name": "マネキン",
+  "composer": "DECO*27/初音ミク",
+  "members": [
+   1274,
+   8770
+  ],
+  "kept": 8770,
+  "audio_file": "46716445.mp3",
+  "audio_sha": "e4c194ab_8188948",
+  "self_audio_sha": "e4c194ab_8188948"
+ },
+ {
+  "group_id": 191,
+  "name": "なにやってもうまくいかない",
+  "composer": "meiyo",
+  "members": [
+   1275
+  ],
+  "kept": 1275,
+  "audio_file": "57000967.mp3",
+  "audio_sha": "ec43d9c7_3490052",
+  "self_audio_sha": "ec43d9c7_3490052"
+ },
+ {
+  "group_id": 192,
+  "name": "Ocean Blue",
+  "composer": "heavenEGHD",
+  "members": [
+   1281
+  ],
+  "kept": 1281,
+  "audio_file": "Ocean Blue.mp3",
+  "audio_sha": "08cebf57_5749815",
+  "self_audio_sha": "08cebf57_5749815"
+ },
+ {
+  "group_id": 193,
+  "name": "天津甕星",
+  "composer": "Sakuzyo",
+  "members": [
+   1283
+  ],
+  "kept": 1283,
+  "audio_file": "tj.mp3",
+  "audio_sha": "aa6371c2_5520278",
+  "self_audio_sha": "aa6371c2_5520278"
+ },
+ {
+  "group_id": 194,
+  "name": "gur yvsr（仮）",
+  "composer": "Frums",
+  "members": [
+   1288,
+   77866
+  ],
+  "kept": 1288,
+  "audio_file": "gur yvsr.mp3",
+  "audio_sha": "e5691127_5285645",
+  "self_audio_sha": "e5691127_5285645"
+ },
+ {
+  "group_id": 195,
+  "name": "めめ",
+  "composer": "めめ（Frums）",
+  "members": [
+   1289
+  ],
+  "kept": 1289,
+  "audio_file": "ñßñß.mp3",
+  "audio_sha": "0efc4928_5344443",
+  "self_audio_sha": "0efc4928_5344443"
+ },
+ {
+  "group_id": 196,
+  "name": "Protoholder",
+  "composer": "Silentroom",
+  "members": [
+   1290
+  ],
+  "kept": 1290,
+  "audio_file": "10953763.mp3",
+  "audio_sha": "cbae2168_7004488",
+  "self_audio_sha": "cbae2168_7004488"
+ },
+ {
+  "group_id": 197,
+  "name": "海神寓拝",
+  "composer": "sasakure.UK",
+  "members": [
+   1292,
+   2935
+  ],
+  "kept": 2935,
+  "audio_file": "海神寓拝.mp3",
+  "audio_sha": "ad039f46_6916297",
+  "self_audio_sha": "ad039f46_6916297"
+ },
+ {
+  "group_id": 198,
+  "name": "disperagioia",
+  "composer": "gmtn.",
+  "members": [
+   1294,
+   48443
+  ],
+  "kept": 1294,
+  "audio_file": "11.mp3",
+  "audio_sha": "64644a4c_5589944",
+  "self_audio_sha": "64644a4c_5589944"
+ },
+ {
+  "group_id": 199,
+  "name": "Triumph&Regret",
+  "composer": "typeMARS",
+  "members": [
+   1309
+  ],
+  "kept": 1309,
+  "audio_file": "43699221.mp3",
+  "audio_sha": "9d8ee442_4420462",
+  "self_audio_sha": "9d8ee442_4420462"
+ },
+ {
+  "group_id": 200,
+  "name": "コネクト(Connect)",
+  "composer": "ClariS",
+  "members": [
+   1320
+  ],
+  "kept": 1320,
+  "audio_file": "62743074.mp3",
+  "audio_sha": "e7d729af_3348126",
+  "self_audio_sha": "e7d729af_3348126"
+ },
+ {
+  "group_id": 201,
+  "name": "Final Boss",
+  "composer": "Nitro Fun",
+  "members": [
+   1324
+  ],
+  "kept": 1324,
+  "audio_file": "3109187.mp3",
+  "audio_sha": "3a04a9d4_2538821",
+  "self_audio_sha": "3a04a9d4_2538821"
+ },
+ {
+  "group_id": 202,
+  "name": "グランドエスケープ",
+  "composer": "TSAR 三浦透子",
+  "members": [
+   1325
+  ],
+  "kept": 1325,
+  "audio_file": "24068663.mp3",
+  "audio_sha": "455e4e04_8840166",
+  "self_audio_sha": "455e4e04_8840166"
+ },
+ {
+  "group_id": 203,
+  "name": "Super Fructose",
+  "composer": "喵希Francis",
+  "members": [
+   1332,
+   23973,
+   30296,
+   31475,
+   33115,
+   54744
+  ],
+  "kept": 30296,
+  "audio_file": "96228318.mp3",
+  "audio_sha": "8cc8743a_6749572",
+  "self_audio_sha": "8cc8743a_6749572"
+ },
+ {
+  "group_id": 204,
+  "name": "Mystery Circles Ultra",
+  "composer": "Camellia",
+  "members": [
+   1334
+  ],
+  "kept": 1334,
+  "audio_file": "29347708.mp3",
+  "audio_sha": "0ef71ad3_3833147",
+  "self_audio_sha": "0ef71ad3_3833147"
+ },
+ {
+  "group_id": 205,
+  "name": "FREEDOM DiVE(tpz Overcute Remix)",
+  "composer": "t+pazolite",
+  "members": [
+   1339,
+   15875
+  ],
+  "kept": 1339,
+  "audio_file": "tpz.mp3",
+  "audio_sha": "a006aad4_2270302",
+  "self_audio_sha": "a006aad4_2270302"
+ },
+ {
+  "group_id": 206,
+  "name": "Hello (BPM) 2022",
+  "composer": "Camellia",
+  "members": [
+   1354
+  ],
+  "kept": 1354,
+  "audio_file": "2022.mp3",
+  "audio_sha": "5eef1c62_6048725",
+  "self_audio_sha": "5eef1c62_6048725"
+ },
+ {
+  "group_id": 207,
+  "name": "Shizuku (feat. NEONA)",
+  "composer": "PIKASONIC & Tatsunoshin",
+  "members": [
+   1360
+  ],
+  "kept": 1360,
+  "audio_file": "41966271.mp3",
+  "audio_sha": "3c817338_3524588",
+  "self_audio_sha": "3c817338_3524588"
+ },
+ {
+  "group_id": 208,
+  "name": "LyriC",
+  "composer": "MIMI",
+  "members": [
+   1368,
+   5300
+  ],
+  "kept": 5300,
+  "audio_file": "71473794.mp3",
+  "audio_sha": "e86a6558_2294539",
+  "self_audio_sha": "e86a6558_2294539"
+ },
+ {
+  "group_id": 209,
+  "name": "ただ声一つ",
+  "composer": "ロクデナシ/MiMi",
+  "members": [
+   1394
+  ],
+  "kept": 1394,
+  "audio_file": "40111666.mp3",
+  "audio_sha": "1aebb076_2532122",
+  "self_audio_sha": "1aebb076_2532122"
+ },
+ {
+  "group_id": 210,
+  "name": "Cosmic Fate",
+  "composer": "Wisp X",
+  "members": [
+   1403
+  ],
+  "kept": 1403,
+  "audio_file": "Cosmic Fate.mp3",
+  "audio_sha": "dcd9dd32_6105404",
+  "self_audio_sha": "dcd9dd32_6105404"
+ },
+ {
+  "group_id": 211,
+  "name": "RAWSTLE BOMB",
+  "composer": "山茶花",
+  "members": [
+   1404
+  ],
+  "kept": 1404,
+  "audio_file": "Rawstyle Bomb.mp3",
+  "audio_sha": "6710ad87_2517981",
+  "self_audio_sha": "6710ad87_2517981"
+ },
+ {
+  "group_id": 212,
+  "name": "the Cave",
+  "composer": "TDX特仑苏",
+  "members": [
+   1416
+  ],
+  "kept": 1416,
+  "audio_file": "Cave.mp3",
+  "audio_sha": "a22caf44_5306035",
+  "self_audio_sha": "a22caf44_5306035"
+ },
+ {
+  "group_id": 213,
+  "name": "Alteregoism",
+  "composer": "Laur",
+  "members": [
+   1432
+  ],
+  "kept": 1432,
+  "audio_file": "98997475.mp3",
+  "audio_sha": "723f2ce6_6491827",
+  "self_audio_sha": "723f2ce6_6491827"
+ },
+ {
+  "group_id": 214,
+  "name": "[CRYSTAL_ACCESS]",
+  "composer": "Blacklolita",
+  "members": [
+   1444,
+   34408,
+   34939
+  ],
+  "kept": 34408,
+  "audio_file": "9576184747598344.mp3",
+  "audio_sha": "df4438bf_7537260",
+  "self_audio_sha": "df4438bf_7537260"
+ },
+ {
+  "group_id": 215,
+  "name": "Masquerade",
+  "composer": "Lindsey Stirling",
+  "members": [
+   1454
+  ],
+  "kept": 1454,
+  "audio_file": "26283089.flac",
+  "audio_sha": "65879f0f_23831155",
+  "self_audio_sha": "65879f0f_23831155"
+ },
+ {
+  "group_id": 216,
+  "name": "Freagarthach",
+  "composer": "ryhki",
+  "members": [
+   1455
+  ],
+  "kept": 1455,
+  "audio_file": "97300174.ogg",
+  "audio_sha": "367d2a82_5998614",
+  "self_audio_sha": "367d2a82_5998614"
+ },
+ {
+  "group_id": 217,
+  "name": "SILENT TEARS (feat.Yukacco)",
+  "composer": "DJ Noriken",
+  "members": [
+   1464
+  ],
+  "kept": 1464,
+  "audio_file": "83432911.ogg",
+  "audio_sha": "f40e232d_2795538",
+  "self_audio_sha": "f40e232d_2795538"
+ },
+ {
+  "group_id": 218,
+  "name": "Symphonic Rhapsody op.1 \"Aster\"",
+  "composer": "Is-m/lydian",
+  "members": [
+   1469
+  ],
+  "kept": 1469,
+  "audio_file": "81379840.ogg",
+  "audio_sha": "a1181eaf_2919665",
+  "self_audio_sha": "a1181eaf_2919665"
+ },
+ {
+  "group_id": 219,
+  "name": "斷劍の獄",
+  "composer": "Rayson",
+  "members": [
+   1481,
+   1502,
+   13884,
+   59458
+  ],
+  "kept": 1502,
+  "audio_file": "91528755.mp3",
+  "audio_sha": "42d80df6_5187387",
+  "self_audio_sha": "42d80df6_5187387"
+ },
+ {
+  "group_id": 220,
+  "name": "BEAKER (roop remix)",
+  "composer": "FROL",
+  "members": [
+   1482
+  ],
+  "kept": 1482,
+  "audio_file": "29633989.ogg",
+  "audio_sha": "d673a9cb_2080622",
+  "self_audio_sha": "d673a9cb_2080622"
+ },
+ {
+  "group_id": 221,
+  "name": "Pure Ruby",
+  "composer": "SHIKI",
+  "members": [
+   1487
+  ],
+  "kept": 1487,
+  "audio_file": "21084874.ogg",
+  "audio_sha": "8ed16521_2920190",
+  "self_audio_sha": "8ed16521_2920190"
+ },
+ {
+  "group_id": 222,
+  "name": "Access Granted",
+  "composer": "LUNARiUM",
+  "members": [
+   1499
+  ],
+  "kept": 1499,
+  "audio_file": "ag.mp3",
+  "audio_sha": "2bb969a0_3768995",
+  "self_audio_sha": "2bb969a0_3768995"
+ },
+ {
+  "group_id": 223,
+  "name": "Androgynos",
+  "composer": "WAiKURO",
+  "members": [
+   1510,
+   1513
+  ],
+  "kept": 1513,
+  "audio_file": "38124035.mp3",
+  "audio_sha": "ffe5207c_6951216",
+  "self_audio_sha": "ffe5207c_6951216"
+ },
+ {
+  "group_id": 224,
+  "name": "R.I.P.【絶望の戦闘】",
+  "composer": "Ucchii0-うっちーゼロ",
+  "members": [
+   1514
+  ],
+  "kept": 1514,
+  "audio_file": "19000824.mp3",
+  "audio_sha": "f3079cb6_3205608",
+  "self_audio_sha": "f3079cb6_3205608"
+ },
+ {
+  "group_id": 225,
+  "name": "Lia=Fail",
+  "composer": "Team Grimoire",
+  "members": [
+   1521
+  ],
+  "kept": 1521,
+  "audio_file": "sj.mp3",
+  "audio_sha": "9b187fe1_5623834",
+  "self_audio_sha": "9b187fe1_5623834"
+ },
+ {
+  "group_id": 226,
+  "name": "Miku Pipebomb Reharm",
+  "composer": "EngineMusic",
+  "members": [
+   1522
+  ],
+  "kept": 1522,
+  "audio_file": "58227033.ogg",
+  "audio_sha": "aaf46e88_1447491",
+  "self_audio_sha": "aaf46e88_1447491"
+ },
+ {
+  "group_id": 227,
+  "name": "REFLECT (Assertive Hardcore Bootleg)",
+  "composer": "Gawr Gura vs Assertive",
+  "members": [
+   1523
+  ],
+  "kept": 1523,
+  "audio_file": "9787645.mp3",
+  "audio_sha": "84d429e2_3247076",
+  "self_audio_sha": "84d429e2_3247076"
+ },
+ {
+  "group_id": 228,
+  "name": "Travel Begins",
+  "composer": "ARForest",
+  "members": [
+   1525,
+   12187,
+   14912,
+   69833
+  ],
+  "kept": 14912,
+  "audio_file": "11915456.mp3",
+  "audio_sha": "6fe07435_8522195",
+  "self_audio_sha": "6fe07435_8522195"
+ },
+ {
+  "group_id": 229,
+  "name": "ハンマーを電波ソングにしてみた",
+  "composer": "1",
+  "members": [
+   1548
+  ],
+  "kept": 1548,
+  "audio_file": "chuizi.ogg",
+  "audio_sha": "44fdab08_2718356",
+  "self_audio_sha": "44fdab08_2718356"
+ },
+ {
+  "group_id": 230,
+  "name": "Absolute Future",
+  "composer": "otoshi.b",
+  "members": [
+   1566
+  ],
+  "kept": 1566,
+  "audio_file": "Absolute Future.mp3",
+  "audio_sha": "c7bc8bcc_2323264",
+  "self_audio_sha": "c7bc8bcc_2323264"
+ },
+ {
+  "group_id": 231,
+  "name": "Raw Unfilltered Calamity",
+  "composer": "DM.Dokuro",
+  "members": [
+   1579
+  ],
+  "kept": 1579,
+  "audio_file": "81379140.mp3",
+  "audio_sha": "0b560f95_5972844",
+  "self_audio_sha": "0b560f95_5972844"
+ },
+ {
+  "group_id": 232,
+  "name": "Glass Heart",
+  "composer": "Wisp X",
+  "members": [
+   1581
+  ],
+  "kept": 1581,
+  "audio_file": "glass heart.mp3",
+  "audio_sha": "d6f1e61e_3185354",
+  "self_audio_sha": "d6f1e61e_3185354"
+ },
+ {
+  "group_id": 233,
+  "name": "End Time",
+  "composer": "Cres.",
+  "members": [
+   1597,
+   10437,
+   11716,
+   12365,
+   13365,
+   23969,
+   32992,
+   35390,
+   36273,
+   47565,
+   52217,
+   52819,
+   53422,
+   74398
+  ],
+  "kept": 53422,
+  "audio_file": "2483424875933415.wav",
+  "audio_sha": "6b304d11_23620782",
+  "self_audio_sha": "6b304d11_23620782"
+ },
+ {
+  "group_id": 234,
+  "name": "宿星審判",
+  "composer": "suzu",
+  "members": [
+   1608
+  ],
+  "kept": 1608,
+  "audio_file": "xiuxing.mp3",
+  "audio_sha": "129cd7d3_5610444",
+  "self_audio_sha": "129cd7d3_5610444"
+ },
+ {
+  "group_id": 235,
+  "name": "SUPERNOVA",
+  "composer": "USAO",
+  "members": [
+   1609,
+   2106
+  ],
+  "kept": 2106,
+  "audio_file": "SUPERNOVA.mp3",
+  "audio_sha": "e92a6696_5637745",
+  "self_audio_sha": "e92a6696_5637745"
+ },
+ {
+  "group_id": 236,
+  "name": "花たちに希望を",
+  "composer": "Sound Piercer",
+  "members": [
+   1616
+  ],
+  "kept": 1616,
+  "audio_file": "Flower For Hope.mp3",
+  "audio_sha": "6ad0cb7f_2793295",
+  "self_audio_sha": "6ad0cb7f_2793295"
+ },
+ {
+  "group_id": 237,
+  "name": "Gee",
+  "composer": "少女时代",
+  "members": [
+   1636
+  ],
+  "kept": 1636,
+  "audio_file": "Gee.mp3",
+  "audio_sha": "53c36443_5575616",
+  "self_audio_sha": "53c36443_5575616"
+ },
+ {
+  "group_id": 238,
+  "name": "Altros",
+  "composer": "ARForest",
+  "members": [
+   1637
+  ],
+  "kept": 1637,
+  "audio_file": "Altros.mp3",
+  "audio_sha": "ff6b6086_1428277",
+  "self_audio_sha": "ff6b6086_1428277"
+ },
+ {
+  "group_id": 239,
+  "name": "下水鳴動して鼠一匹",
+  "composer": "O-SE",
+  "members": [
+   1638
+  ],
+  "kept": 1638,
+  "audio_file": "Rat From Sewer.mp3",
+  "audio_sha": "50f0ad33_2239067",
+  "self_audio_sha": "50f0ad33_2239067"
+ },
+ {
+  "group_id": 240,
+  "name": "バグ",
+  "composer": "かいりきベア",
+  "members": [
+   1652
+  ],
+  "kept": 1652,
+  "audio_file": "80082433.mp3",
+  "audio_sha": "8f5844be_2775936",
+  "self_audio_sha": "8f5844be_2775936"
+ },
+ {
+  "group_id": 241,
+  "name": "Blows Up Everything",
+  "composer": "USAO",
+  "members": [
+   1656,
+   24452,
+   39229
+  ],
+  "kept": 39229,
+  "audio_file": "7590710825623696.mp3",
+  "audio_sha": "fc96bc70_3301667",
+  "self_audio_sha": "fc96bc70_3301667"
+ },
+ {
+  "group_id": 242,
+  "name": "Dream of Memories",
+  "composer": "Abel & Inu",
+  "members": [
+   1669,
+   13234
+  ],
+  "kept": 13234,
+  "audio_file": "Dream of Memories.mp3",
+  "audio_sha": "af5b864a_5736784",
+  "self_audio_sha": "af5b864a_5736784"
+ },
+ {
+  "group_id": 243,
+  "name": "PhonDrome!",
+  "composer": "Micelle",
+  "members": [
+   1672
+  ],
+  "kept": 1672,
+  "audio_file": "PhonDrome.mp3",
+  "audio_sha": "4dcfcc8a_2647771",
+  "self_audio_sha": "4dcfcc8a_2647771"
+ },
+ {
+  "group_id": 244,
+  "name": "The Last Page",
+  "composer": "ARForest",
+  "members": [
+   1673,
+   1789,
+   8756,
+   9113,
+   9668,
+   17018,
+   29686,
+   33625,
+   50557,
+   50571,
+   50625,
+   51605,
+   54464,
+   74589
+  ],
+  "kept": 51605,
+  "audio_file": "4710409430811098.wav",
+  "audio_sha": "b5688f02_25043022",
+  "self_audio_sha": "b5688f02_25043022"
+ },
+ {
+  "group_id": 245,
+  "name": "光与影",
+  "composer": "MANTA/马海昕",
+  "members": [
+   1674
+  ],
+  "kept": 1674,
+  "audio_file": "94152051.mp3",
+  "audio_sha": "b5c0f115_7668223",
+  "self_audio_sha": "b5c0f115_7668223"
+ },
+ {
+  "group_id": 246,
+  "name": "Chariot",
+  "composer": "USAO",
+  "members": [
+   1686,
+   10819,
+   46544
+  ],
+  "kept": 46544,
+  "audio_file": "1312575511500546.mp3",
+  "audio_sha": "ac4fa1fd_6218871",
+  "self_audio_sha": "ac4fa1fd_6218871"
+ },
+ {
+  "group_id": 247,
+  "name": "PSYCHO：LOGY",
+  "composer": "蒼井翔太",
+  "members": [
+   1690
+  ],
+  "kept": 1690,
+  "audio_file": "84716755.mp3",
+  "audio_sha": "aa0accbf_9386457",
+  "self_audio_sha": "aa0accbf_9386457"
+ },
+ {
+  "group_id": 248,
+  "name": "Oceanus",
+  "composer": "cosMo@BousouP",
+  "members": [
+   1694
+  ],
+  "kept": 1694,
+  "audio_file": "Oceanus_Cut.mp3",
+  "audio_sha": "f7d6ccd4_4816631",
+  "self_audio_sha": "f7d6ccd4_4816631"
+ },
+ {
+  "group_id": 249,
+  "name": "Daydream",
+  "composer": "RiraN",
+  "members": [
+   1700,
+   1826,
+   10829
+  ],
+  "kept": 1826,
+  "audio_file": "58448971.mp3",
+  "audio_sha": "2e596b69_4513686",
+  "self_audio_sha": "2e596b69_4513686"
+ },
+ {
+  "group_id": 250,
+  "name": "Turn Back Time",
+  "composer": "Rich Edwards feat.Emelie",
+  "members": [
+   1701,
+   8026
+  ],
+  "kept": 8026,
+  "audio_file": "20925541.mp3",
+  "audio_sha": "4ea1fecc_3044013",
+  "self_audio_sha": "4ea1fecc_3044013"
+ },
+ {
+  "group_id": 251,
+  "name": "INTERNET YAMERO",
+  "composer": "NEEDY GIRL OVERDOSE",
+  "members": [
+   1721,
+   51088
+  ],
+  "kept": 1721,
+  "audio_file": "52993822.mp3",
+  "audio_sha": "b4d5ca34_9861201",
+  "self_audio_sha": "b4d5ca34_9861201"
+ },
+ {
+  "group_id": 252,
+  "name": "くうになる (放空)",
+  "composer": "MIMI feat.可不 & 初音ミク",
+  "members": [
+   1724
+  ],
+  "kept": 1724,
+  "audio_file": "FANGKONG.ogg",
+  "audio_sha": "d7608994_3182529",
+  "self_audio_sha": "d7608994_3182529"
+ },
+ {
+  "group_id": 253,
+  "name": "Good bye, Merry-Go-Round.",
+  "composer": "Yooh",
+  "members": [
+   1728,
+   4279,
+   17703,
+   18204,
+   28113,
+   29293,
+   30053,
+   33007,
+   34984,
+   50390
+  ],
+  "kept": 28113,
+  "audio_file": "6820328090721388.mp3",
+  "audio_sha": "8c446b63_6565367",
+  "self_audio_sha": "8c446b63_6565367"
+ },
+ {
+  "group_id": 254,
+  "name": "イルミナティ",
+  "composer": "wotaku",
+  "members": [
+   1738
+  ],
+  "kept": 1738,
+  "audio_file": "91932698.mp3",
+  "audio_sha": "4a43f62c_3973928",
+  "self_audio_sha": "4a43f62c_3973928"
+ },
+ {
+  "group_id": 255,
+  "name": "Sometime",
+  "composer": "YUNG BAE,Brasstracks",
+  "members": [
+   1742
+  ],
+  "kept": 1742,
+  "audio_file": "15525887.mp3",
+  "audio_sha": "1d8d467c_6712667",
+  "self_audio_sha": "1d8d467c_6712667"
+ },
+ {
+  "group_id": 256,
+  "name": "阳光彩虹小白马",
+  "composer": "大张伟",
+  "members": [
+   1754
+  ],
+  "kept": 1754,
+  "audio_file": "niger.mp3",
+  "audio_sha": "0e0337db_4250420",
+  "self_audio_sha": "0e0337db_4250420"
+ },
+ {
+  "group_id": 257,
+  "name": "Originally",
+  "composer": "SNKS＆Mizku",
+  "members": [
+   1757
+  ],
+  "kept": 1757,
+  "audio_file": "20745327.ogg",
+  "audio_sha": "eb4c4576_2041427",
+  "self_audio_sha": "eb4c4576_2041427"
+ },
+ {
+  "group_id": 258,
+  "name": "life-line生命线",
+  "composer": "Zeraphym",
+  "members": [
+   1769
+  ],
+  "kept": 1769,
+  "audio_file": "53226618.mp3",
+  "audio_sha": "647ea833_12536799",
+  "self_audio_sha": "647ea833_12536799"
+ },
+ {
+  "group_id": 259,
+  "name": "Crhsh Alcohol",
+  "composer": "Shadow_bling",
+  "members": [
+   1772
+  ],
+  "kept": 1772,
+  "audio_file": "CA.mp3",
+  "audio_sha": "f7b8a10b_6407141",
+  "self_audio_sha": "f7b8a10b_6407141"
+ },
+ {
+  "group_id": 260,
+  "name": "てんてん (New Vocal Version)",
+  "composer": "都来りねとKeisuke Hattoriと#ねここ14歳",
+  "members": [
+   1782
+  ],
+  "kept": 1782,
+  "audio_file": "72375164.mp3",
+  "audio_sha": "71d71226_6810471",
+  "self_audio_sha": "71d71226_6810471"
+ },
+ {
+  "group_id": 261,
+  "name": "花と、雪と、ドラムンベース ",
+  "composer": "kanone feat. せんざい",
+  "members": [
+   1783,
+   6797
+  ],
+  "kept": 1783,
+  "audio_file": "22459700.ogg",
+  "audio_sha": "276c6717_2184811",
+  "self_audio_sha": "276c6717_2184811"
+ },
+ {
+  "group_id": 262,
+  "name": "彁",
+  "composer": "LeaF",
+  "members": [
+   1794,
+   10674,
+   25821,
+   31227,
+   43508,
+   46502,
+   77341
+  ],
+  "kept": 31227,
+  "audio_file": "12278323.wav",
+  "audio_sha": "9e1bfa51_25022892",
+  "self_audio_sha": "9e1bfa51_25022892"
+ },
+ {
+  "group_id": 263,
+  "name": "Milkcrown on Sonetica",
+  "composer": "ユジー",
+  "members": [
+   1798
+  ],
+  "kept": 1798,
+  "audio_file": "milk.mp3",
+  "audio_sha": "96247a70_5397943",
+  "self_audio_sha": "96247a70_5397943"
+ },
+ {
+  "group_id": 264,
+  "name": "Wolves Standing Towards Enemies",
+  "composer": "かめりあ (camellia)",
+  "members": [
+   1800,
+   15205
+  ],
+  "kept": 1800,
+  "audio_file": "48198157.ogg",
+  "audio_sha": "43092200_7307105",
+  "self_audio_sha": "43092200_7307105"
+ },
+ {
+  "group_id": 265,
+  "name": "Bloody Marquis",
+  "composer": "brz1128 vs. M-UE",
+  "members": [
+   1816,
+   8548,
+   49515
+  ],
+  "kept": 1816,
+  "audio_file": "Bloody Marquis.mp3",
+  "audio_sha": "44007bb2_5626398",
+  "self_audio_sha": "44007bb2_5626398"
+ },
+ {
+  "group_id": 266,
+  "name": "Crocus",
+  "composer": "RiraN",
+  "members": [
+   1822
+  ],
+  "kept": 1822,
+  "audio_file": "cro.mp3",
+  "audio_sha": "c284c83e_1801473",
+  "self_audio_sha": "c284c83e_1801473"
+ },
+ {
+  "group_id": 267,
+  "name": "Shooting Athletes",
+  "composer": "KARUT",
+  "members": [
+   1829,
+   54730,
+   54731,
+   54732,
+   65659
+  ],
+  "kept": 65659,
+  "audio_file": "4748527703018793.mp3",
+  "audio_sha": "94f0f46c_5561118",
+  "self_audio_sha": "94f0f46c_5561118"
+ },
+ {
+  "group_id": 268,
+  "name": "Armageddon",
+  "composer": "LeaF",
+  "members": [
+   1833,
+   19422,
+   27238,
+   37873,
+   52051
+  ],
+  "kept": 37873,
+  "audio_file": "7200034891377130.mp3",
+  "audio_sha": "4ffc7b46_5954871",
+  "self_audio_sha": "4ffc7b46_5954871"
+ },
+ {
+  "group_id": 269,
+  "name": "TremENDouS",
+  "composer": "かめりあ",
+  "members": [
+   1834,
+   51904
+  ],
+  "kept": 1834,
+  "audio_file": "56163158.mp3",
+  "audio_sha": "26418c35_10691186",
+  "self_audio_sha": "26418c35_10691186"
+ },
+ {
+  "group_id": 270,
+  "name": "Whirlpool",
+  "composer": "Sharks/Skybreak",
+  "members": [
+   1842
+  ],
+  "kept": 1842,
+  "audio_file": "Whirlpool.mp3",
+  "audio_sha": "b1d217f2_4418107",
+  "self_audio_sha": "b1d217f2_4418107"
+ },
+ {
+  "group_id": 271,
+  "name": "Setsuna",
+  "composer": "Kirara Magic",
+  "members": [
+   1849
+  ],
+  "kept": 1849,
+  "audio_file": "73347944.mp3",
+  "audio_sha": "119b9495_7012380",
+  "self_audio_sha": "119b9495_7012380"
+ },
+ {
+  "group_id": 272,
+  "name": "slic.hertz",
+  "composer": "Sobrem",
+  "members": [
+   1852
+  ],
+  "kept": 1852,
+  "audio_file": "65669108.mp3",
+  "audio_sha": "e57630b0_5832636",
+  "self_audio_sha": "e57630b0_5832636"
+ },
+ {
+  "group_id": 273,
+  "name": "One Way Street",
+  "composer": "siqlo",
+  "members": [
+   1855,
+   21028
+  ],
+  "kept": 21028,
+  "audio_file": "26233083.mp3",
+  "audio_sha": "4be18c33_5862764",
+  "self_audio_sha": "4be18c33_5862764"
+ },
+ {
+  "group_id": 274,
+  "name": "回レ！雪月花",
+  "composer": "雪と月と花",
+  "members": [
+   1856
+  ],
+  "kept": 1856,
+  "audio_file": "94439682.mp3",
+  "audio_sha": "285e889c_2186412",
+  "self_audio_sha": "285e889c_2186412"
+ },
+ {
+  "group_id": 275,
+  "name": "IMPACT",
+  "composer": "USAO feat. 光吉猛修",
+  "members": [
+   1857,
+   5961,
+   16763,
+   21329
+  ],
+  "kept": 16763,
+  "audio_file": "97626775.ogg",
+  "audio_sha": "4183c57c_8002969",
+  "self_audio_sha": "4183c57c_8002969"
+ },
+ {
+  "group_id": 276,
+  "name": "Paracelsus",
+  "composer": "K-forest",
+  "members": [
+   1867
+  ],
+  "kept": 1867,
+  "audio_file": "Paracelsus.mp3",
+  "audio_sha": "560a8b87_2395586",
+  "self_audio_sha": "560a8b87_2395586"
+ },
+ {
+  "group_id": 277,
+  "name": "Deity Silence",
+  "composer": "t+pazolite",
+  "members": [
+   1882
+  ],
+  "kept": 1882,
+  "audio_file": "╔±╝┼.mp3",
+  "audio_sha": "6e87d372_5162444",
+  "self_audio_sha": "6e87d372_5162444"
+ },
+ {
+  "group_id": 278,
+  "name": "No.1127",
+  "composer": "邹天恒",
+  "members": [
+   1884
+  ],
+  "kept": 1884,
+  "audio_file": "10441983.mp3",
+  "audio_sha": "a9e48093_2263059",
+  "self_audio_sha": "a9e48093_2263059"
+ },
+ {
+  "group_id": 279,
+  "name": "天火明命",
+  "composer": "Sakuzyo",
+  "members": [
+   1886,
+   41288,
+   44651
+  ],
+  "kept": 1886,
+  "audio_file": "Amenohoakari.mp3",
+  "audio_sha": "a64f6f3f_5682296",
+  "self_audio_sha": "a64f6f3f_5682296"
+ },
+ {
+  "group_id": 280,
+  "name": "Southern Cross",
+  "composer": "403",
+  "members": [
+   1887,
+   8737,
+   20231,
+   39540
+  ],
+  "kept": 1887,
+  "audio_file": "12190673.mp3",
+  "audio_sha": "5fc4e170_5992417",
+  "self_audio_sha": "5fc4e170_5992417"
+ },
+ {
+  "group_id": 281,
+  "name": "天翔ける蒼穹のセレナーデ",
+  "composer": "Sakamiya(feat.あらたききさ)",
+  "members": [
+   1889
+  ],
+  "kept": 1889,
+  "audio_file": "31345613.mp3",
+  "audio_sha": "e20146b1_5117212",
+  "self_audio_sha": "e20146b1_5117212"
+ },
+ {
+  "group_id": 282,
+  "name": "Don't say \"lazy\"",
+  "composer": "放課後ティータイム",
+  "members": [
+   1896
+  ],
+  "kept": 1896,
+  "audio_file": "78017253.mp3",
+  "audio_sha": "6adb7010_2190794",
+  "self_audio_sha": "6adb7010_2190794"
+ },
+ {
+  "group_id": 283,
+  "name": "Chartreuse Green",
+  "composer": "t+pazolite",
+  "members": [
+   1908,
+   1977,
+   31868,
+   47982
+  ],
+  "kept": 1908,
+  "audio_file": "98934108.mp3",
+  "audio_sha": "2457a283_5695290",
+  "self_audio_sha": "2457a283_5695290"
+ },
+ {
+  "group_id": 284,
+  "name": "お願い！コンコンお稲荷さま",
+  "composer": "ARM×狐梦想 feat.Nanahira",
+  "members": [
+   1910
+  ],
+  "kept": 1910,
+  "audio_file": "56241223.mp3",
+  "audio_sha": "28ab9145_3449644",
+  "self_audio_sha": "28ab9145_3449644"
+ },
+ {
+  "group_id": 285,
+  "name": "Dogbite",
+  "composer": "t+pazolite",
+  "members": [
+   1930,
+   11907,
+   12856,
+   13605,
+   19759,
+   33534,
+   35303
+  ],
+  "kept": 1930,
+  "audio_file": "Dogbite.mp3",
+  "audio_sha": "51aff6f4_5314032",
+  "self_audio_sha": "51aff6f4_5314032"
+ },
+ {
+  "group_id": 286,
+  "name": "I",
+  "composer": "黒魔",
+  "members": [
+   1933,
+   9744,
+   15416,
+   53746,
+   67763
+  ],
+  "kept": 1933,
+  "audio_file": "46210045.mp3",
+  "audio_sha": "be333ae7_5666252",
+  "self_audio_sha": "be333ae7_5666252"
+ },
+ {
+  "group_id": 287,
+  "name": "New World",
+  "composer": "GRAViiTY & TANUKICHI & USAO",
+  "members": [
+   1938
+  ],
+  "kept": 1938,
+  "audio_file": "27259694.mp3",
+  "audio_sha": "33090b8e_5389056",
+  "self_audio_sha": "33090b8e_5389056"
+ },
+ {
+  "group_id": 288,
+  "name": "センチメンタルクライシス",
+  "composer": "Halca",
+  "members": [
+   1940
+  ],
+  "kept": 1940,
+  "audio_file": "50165079.mp3",
+  "audio_sha": "79b62993_2158056",
+  "self_audio_sha": "79b62993_2158056"
+ },
+ {
+  "group_id": 289,
+  "name": "World's end loneliness",
+  "composer": "打打だいず",
+  "members": [
+   1952,
+   5840,
+   41877,
+   42846,
+   66686
+  ],
+  "kept": 66686,
+  "audio_file": "92828531.mp3",
+  "audio_sha": "b1c9c131_7785766",
+  "self_audio_sha": "b1c9c131_7785766"
+ },
+ {
+  "group_id": 290,
+  "name": "R",
+  "composer": "Plum",
+  "members": [
+   1964,
+   9627,
+   20777,
+   23640,
+   25966,
+   44190,
+   44517,
+   45574,
+   48929,
+   57187
+  ],
+  "kept": 25966,
+  "audio_file": "88155980.mp3",
+  "audio_sha": "257ed3ed_5910938",
+  "self_audio_sha": "257ed3ed_5910938"
+ },
+ {
+  "group_id": 291,
+  "name": "创造未来",
+  "composer": "原创动力",
+  "members": [
+   1966
+  ],
+  "kept": 1966,
+  "audio_file": "68134575.mp3",
+  "audio_sha": "56ced7dd_3705429",
+  "self_audio_sha": "56ced7dd_3705429"
+ },
+ {
+  "group_id": 292,
+  "name": "田中",
+  "composer": "立秋",
+  "members": [
+   1972
+  ],
+  "kept": 1972,
+  "audio_file": "┴ó╟∩ feat.ñ┴ñτñ│ - ╠∩╓╨.mp3",
+  "audio_sha": "a26ffc29_5606401",
+  "self_audio_sha": "a26ffc29_5606401"
+ },
+ {
+  "group_id": 293,
+  "name": "蝎虎天体 -Lacertid-",
+  "composer": "Nick Furry (a.k.a. Cream) vs 悪いケモノ-A (a.k.a Daily天利)",
+  "members": [
+   1989
+  ],
+  "kept": 1989,
+  "audio_file": "40940777.mp3",
+  "audio_sha": "5b9a16df_2245895",
+  "self_audio_sha": "5b9a16df_2245895"
+ },
+ {
+  "group_id": 294,
+  "name": "彼女は旅に出る",
+  "composer": "Misumi feat.鎖那",
+  "members": [
+   1992,
+   33544
+  ],
+  "kept": 33544,
+  "audio_file": "16521332.mp3",
+  "audio_sha": "fc0cf9b5_9299967",
+  "self_audio_sha": "fc0cf9b5_9299967"
+ },
+ {
+  "group_id": 295,
+  "name": "Titania",
+  "composer": "xi",
+  "members": [
+   1996,
+   83392
+  ],
+  "kept": 83392,
+  "audio_file": "48918541.mp3",
+  "audio_sha": "0637ecb2_7011905",
+  "self_audio_sha": "0637ecb2_7011905"
+ },
+ {
+  "group_id": 296,
+  "name": "试↓bass↑",
+  "composer": "玛丽的对头",
+  "members": [
+   1999,
+   2112,
+   6245
+  ],
+  "kept": 6245,
+  "audio_file": "sbbass.mp3",
+  "audio_sha": "6e80527f_5842941",
+  "self_audio_sha": "6e80527f_5842941"
+ },
+ {
+  "group_id": 297,
+  "name": "Paradisus Paradoxum（IF）",
+  "composer": "Wisp X",
+  "members": [
+   2000
+  ],
+  "kept": 2000,
+  "audio_file": "RE.mp3",
+  "audio_sha": "ca01184d_3158096",
+  "self_audio_sha": "ca01184d_3158096"
+ },
+ {
+  "group_id": 298,
+  "name": "海洋",
+  "composer": "Cheetah Mobile Games",
+  "members": [
+   2009
+  ],
+  "kept": 2009,
+  "audio_file": "58423105.mp3",
+  "audio_sha": "4c64fad0_4006452",
+  "self_audio_sha": "4c64fad0_4006452"
+ },
+ {
+  "group_id": 299,
+  "name": "Doping Dance",
+  "composer": "STEAKA,初音ミク",
+  "members": [
+   2010
+  ],
+  "kept": 2010,
+  "audio_file": "18451001.mp3",
+  "audio_sha": "616b600e_2415848",
+  "self_audio_sha": "616b600e_2415848"
+ }
+]

@@ -1,0 +1,19 @@
+{
+  "total": 9760,
+  "shards": {
+    "a": {
+      "path": "/home/user/Doubao/chats/38453554213740802/phira_full/shard_a_ids.txt",
+      "n": 4880,
+      "min": 3,
+      "max": 35829,
+      "dest": "/home/user/Doubao/chats/38453554213740802/phira_full/zips/a"
+    },
+    "b": {
+      "path": "/home/user/Doubao/chats/38453554213740802/phira_full/shard_b_ids.txt",
+      "n": 4880,
+      "min": 35849,
+      "max": 83768,
+      "dest": "/home/user/Doubao/chats/38453554213740802/phira_full/zips/b"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "tag": "a",
+  "ids": 4880,
+  "targets": 4880,
+  "skip_done": 1464,
+  "reuse_old": 1042,
+  "reuse_bad": 0,
+  "downloaded": 2374,
+  "failed": 0,
+  "bytes_new": 15638504742,
+  "bytes_total": 31847339078,
+  "no_old_no_dl": 0,
+  "ok_done": 2374,
+  "reuse_done": 1042,
+  "elapsed_sec": 774.3
+}

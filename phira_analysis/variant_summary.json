@@ -1,0 +1,27 @@
+{
+  "total": 9760,
+  "variant_distribution": {
+    "none": 9407,
+    "short": 52,
+    "remix": 203,
+    "cover": 20,
+    "extended": 29,
+    "live_arrange": 23,
+    "remaster": 9,
+    "sped_up": 5,
+    "slowed": 1,
+    "instrumental": 7,
+    "original": 4
+  },
+  "groups_total": 6838,
+  "groups_multi": 1432,
+  "auto_merge_groups": 1121,
+  "auto_merge_records": 3332,
+  "blocked_variant_groups": 46,
+  "blocked_variant_records": 137,
+  "blocked_duration_groups": 265,
+  "blocked_duration_records": 885,
+  "unique_audio_tracks": 9217,
+  "packages": 9760,
+  "group_member_basis": "时长取自 ffprobe 实测(info.txt Length 覆盖 40%)，门控 6%"
+}

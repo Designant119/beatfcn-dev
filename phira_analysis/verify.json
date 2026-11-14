@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-11-14 00:42:50",
+  "meta_total": 9760,
+  "files_on_disk": 9760,
+  "valid_count": 9760,
+  "missing_count": 0,
+  "missing_ids": [],
+  "bad_count": 0,
+  "bad_packages": [],
+  "extra_count": 0,
+  "extra_ids": [],
+  "unparsed_zip_count": 0,
+  "unparsed_zips": [],
+  "name_mismatch_count": 0,
+  "name_mismatch": [],
+  "by_tag": {
+    "a": 4880,
+    "b": 4880
+  },
+  "has_audio_count": 9759,
+  "no_audio_count": 1,
+  "elapsed_sec": 928.6,
+  "pass": true
+}
