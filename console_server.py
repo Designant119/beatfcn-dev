@@ -25,6 +25,7 @@
                         train.log / reports/train_console.log 约定位置 → tmux 会话 train 的屏幕缓冲
     GET  /api/train-plan 05 页计划下拉框：REPO/plans/evolve/*.json 的名字 + learning_rate/存点间隔（只读展示）
     POST /api/action    白名单动作：{"id":"env-recheck"} 清缓存重查环境；{"id":"train-start"} 按 05 页控件值
+                        开跑；{"id":"train-stop","confirm":true} 停掉 tmux 会话 train 里的训练
                         由后端拼装命令、tmux 会话 train 里启动（dry_run=true 只回命令不启动）。
                         无删除/停止类动作
 
@@ -691,6 +692,56 @@ def _train_start(body):
                          + report_note + ck_note}
 
 
+def _kill_report_session():
+    """训练停了，进度上报那个会话也一起收掉；没装 tmux / 没这个会话就当没事。"""
+    try:
+        subprocess.run(['tmux', 'kill-session', '-t', 'report'], capture_output=True, timeout=8)
+    except Exception:
+        pass
+
+
+def _train_stop(body):
+    """停掉 tmux 会话 train 里的训练：先 Ctrl-C 让它自己收尾，几秒不退再 kill-session。
+
+    真实训练是 `python ... | tee -a train.log` 跑在 tmux 的 train 会话里，所以 Ctrl-C
+    发给那个 pane 就等价于你在终端按 Ctrl-C；还不退才动手 kill，并如实告诉调用方。
+    必须带 confirm:true —— 顺手拦一下误触和别的页面误发。
+    """
+    if body.get('confirm') is not True:
+        return 400, {'ok': False, 'note': '停止训练要带 confirm:true（页面里是点两次才发）'}
+    try:
+        probe = subprocess.run(['tmux', 'has-session', '-t', 'train'],
+                               capture_output=True, text=True, timeout=8)
+    except FileNotFoundError:
+        return 200, {'ok': False, 'note': '机器上没有 tmux，页面停不了；去训练机终端按 Ctrl-C'}
+    except Exception as e:
+        return 200, {'ok': False, 'note': 'tmux has-session 没跑起来：' + str(e)}
+    if probe.returncode != 0:
+        return 200, {'ok': False, 'note': '现在没有在跑的训练（tmux 会话 train 不存在）'}
+    try:
+        subprocess.run(['tmux', 'send-keys', '-t', 'train', 'C-c'], capture_output=True, timeout=8)
+    except Exception as e:
+        return 200, {'ok': False, 'note': 'tmux send-keys 失败：' + str(e)}
+    t0 = time.time()
+    while time.time() - t0 < 6.0:
+        time.sleep(0.5)
+        try:
+            if subprocess.run(['tmux', 'has-session', '-t', 'train'],
+                              capture_output=True, timeout=5).returncode != 0:
+                _kill_report_session()
+                return 200, {'ok': True, 'how': 'sigint',
+                             'note': '已发 Ctrl-C，训练自己退了；自上次存点后的进度会丢'}
+        except Exception:
+            pass
+    try:
+        subprocess.run(['tmux', 'kill-session', '-t', 'train'], capture_output=True, timeout=8)
+    except Exception as e:
+        return 200, {'ok': False, 'note': 'Ctrl-C 之后它没退，kill-session 也失败：' + str(e)}
+    _kill_report_session()
+    return 200, {'ok': True, 'how': 'kill',
+                 'note': 'Ctrl-C 没让它退，直接把 tmux 会话 train 收了；自上次存点后的进度会丢'}
+
+
 # ---------------- 机器状态（05 页的资源小图） ----------------
 
 _CPU_LOCK = threading.Lock()
@@ -741,25 +792,52 @@ def _sys_mem():
 
 
 def _sys_gpu():
-    try:
-        out = subprocess.run(
-            ['nvidia-smi', '--query-gpu=index,utilization.gpu,memory.used,memory.total,temperature.gpu',
-             '--format=csv,noheader,nounits'], capture_output=True, text=True, timeout=8)
-    except Exception:
+    """读显卡状态。前 5 项必取；显存温度与功耗是附加项，
+    某些卡/驱动会回 [N/A]，有就带、没有就置 None，不影响主流程。"""
+    base = ['index', 'utilization.gpu', 'memory.used', 'memory.total', 'temperature.gpu']
+    extra = ['temperature.memory', 'power.draw', 'power.limit']
+
+    def _query(fields):
+        try:
+            out = subprocess.run(
+                ['nvidia-smi', '--query-gpu=' + ','.join(fields),
+                 '--format=csv,noheader,nounits'], capture_output=True, text=True, timeout=8)
+        except Exception:
+            return None
+        if out.returncode != 0:
+            return None
+        return (out.stdout or '').strip()
+
+    text = _query(base + extra)
+    if text is None:
+        text = _query(base)   # 老驱动不认附加字段时退回基础查询
+    if text is None:
         return None
-    if out.returncode != 0:
-        return None
+
+    def _num(value):
+        try:
+            v = float(str(value).strip())
+        except Exception:
+            return None
+        return v if v == v else None
+
     rows = []
-    for line in (out.stdout or '').strip().splitlines():
+    for line in text.splitlines():
         parts = [p.strip() for p in line.split(',')]
         if len(parts) < 5:
             continue
         try:
             used, total = int(parts[2]), int(parts[3])
+            temp = _num(parts[4])
+            tmem = _num(parts[5]) if len(parts) > 5 else None
+            pw = _num(parts[6]) if len(parts) > 6 else None
+            plimit = _num(parts[7]) if len(parts) > 7 else None
             rows.append({'index': int(parts[0]), 'util': int(parts[1]),
                          'mem_used_mb': used, 'mem_total_mb': total,
                          'pct': round(100.0 * used / total, 1) if total else None,
-                         'temp_c': int(parts[4])})
+                         'temp_c': int(temp) if temp is not None else None,
+                         'temp_mem_c': int(tmem) if tmem is not None else None,
+                         'power_w': pw, 'power_limit_w': plimit})
         except Exception:
             continue
     return rows or None
@@ -1121,6 +1199,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {'ok': True, 'items': get_env()})
         if action == 'train-start':
             code, resp = _train_start(body)
+            return self._send(code, resp)
+        if action == 'train-stop':
+            code, resp = _train_stop(body)
             return self._send(code, resp)
         # 阶段动作：只允许 stages.json 里声明过的 start/stop，且命令逐字来自声明
         path_cfg = os.path.join(HERE, 'stages.json')
