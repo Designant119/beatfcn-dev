@@ -1737,15 +1737,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   btn.addEventListener('click',ask);
   input.addEventListener('keydown',function(e){ if(e.key==='Enter') ask(); });
 
-  // ---- 拖动定位：按住圆钮拖，松手记住；点一下（没拖动）才是开面板 ----
-  var dock=document.getElementById('aidock'), POSKEY='phira-ai-pos', drag=null;
+  // ---- 拖动定位：按住圆钮拖，松手记住；点一下（没拖动）才开合 ----
+  // 开合不走 window mouseup，避免和 click 撞车；拖完把紧跟的那次 click 吞掉。
+  var dock=document.getElementById('aidock'), POSKEY='phira-ai-pos';
+  var dragging=false, moved=false, sx=0, sy=0, ox=0, oy=0;
   function layout(x,y){
     var w=dock.offsetWidth||52, h=dock.offsetHeight||52;
     x=Math.max(6,Math.min(window.innerWidth-w-6,x));
     y=Math.max(6,Math.min(window.innerHeight-h-6,y));
     dock.style.left=x+'px'; dock.style.top=y+'px';
     dock.style.right='auto'; dock.style.bottom='auto';
-    // 面板朝屏幕内侧展开，贴边时不越界
     var rightSide = x+w/2 > window.innerWidth/2;
     panel.style.left = rightSide ? 'auto' : '0';
     panel.style.right = rightSide ? '0' : 'auto';
@@ -1759,35 +1760,35 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(saved && typeof saved.x==='number') place(saved.x,saved.y,false);
   }catch(e){}
   function point(e){ return e.touches ? e.touches[0] : e; }
-  function down(e){
+  function begin(e){
     var p=point(e), r=dock.getBoundingClientRect();
-    drag={ox:p.clientX-r.left, oy:p.clientY-r.top, sx:p.clientX, sy:p.clientY, moved:false};
+    dragging=true; moved=false; sx=p.clientX; sy=p.clientY;
+    ox=p.clientX-r.left; oy=p.clientY-r.top;
     dock.style.right='auto'; dock.style.bottom='auto';
     dock.style.left=r.left+'px'; dock.style.top=r.top+'px';
-    e.preventDefault();
   }
-  function move(e){
-    if(!drag) return;
+  function proceed(e){
+    if(!dragging) return;
     var p=point(e);
-    if(!drag.moved && Math.abs(p.clientX-drag.sx)+Math.abs(p.clientY-drag.sy) > 4) drag.moved=true;
-    if(drag.moved) layout(p.clientX-drag.ox, p.clientY-drag.oy);
+    if(!moved && Math.abs(p.clientX-sx)+Math.abs(p.clientY-sy) > 4) moved=true;
+    if(moved) layout(p.clientX-ox, p.clientY-oy);
   }
-  function up(){
-    if(!drag) return;
-    var wasDrag=drag.moved, x=parseFloat(dock.style.left)||0, y=parseFloat(dock.style.top)||0;
-    drag=null;
-    if(wasDrag){ place(x,y,true); }
-    else { panel.hidden=!panel.hidden; if(!panel.hidden) input.focus(); }
+  function finish(){
+    if(!dragging) return;
+    dragging=false;
+    if(moved){ place(parseFloat(dock.style.left)||0, parseFloat(dock.style.top)||0, true); }
   }
-  fab.addEventListener('mousedown',function(e){ e.stopPropagation(); down(e); });
-  fab.addEventListener('touchstart',function(e){ down(e); },{passive:false});
-  window.addEventListener('mousemove',move);
-  window.addEventListener('touchmove',move,{passive:false});
-  window.addEventListener('mouseup',up);
-  window.addEventListener('touchend',up);
-  window.addEventListener('resize',function(){
-    var x=parseFloat(dock.style.left), y=parseFloat(dock.style.top);
-    if(!isNaN(x)&&!isNaN(y)) layout(x,y);
+  fab.addEventListener('mousedown',function(e){ e.preventDefault(); begin(e); });
+  fab.addEventListener('touchstart',function(e){ begin(e); },{passive:true});
+  window.addEventListener('mousemove',proceed);
+  window.addEventListener('touchmove',proceed,{passive:true});
+  window.addEventListener('mouseup',finish);
+  window.addEventListener('touchend',finish);
+  window.addEventListener('touchcancel',finish);
+  fab.addEventListener('click',function(e){
+    if(moved){ moved=false; e.preventDefault(); return; }  // 刚拖完，这次 click 不当事
+    e.preventDefault();
+    panel.hidden=!panel.hidden; if(!panel.hidden) input.focus();
   });
 })();
 </script>
