@@ -1450,13 +1450,23 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {'ok': True, 'authed': self._authed(),
                                     'host': os.uname().nodename, 'ts': time.time()})
         if path in ('/api/env', '/api/status', '/api/trainlog', '/api/train-plan', '/api/sys',
-                    '/api/downloadlog', '/api/ingestlog'):
+                    '/api/downloadlog', '/api/ingestlog',
+                    '/api/harness-status', '/api/harnesslog'):
             if not self._authed():
                 return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码再回车'})
             if path == '/api/downloadlog':
                 return self._send(200, _phira_download_log())
             if path == '/api/ingestlog':
                 return self._send(200, _phira_ingest_log())
+            if path == '/api/harness-status':
+                from scripts.harness import status as hstatus, pipeline_next
+                return self._send(200, {'ok': True, 'steps': hstatus(),
+                                        'next': pipeline_next()})
+            if path == '/api/harnesslog':
+                from urllib.parse import urlparse, parse_qs
+                from scripts.harness import log as hlog
+                step = (parse_qs(urlparse(self.path).query).get('step') or [''])[0]
+                return self._send(200, {'ok': True, 'step': step, 'text': hlog(step, 60)})
             if path == '/api/env':
                 return self._send(200, {'ok': True, 'items': get_env()})
             if path == '/api/train-plan':
@@ -1510,6 +1520,20 @@ class Handler(BaseHTTPRequestHandler):
         if action == 'ingest-stop':
             code, resp = _phira_ingest_stop(body)
             return self._send(code, resp)
+        if action == 'harness-start':
+            from scripts.harness import start as hstart
+            step = str(body.get('step') or '')
+            args = body.get('args') or {}
+            if not isinstance(args, dict):
+                return self._send(400, {'ok': False, 'errors': ['args 必须是对象']})
+            return self._send(200, hstart(step, args))
+        if action == 'chat':
+            from scripts.chat_agent import respond
+            msg = str(body.get('message') or '').strip()
+            if not msg:
+                return self._send(400, {'ok': False, 'note': 'message 为空'})
+            hist = body.get('history') if isinstance(body.get('history'), list) else []
+            return self._send(200, respond(msg, hist))
         # 阶段动作：只允许 stages.json 里声明过的 start/stop，且命令逐字来自声明
         path_cfg = os.path.join(HERE, 'stages.json')
         if os.path.isfile(path_cfg):
