@@ -32,6 +32,18 @@ def load_meta(path):
     return {str(r['id']): r for r in rows if isinstance(r, dict) and r.get('id') is not None}
 
 
+def split_for(audio_sha256):
+    """按音频指纹切 train/val（80/20）。同一音频永远落同一边，避免同曲跨集泄漏。
+
+    meta 和 zip 里都没有 split 字段，过去的 receipt 因此是 None，采样器一条训练样本都挑不出来。
+    """
+    import hashlib
+    if not audio_sha256:
+        return 'train'
+    h = int(hashlib.sha256(str(audio_sha256).encode()).hexdigest()[:8], 16)
+    return 'val' if h % 5 == 0 else 'train'
+
+
 def zip_id(path):
     """文件名形如 {rating}_{name}_{level}_{id}.zip 或 {id}_{name}_{level}.zip，取最后一串数字。"""
     stem = Path(path).stem
@@ -91,6 +103,12 @@ def main():
             counts['canon_missing'] += 1
             failed.append({'zip': zpath.name, 'why': 'canon 没写出来'})
             continue
+        if not row.get('split'):
+            try:
+                audio = json.loads(canon.read_text(encoding='utf-8')).get('audio_sha256')
+            except Exception:                     # noqa: BLE001
+                audio = row.get('audio_sha256')
+            row['split'] = split_for(audio)
         try:
             receipt = prepare_chart(row, canon, out, canonical_sha256=digest(canon))
         except Exception as e:                    # noqa: BLE001

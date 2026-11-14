@@ -51,18 +51,35 @@ def condition_view(row, rng):
     return value, kind
 
 
-def load_pool(tape_dir, limit_charts=0):
-    records, charts = [], 0
+def load_pool(tape_dir, canon_dir=None, limit_charts=0):
+    """canon 里有 difficulty_label，而 ingest 没把 stratum 写进 receipt，
+    所以真实 tape 的 stratum 常见为空；这里按 chart_id 回查 canon 补上。"""
+    from beatfcn.ingest.phira_policy import phira_stratum
+
+    strata = {}
+    if canon_dir:
+        for f in sorted(Path(canon_dir).glob('*.json')):
+            try:
+                d = json.loads(f.read_text(encoding='utf-8'))
+            except Exception:                        # noqa: BLE001
+                continue
+            if d.get('chart_id'):
+                strata[d['chart_id']] = phira_stratum(d)['key']
+
+    records, charts, filled = [], 0, 0
     for f in sorted(tape_dir.glob('*-chart.json')):
         c = json.loads(f.read_text(encoding='utf-8'))
         rows = c.get('requests') or []
         if not rows:
             continue
         charts += 1
+        stratum = c.get('stratum') or strata.get(c['chart_id'])
+        if not c.get('stratum') and strata.get(c['chart_id']):
+            filled += 1
         for i, r in enumerate(rows):
             records.append(dict(
                 split=c['split'], mode=c['mode'], component=c['component'],
-                chart_id=c['chart_id'], stratum=c.get('stratum'), tokens=int(r['tokens']),
+                chart_id=c['chart_id'], stratum=stratum, tokens=int(r['tokens']),
                 controls=r['controls'], bands=r.get('bands'),
                 event_count=int(r.get('event_count', 0)),
                 request_key=f"{c['chart_id']}#{i}",
@@ -70,7 +87,7 @@ def load_pool(tape_dir, limit_charts=0):
             ))
         if limit_charts and charts >= limit_charts:
             break
-    return records, charts
+    return records, charts, filled
 
 
 def sample(pool, seed, steps):
@@ -113,6 +130,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--tape-dir', required=True, help='含 *-chart.json 的 tape 目录')
+    ap.add_argument('--canon', default='', help='canon 目录；tape 里 stratum 为空时按 chart_id 回查')
     ap.add_argument('--seed', type=int, required=True)
     ap.add_argument('--steps', type=int, default=2400, help='有效更新步数')
     ap.add_argument('--output-pool', required=True)
@@ -121,11 +139,12 @@ def main():
     ap.add_argument('--limit-charts', type=int, default=0, help='只取前 N 个谱面（试跑用）')
     args = ap.parse_args()
 
-    pool, charts = load_pool(Path(args.tape_dir), args.limit_charts)
+    pool, charts, filled = load_pool(Path(args.tape_dir), args.canon or None, args.limit_charts)
     if not pool:
         raise SystemExit(f'{args.tape_dir} 下没有可用的 *-chart.json')
     modes = Counter(r['mode'] for r in pool if r['split'] == 'train')
-    print(f'展平：{charts} 个谱面 -> {len(pool)} 条请求；训练侧 mode 分布 {dict(modes)}')
+    print(f'展平：{charts} 个谱面 -> {len(pool)} 条请求；stratum 回填 {filled}；'
+          f'训练侧 mode 分布 {dict(modes)}')
 
     steps, identity = sample(pool, args.seed, args.steps)
     stats = summary(pool, steps, args.seed)
