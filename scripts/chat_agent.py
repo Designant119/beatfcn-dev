@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -49,9 +50,10 @@ TOOL_DOC = """你可以调用八个步骤，每个步骤对应流水线的一段
 - 用户只是想聊天或问问题时，action 用 "answer"，不要硬套一个动作。
 - 用户问状态时，action 用 "status"。
 
-只输出一个 JSON 对象，不要任何多余文字：
-{"action": "run|status|answer", "step": "步骤名（action=run 时）",
- "args": {参数对象，可省略}, "reply": "给用户看的中文回复（一两句，不要长篇）"}
+只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
+{"reply": "给用户看的中文回复（一两句，不要长篇）",
+ "action": "run|status|answer", "step": "步骤名（action=run 时）",
+ "args": {参数对象，可省略}}
 """
 
 
@@ -161,35 +163,40 @@ def _state_brief():
             f'建议下一步：{pipeline_next() or "全部完成"}')
 
 
-def respond(message, history=None):
-    """返回 dict(ok, reply, action, step, result)。永不抛异常给上层。"""
+def _build_messages(message, history=None):
     messages = [dict(role='system', content=TOOL_DOC + '\n\n当前状态：' + _state_brief())]
     for turn in (history or [])[-6:]:
         if turn.get('role') in ('user', 'assistant'):
             messages.append(dict(role=turn['role'], content=str(turn.get('content', ''))[:2000]))
     messages.append(dict(role='user', content=str(message)[:2000]))
+    return messages
 
-    text, err = _call(messages)
-    if err:
-        return dict(ok=False, reply=err, action='error')
 
+def _parse_decision(text):
+    """把模型输出解析成动作意图，但不执行。返回 dict(action/step/args/reply)。"""
     raw = _extract_json(text)
     if raw is None:
-        # 模型完全没给 JSON，那就把它说的话原样回给用户，不硬猜动作
-        return dict(ok=True, action='answer', reply=text.strip()[:500])
+        return dict(action='answer', reply=(text or '').strip()[:500])
     try:
         decision = json.loads(raw)
     except json.JSONDecodeError:
-        return dict(ok=True, action='answer', reply=text.strip()[:500])
+        return dict(action='answer', reply=(text or '').strip()[:500])
+    if not isinstance(decision, dict):
+        return dict(action='answer', reply=(text or '').strip()[:500])
+    return dict(action=decision.get('action') or 'answer',
+                step=decision.get('step'),
+                args=decision.get('args') if isinstance(decision.get('args'), dict) else {},
+                reply=str(decision.get('reply') or '').strip())
 
+
+def _execute(decision):
+    """按意图真正干活，返回最终 dict(ok, action, step, reply, result)。"""
     action = decision.get('action') or 'answer'
-    reply = str(decision.get('reply') or '').strip()
-
+    reply = decision.get('reply') or ''
     if action == 'status':
         return dict(ok=True, action='status', reply=reply or _state_brief(), state=status())
     if action != 'run':
         return dict(ok=True, action='answer', reply=reply or '没太明白，能再说具体点吗？')
-
     step = decision.get('step')
     args = decision.get('args') or {}
     if step not in STEPS:
@@ -200,9 +207,176 @@ def respond(message, history=None):
     result = start(step, args)
     if not result.get('ok'):
         return dict(ok=False, action='run', step=step, result=result,
-                    reply=(reply + ' ' if reply else '') + '没启动成功：' + '；'.join(result.get('errors') or []))
+                    reply=(reply + ' ' if reply else '') + '没启动成功：'
+                    + '；'.join(result.get('errors') or []))
+    tail = '已启动，日志可以随时看。'
+    if result.get('alive') is False:          # 起完就退：短任务跑完，或者自己崩了
+        tail = f'{step} 已经跑完了（会话已退出），结果看日志末尾。'
     return dict(ok=True, action='run', step=step, result=result,
-                reply=(reply + ' ' if reply else '') + f'已启动 {step}，日志可以随时看。')
+                reply=(reply + ' ' if reply else '') + tail)
+
+
+def respond(message, history=None):
+    """返回 dict(ok, reply, action, step, result)。永不抛异常给上层。"""
+    text, err = _call(_build_messages(message, history))
+    if err:
+        return dict(ok=False, reply=err, action='error')
+    return _execute(_parse_decision(text))
+
+
+class _ReplyTap:
+    """从流式 content 里实时抠出 reply 字段。
+
+    模型按“reply 放第一个键”的格式输出，所以 content 一开始就是
+    {"reply": "……，能一边收一边吐给前端。JSON 之外的纯文本则原样放过。
+    """
+
+    def __init__(self):
+        self.state = 'start'
+        self.tail = ''
+        self.esc = False
+        self.uni = ''
+
+    def feed(self, chunk):
+        out = []
+        for ch in chunk:
+            if self.state == 'start':
+                if ch in ' \t\r\n':
+                    continue
+                self.state = 'json' if ch == '{' else 'raw'
+                if self.state == 'raw':
+                    out.append(ch)
+                else:
+                    self.tail = ch
+            elif self.state == 'json':
+                self.tail = (self.tail + ch)[-40:]
+                if re.search(r'"reply"\s*:\s*"$', self.tail):
+                    self.state = 'str'
+                    self.tail = ''
+            elif self.state == 'str':
+                if self.uni:
+                    self.uni += ch
+                    if len(self.uni) == 4:
+                        try:
+                            out.append(chr(int(self.uni, 16)))
+                        except ValueError:
+                            pass
+                        self.uni = ''
+                    continue
+                if self.esc:
+                    self.esc = False
+                    if ch == 'u':
+                        self.uni = ''
+                    elif ch == 'n':
+                        out.append('\n')
+                    elif ch == 't':
+                        out.append('\t')
+                    elif ch == 'r':
+                        out.append('\r')
+                    else:
+                        out.append(ch)
+                elif ch == '\\':
+                    self.esc = True
+                elif ch == '"':
+                    self.state = 'done'
+                else:
+                    out.append(ch)
+        return ''.join(out)
+
+
+def stream(message, history=None):
+    """流式版 respond。yield 事件 dict：
+
+    think  —— 模型的思考内容（reasoning_content）
+    delta  —— 回复正文的一小段（边生成边吐）
+    status —— 当前在干什么（解析指令 / 正在执行 download）
+    reply  —— 最终结果（前端用它盖掉前面流出来的文本）
+    done   —— 速度与 token 统计
+    error  —— 出错
+    """
+    cfg = _config()
+    if not cfg.get('key'):
+        yield dict(type='error', text='后端没有配置 PHIRA_CHAT_KEY，AI 助手不可用。')
+        return
+    base = cfg.get('base') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+    model = cfg.get('model') or 'glm-4-flash'
+    payload = {'model': model, 'messages': _build_messages(message, history),
+               'temperature': 0.2, 'stream': True,
+               'stream_options': {'include_usage': True}}
+    req = urllib.request.Request(base, data=json.dumps(payload, ensure_ascii=False).encode(),
+                                 method='POST',
+                                 headers={'Content-Type': 'application/json',
+                                          'Accept': 'text/event-stream',
+                                          'Authorization': 'Bearer ' + cfg['key']})
+    try:
+        resp = urllib.request.urlopen(req, timeout=120)
+    except Exception as exc:                      # noqa: BLE001
+        yield dict(type='error', text=f'调用模型失败：{type(exc).__name__}: {exc}')
+        return
+
+    full, usage = [], None
+    tap = _ReplyTap()
+    t_first = t_last = None
+    buf = ''
+    with resp:
+        while True:
+            chunk = resp.read(4096)
+            if not chunk:
+                break
+            buf += chunk.decode('utf-8', 'replace')
+            while '\n' in buf:
+                line, buf = buf.split('\n', 1)
+                line = line.strip()
+                if not line.startswith('data:'):
+                    continue
+                data = line[5:].strip()
+                if data == '[DONE]':
+                    break
+                try:
+                    obj = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+                if obj.get('usage'):
+                    usage = obj['usage']
+                choices = obj.get('choices') or []
+                if not choices:
+                    continue
+                delta = choices[0].get('delta') or {}
+                think = delta.get('reasoning_content')
+                if think:
+                    yield dict(type='think', text=think)
+                piece = delta.get('content')
+                if piece:
+                    now = time.time()
+                    if t_first is None:
+                        t_first = now
+                    t_last = now
+                    full.append(piece)
+                    out = tap.feed(piece)
+                    if out:
+                        yield dict(type='delta', text=out)
+
+    text = ''.join(full)
+    yield dict(type='status', text='正在解析指令…')
+    try:
+        decision = _parse_decision(text)
+    except Exception as exc:                      # noqa: BLE001
+        yield dict(type='error', text=f'解析模型输出失败：{exc}')
+        return
+    if decision.get('action') == 'run':
+        yield dict(type='status', text=f'正在执行 {decision.get("step")}…')
+    result = _execute(decision)
+
+    out_tokens = (usage or {}).get('completion_tokens')
+    estimated = out_tokens is None
+    if estimated:
+        out_tokens = max(1, int(len(text) / 1.6))
+    secs = (t_last - t_first) if t_first and t_last else 0
+    # 太短的流算 tok/s 会飙到离谱（本地 mock 几百毫秒就能上千），低于 0.2s 就不报
+    tps = round(out_tokens / secs, 1) if secs >= 0.2 else None
+    yield dict(type='reply', payload=result)
+    yield dict(type='done', tokens=int(out_tokens), estimated=estimated,
+               tps=tps, seconds=(round(secs, 1) if secs >= 0.2 else None), model=model)
 
 
 if __name__ == '__main__':

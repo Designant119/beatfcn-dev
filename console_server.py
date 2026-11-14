@@ -1582,6 +1582,34 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(args, dict):
                 return self._send(400, {'ok': False, 'errors': ['args 必须是对象']})
             return self._send(200, hstart(step, args))
+        if action == 'chat-stream':
+            from scripts.chat_agent import stream
+            msg = str(body.get('message') or '').strip()
+            if not msg:
+                return self._send(400, {'ok': False, 'note': 'message 为空'})
+            hist = body.get('history') if isinstance(body.get('history'), list) else []
+            # 流式：没有 Content-Length，一条条 data: JSON 写出去再 flush
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+            self.send_header('Cache-Control', 'no-cache, no-transform')
+            self.send_header('X-Accel-Buffering', 'no')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            try:
+                for ev in stream(msg, hist):
+                    self.wfile.write(('data: ' + json.dumps(ev, ensure_ascii=False) + '\n\n').encode('utf-8'))
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except Exception as exc:               # noqa: BLE001
+                try:
+                    self.wfile.write(('data: ' + json.dumps(
+                        {'type': 'error', 'text': f'{type(exc).__name__}: {exc}'},
+                        ensure_ascii=False) + '\n\n').encode('utf-8'))
+                    self.wfile.flush()
+                except Exception:                  # noqa: BLE001
+                    pass
+            return
         if action == 'chat':
             from scripts.chat_agent import respond
             msg = str(body.get('message') or '').strip()

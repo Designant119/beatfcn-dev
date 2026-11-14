@@ -1769,6 +1769,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 .aimsg.bot{background:#10201c;color:#cfe;border:1px solid #1f3b34;align-self:flex-start}
 .aimsg.me{background:#14352b;color:#e8fff7;align-self:flex-end}
 .aimsg.err{background:#2a1214;color:#ffb3b3;border:1px solid #5a1f22;align-self:flex-start}
+.aithink{border:1px dashed #1f3b34;border-radius:7px;padding:5px 7px;margin-bottom:6px;font-size:11.5px;color:#9fc;background:#0a1a16;max-height:150px;overflow:auto}
+.aithink summary{cursor:pointer;color:#2fe6a0;font-size:11.5px;outline:none;opacity:.85}
+.aithinkbody{white-space:pre-wrap;margin-top:4px;line-height:1.5;color:#7ea}
+.aistatus{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#7fb;margin-bottom:4px;opacity:.9}
+.aistatus .dot{width:6px;height:6px;border-radius:50%;background:#2fe6a0;animation:aipulse 1s infinite}
+@keyframes aipulse{0%,100%{opacity:.25}50%{opacity:1}}
+.aitext{white-space:pre-wrap}
+.aimeta{font-size:10.5px;color:#5b8;opacity:.8;margin-top:5px;letter-spacing:.2px}
 #airow{display:flex;gap:6px;padding:8px;border-top:1px solid #1f3b34}
 #aiinput{flex:1;background:#08100e;border:1px solid #1f3b34;color:#dff;padding:7px 9px;border-radius:7px;font-size:13px;outline:none}
 #aisend{background:#14352b;border:1px solid #2fe6a0;color:#2fe6a0;padding:7px 12px;border-radius:7px;font-size:13px;cursor:pointer}
@@ -1796,14 +1804,86 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var msg=(input.value||'').trim(); if(!msg) return;
     input.value=''; show('me',msg); hist.push({role:'user',content:msg});
     btn.disabled=true; btn.textContent='…';
+
+    // 一条消息 = 思考块 + 状态行 + 正文 + 统计
+    var wrap=document.createElement('div'); wrap.className='aimsg bot';
+    var think=document.createElement('details'); think.className='aithink'; think.hidden=true;
+    var sum=document.createElement('summary'); sum.textContent='思考中…';
+    var tbody=document.createElement('div'); tbody.className='aithinkbody';
+    think.appendChild(sum); think.appendChild(tbody);
+    var st=document.createElement('div'); st.className='aistatus'; st.hidden=true;
+    var dot=document.createElement('span'); dot.className='dot';
+    var stx=document.createElement('span'); st.appendChild(dot); st.appendChild(stx);
+    var tx=document.createElement('div'); tx.className='aitext';
+    var meta=document.createElement('div'); meta.className='aimeta'; meta.hidden=true;
+    wrap.appendChild(think); wrap.appendChild(st); wrap.appendChild(tx); wrap.appendChild(meta);
+    logEl.appendChild(wrap); logEl.scrollTop=logEl.scrollHeight;
+
+    var raw='', finalText='', closed=false;
+    function paint(){ tx.innerHTML=fmt(raw||'…'); logEl.scrollTop=logEl.scrollHeight; }
+    function setStatus(t){ st.hidden=!t; stx.textContent=t||''; }
+    function unlock(){ if(closed) return; closed=true; btn.disabled=false; btn.textContent='发送'; }
+    paint();
+
     fetch('/api/action'+(TOKEN?('?token='+encodeURIComponent(TOKEN)):''),{
       method:'POST', headers:Object.assign({'Content-Type':'application/json'}, TOKEN?{'X-Token':TOKEN}:{}),
-      body:JSON.stringify({id:'chat',message:msg,history:hist.slice(-8)})
-    }).then(function(r){return r.json();}).then(function(j){
-      var ok=j&&j.ok, text=(j&&j.reply)||(j&&j.note)||'没回应';
-      show(ok?'bot':'err',text); hist.push({role:'assistant',content:text});
-      btn.disabled=false; btn.textContent='发送';
-    }).catch(function(){ show('err','后端连不上，刷新一下页面再试'); btn.disabled=false; btn.textContent='发送'; });
+      body:JSON.stringify({id:'chat-stream',message:msg,history:hist.slice(-8)})
+    }).then(function(r){
+      if(!r.ok || !r.body) throw new Error('HTTP '+r.status);
+      if(r.headers.get('content-type') && r.headers.get('content-type').indexOf('event-stream')<0){
+        return r.json().then(function(j){ throw new Error((j&&j.note)||'后端没返回流'); });
+      }
+      return r.body.getReader();
+    }).then(function(reader){
+      var dec=new TextDecoder(), buf='';
+      function pump(){
+        return reader.read().then(function(res){
+          if(res.done){ setStatus(''); unlock(); if(!raw) paint(); return; }
+          buf += dec.decode(res.value,{stream:true});
+          var i;
+          while((i=buf.indexOf('\n\n'))>=0){
+            var chunk=buf.slice(0,i); buf=buf.slice(i+2);
+            chunk.split('\n').forEach(function(line){
+              if(line.indexOf('data:')!==0) return;
+              var ev; try{ ev=JSON.parse(line.slice(5).trim()); }catch(e){ return; }
+              handle(ev);
+            });
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function(e){
+      setStatus(''); wrap.className='aimsg err';
+      raw=raw||('出错了：'+e.message); paint(); unlock();
+    });
+
+    var gotReply=false;
+    function handle(ev){
+      if(ev.type==='think'){
+        think.hidden=false; tbody.textContent += ev.text;
+        sum.textContent='思考中…（'+tbody.textContent.length+' 字）';
+      } else if(ev.type==='delta'){
+        raw += ev.text; paint();
+      } else if(ev.type==='status'){
+        setStatus(ev.text);
+      } else if(ev.type==='reply'){
+        var pl=ev.payload||{};
+        raw = pl.reply || raw || '（没有回复）'; paint();
+        if(pl.action==='error') wrap.className='aimsg err';
+        if(tbody.textContent) sum.textContent='思考过程（点击展开，'+tbody.textContent.length+' 字）';
+        setStatus(''); hist.push({role:'assistant',content:raw}); gotReply=true;
+      } else if(ev.type==='done'){
+        var bits=[];
+        if(ev.tps) bits.push(ev.tps+' tok/s');
+        if(ev.tokens) bits.push((ev.estimated?'≈':'')+ev.tokens+' tokens');
+        if(ev.seconds) bits.push(ev.seconds+'s');
+        if(ev.model) bits.push(ev.model);
+        meta.hidden = !bits.length; meta.textContent = bits.join(' · ');
+      } else if(ev.type==='error'){
+        wrap.className='aimsg err'; setStatus(''); raw += (raw?'\n':'')+ev.text; paint();
+      }
+    }
   }
   // 开合统一交给下面的 up()：点一下=开合，拖一下=挪位置。
   // 这里再绑 click 就会一次点击 toggle 两遍，看起来像关不掉。
