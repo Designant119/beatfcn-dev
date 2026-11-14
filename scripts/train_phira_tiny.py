@@ -92,6 +92,13 @@ def main():
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     charts = sorted(Path(args.tape).glob('*-chart.json'))
+    if not charts:
+        raise SystemExit(
+            f'[错误] tape 目录里找不到 *-chart.json：{args.tape}\n'
+            '先跑建库 / tape / full_tape 步骤把谱面清单生成出来，或检查方案里的 tape 路径。')
+    feat_dir = Path(args.features)
+    if not feat_dir.exists() or not any(feat_dir.iterdir()):
+        raise SystemExit(f'[错误] 特征目录不存在或为空：{args.features}（先跑提特征步骤）')
     used = 0
     for step in range(1, args.steps + 1):
         chart = json.loads(charts[step % len(charts)].read_text(encoding='utf-8'))

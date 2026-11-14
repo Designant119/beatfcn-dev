@@ -1373,10 +1373,11 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       microbatch:parseInt(tpMb.value,10)||4,
       no_compile:tpNoComp.checked,device:tpDev.value};
     tpBusy=true; tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';
+    var ctrl=new AbortController(), bootTo=setTimeout(function(){ctrl.abort();},8000);
     var url=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
     fetch(url,{method:'POST',headers:apiToken?{'X-Token':apiToken}:{},'Content-Type':'application/json',
-               body:JSON.stringify(payload)})
-      .then(function(r){ outLine(r.ok?'ok':'bad',r.status+' /api/action train-start'); return r.json(); })
+               body:JSON.stringify(payload),signal:ctrl.signal})
+      .then(function(r){ clearTimeout(bootTo); outLine(r.ok?'ok':'bad',r.status+' /api/action train-start'); return r.json(); })
       .then(function(j){
         tpBusy=false; tpPaint();
         var note=(j&&j.note)?String(j.note):'后端没回 note';
@@ -1391,8 +1392,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         trBody.scrollTop=trBody.scrollHeight;
       })
       .catch(function(){
+        clearTimeout(bootTo);
         tpBusy=false; tpPaint();
-        tpStartNote.textContent='请求没出去：后端连不上';
+        tpStartNote.textContent='请求没出去：后端连不上或启动超时';
         outLine('bad','ERR /api/action train-start');
       });
   });

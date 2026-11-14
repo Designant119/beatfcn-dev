@@ -727,6 +727,8 @@ def _kill_report_session():
         pass
 
 
+
+
 def _train_stop(body):
     """停掉 tmux 会话 train 里的训练：先 Ctrl-C 让它自己收尾，几秒不退再 kill-session。
 
