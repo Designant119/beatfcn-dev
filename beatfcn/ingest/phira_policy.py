@@ -36,9 +36,12 @@ def phira_stratum(row):
     band = next((name for lower, upper, name in LEVEL_BANDS
                  if value is not None and value > 0 and value >= lower
                  and (upper is None or value < upper)), None)
+    # 全量语料（含 SP、非标准标签、标签缺失）都要能进采样，因此 key 不再留空：
+    # 有 band 用 tag/band，没 band 退化到 tag/all，标签也没有就记 ?/all。
+    # STANDARD_TAGS 仍然只用于 metadata 筛选（见 screen_metadata），不改它的语义。
     return dict(version=STRATA_VERSION, tag=tag, native_difficulty=value,
                 numeric_band=band, evidence=evidence,
-                key=f'{tag}/{band}' if tag in STANDARD_TAGS and band else None,
+                key=f'{tag or "?"}/{band or "all"}',
                 calibrated_difficulty=False)
 
 
