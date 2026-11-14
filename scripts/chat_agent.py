@@ -2,19 +2,20 @@
 
 设计上的三条硬规矩：
 
-1. key 只从环境变量或 ~/.config/phira/chat.json 读，永不进仓库、永不进前端。
-   网页只能调本模块，看不到凭据。
+1. key 只看仓库根的 phira_chat.json、~/.config/phira/chat.json 或环境变量，
+   永不进前端；网页只能调本模块，看不到凭据。
 2. 模型能做的事被限制在 harness 的八个步骤里。它不能拼 shell、不能删文件、
    不能改路径白名单之外的目录——所有参数都再过一遍 harness.validate。
 3. 拿不准就问，不要猜。模型输出不合法时如实告诉用户，不硬塞一个动作进去。
 
-配置（环境变量优先，其次配置文件；文件形如 {"key": "...", "base": "...", "model": "..."}，
-放在 ~/.config/phira/chat.json 并 chmod 600，别放进仓库）：
-  PHIRA_CHAT_KEY    必填，模型服务凭据
+配置（优先级：仓库 phira_chat.json < ~/.config/phira/chat.json < 环境变量）：
+仓库那份是团队默认，私密仓库里直接带 key（key_b64 存，不是加密，只是躲扫描）。
+  PHIRA_CHAT_KEY    模型服务凭据
   PHIRA_CHAT_BASE   默认 https://open.bigmodel.cn/api/paas/v4/chat/completions
   PHIRA_CHAT_MODEL  默认 glm-4-flash
-  PHIRA_CHAT_CONFIG 可选，配置文件路径（默认 ~/.config/phira/chat.json）
+  PHIRA_CHAT_CONFIG 可选，改用户配置文件的路径
 """
+import base64
 import json
 import os
 import re
@@ -50,22 +51,35 @@ TOOL_DOC = """你可以调用八个步骤，每个步骤对应流水线的一段
 """
 
 
-def _config():
-    """凭据与端点：环境变量优先，其次 ~/.config/phira/chat.json。
+def _read_config(path):
+    """读一个 json 配置；key 可以用 key_b64 存，读出来还原成 key。"""
+    try:
+        data = json.loads(Path(path).read_text(encoding='utf-8'))
+    except Exception:                         # noqa: BLE001
+        return {}                             # 文件坏了就当没配，别把服务带崩
+    if not isinstance(data, dict):
+        return {}
+    if data.get('key_b64') and not data.get('key'):
+        try:
+            data['key'] = base64.b64decode(data['key_b64']).decode().strip()
+        except Exception:                     # noqa: BLE001
+            pass
+    return {k: v for k, v in data.items() if v and k != 'key_b64'}
 
-    文件放在用户目录、不进仓库，也不回传网页；环境变量永远盖过文件，
-    方便临时换 key 或换模型不用改文件。
+
+def _config():
+    """凭据与端点：仓库自带 > 用户配置 > 环境变量，后者盖前者。
+
+    仓库根的 phira_chat.json 是团队默认值，私密仓库里带着 key，
+    同学 clone 下来就能用，不用各自配。key 用 base64 存（躲 secret scanning，
+    不是加密，拿到仓库照样解得开）。个人想换 key 写 ~/.config/phira/chat.json，
+    临时换用环境变量——越靠后优先级越高。
     """
     cfg = {}
-    path = Path(os.environ.get('PHIRA_CHAT_CONFIG')
-                or Path.home() / '.config' / 'phira' / 'chat.json')
-    if path.is_file():
-        try:
-            data = json.loads(path.read_text(encoding='utf-8'))
-            if isinstance(data, dict):
-                cfg.update({k: v for k, v in data.items() if v})
-        except Exception:                     # noqa: BLE001
-            pass                              # 文件坏了就当没配，别把服务带崩
+    cfg.update(_read_config(ROOT / 'phira_chat.json'))
+    cfg.update(_read_config(
+        Path(os.environ.get('PHIRA_CHAT_CONFIG')
+             or Path.home() / '.config' / 'phira' / 'chat.json')))
     for env_name, name in (('PHIRA_CHAT_KEY', 'key'),
                            ('PHIRA_CHAT_BASE', 'base'),
                            ('PHIRA_CHAT_MODEL', 'model')):

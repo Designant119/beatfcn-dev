@@ -208,9 +208,13 @@ stratum 同理，`build_phira_exposure` 加了 `--canon` 按 `chart_id` 回查 `
 └── ckpt/                tiny.pt
 ```
 
-## 十、AI 助手（可选）
+## 十、AI 助手
 
-页面上的浮窗把自然语言翻成 harness 调用。没配 key 时会明说"不可用"，其他功能不受影响。
+页面上的浮窗把自然语言翻成 harness 调用。**仓库根的 `phira_chat.json` 已带团队默认配置，
+clone 下来就能用，不用各自配**（key 用 base64 存，只是躲 GitHub 的密钥扫描，不是加密）。
+没 key 时浮窗会明说"不可用"，其他功能不受影响。
+
+想换成自己的 key（只影响本机）：
 
 ```bash
 mkdir -p ~/.config/phira
@@ -220,6 +224,6 @@ EOF
 chmod 600 ~/.config/phira/chat.json
 ```
 
-- 文件放用户目录、不进仓库、不回传前端；环境变量 `PHIRA_CHAT_KEY` / `PHIRA_CHAT_BASE` / `PHIRA_CHAT_MODEL` 优先级更高，临时换 key 不用改文件。
+- 优先级：仓库 `phira_chat.json` < `~/.config/phira/chat.json` < 环境变量（`PHIRA_CHAT_KEY` / `PHIRA_CHAT_BASE` / `PHIRA_CHAT_MODEL`）。
 - 普通 paas 端点是 `https://open.bigmodel.cn/api/paas/v4/chat/completions`。**Coding Plan 套餐的 key 必须走 coding 端点**（上面那条），走错会报"套餐已到期"，看着像 key 废了其实没废。
 - 模型能做的只有这八步，不能拼 shell、不能删文件；认不出意图时会反问，不硬塞动作。

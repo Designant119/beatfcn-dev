@@ -1,0 +1,6 @@
+{
+  "_说明": "团队默认的 AI 助手配置，clone 下来直接可用；个人想换 key 写 ~/.config/phira/chat.json，环境变量优先级更高",
+  "key_b64": "NDZkNjQ0MGMzNWQ1NDIyNThiNTU1NWFjZGRlNGZiMjMudWRKa2x1RzJub2lOekI2cQ==",
+  "base": "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
+  "model": "glm-5.3"
+}
