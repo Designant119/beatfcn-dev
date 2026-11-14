@@ -1,10 +1,10 @@
 {
  "kind": "tiny",
- "tape": "/tmp/full_tape",
- "features": "/tmp/f100/features",
+ "tape": "/home/user/Doubao/chats/38453554213740802/smoke/tape",
+ "features": "/home/user/Doubao/chats/38453554213740802/smoke/features/features",
  "steps": 100,
  "lr": 0.001,
- "out": "/tmp/train-tiny",
+ "out": "/home/user/Doubao/chats/38453554213740802/smoke/ckpt/tiny.pt",
  "learning_rate": 0.001,
  "light_checkpoint_every": 50,
  "light_checkpoint_keep": 2,
