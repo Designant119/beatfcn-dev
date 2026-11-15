@@ -321,6 +321,41 @@ def status():
     return report
 
 
+def inspect_charts(dest=None, sample=None):
+    """真去目录里点数、验包：多少个、多大、有没有打不开的。
+
+    不是看状态文件，也不是看清单——是拿 zipfile 一个个翻开验。
+    """
+    import zipfile
+    paths = load_paths()
+    dest = Path(str(dest or paths.get('charts') or '/data/phira_charts'))
+    if not dest.is_dir():
+        return dict(ok=False, dest=str(dest), count=0, reason='目录不存在')
+    zips = sorted(p for p in dest.glob('*.zip') if p.is_file())
+    total = 0
+    for p in zips:
+        try:
+            total += p.stat().st_size
+        except OSError:
+            pass
+    limit = sample if sample else min(len(zips), 100)
+    bad, checked = [], 0
+    for p in zips[:limit]:
+        checked += 1
+        try:
+            with zipfile.ZipFile(p) as z:
+                if not z.namelist():
+                    bad.append(p.name)
+                    continue
+                if z.testzip() is not None:
+                    bad.append(p.name)
+        except Exception:                     # noqa: BLE001
+            bad.append(p.name)
+    return dict(ok=True, dest=str(dest), count=len(zips), total_bytes=total,
+                checked=checked, bad=bad[:10], bad_count=len(bad),
+                report=(dest / '_download_report.json').is_file())
+
+
 def output_paths(step):
     """这一步的产物现在会写到哪、在不在。给页面显示“文件在哪”。"""
     spec = STEPS.get(step)

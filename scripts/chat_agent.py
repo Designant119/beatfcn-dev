@@ -29,7 +29,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.harness import ORDER, STEPS, log, pipeline_next, running, start, status
+from scripts.harness import (ORDER, STEPS, inspect_charts, log, pipeline_next,
+                             running, start, status)
 
 # 给同学看的人话名称；内部还是那八个英文步骤
 STEP_LABEL = {
@@ -62,6 +63,8 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - “提特征 / 跑特征” → {"step": "features", "args": {}}
 - “训练 / 开训 / 跑一下” → {"step": "train", "args": {}}
 - “下一步干啥 / 看看进度” → {"action": "status"}
+- “去看看 / 检验一下 / 查查有没有坏包 / 验一下” → {"action": "inspect"}（真去数包、逐个验，不许只嘴上说“下好了”）
+  他要是说了某个目录，就 {"action": "inspect", "args": {"dir": "那个目录"}}
 - “接着跑 / 继续 / 一键跑 / 往下走” → {"action": "run"}（不填 step，后端自动挑下一步）
 
 用户想直接跳到后面的步骤（比如数据还没下就说“开始训练”）时：
@@ -88,7 +91,7 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 
 只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
 {"reply": "给同学看的中文回复（一两句，不要长篇）",
- "action": "run|status|answer", "step": "步骤名（action=run 时）",
+ "action": "run|status|inspect|answer", "step": "步骤名（action=run 时）",
  "args": {参数对象，可省略，内部参数不要念出来}}
 
 """
@@ -298,6 +301,27 @@ def _execute(decision):
     reply = decision.get('reply') or ''
     if action == 'status':
         return dict(ok=True, action='status', reply=reply or _state_brief(), state=status())
+    if action == 'inspect':
+        d = (decision.get('args') or {}).get('dir')
+        info = inspect_charts(d)
+        if not info.get('ok'):
+            return dict(ok=False, action='inspect', info=info,
+                        reply=f'这个目录我没看到：{info.get("dest")}，可能不在盘上或者名字不对。')
+        n = info['count']
+        if n == 0:
+            return dict(ok=True, action='inspect', info=info,
+                        reply=f'{info["dest"]} 里一个谱面包都没有，等于还没下。')
+        size = (f'{info["total_bytes"] / 1024 ** 3:.1f} GB'
+                if info['total_bytes'] >= 1024 ** 3
+                else f'{info["total_bytes"] / 1024 ** 2:.0f} MB')
+        head = f'点了 {n} 个包，共 {size}，逐个翻开验了 {info["checked"]} 个'
+        if info.get('bad_count'):
+            names = '、'.join(info.get('bad') or [])
+            return dict(ok=False, action='inspect', info=info,
+                        reply=f'{head}，有 {info["bad_count"]} 个打不开：{names}。建议删掉重下。')
+        tail = '，全都正常。' if n <= info['checked'] else f'，抽的前 {info["checked"]} 个都正常。'
+        return dict(ok=True, action='inspect', info=info,
+                    reply=head + tail + ('下载器留的报告也在，确实是它下的。' if info.get('report') else ''))
     if action != 'run':
         return dict(ok=True, action='answer', reply=reply or '没太明白，能再说具体点吗？')
     step = decision.get('step')
@@ -494,6 +518,8 @@ def stream(message, history=None, model=None, thinking=None):
         return
     if decision.get('action') == 'run':
         yield dict(type='status', text=f'正在执行 {decision.get("step")}…')
+    elif decision.get('action') == 'inspect':
+        yield dict(type='status', text='正在数包、验包…')
     result = _execute(decision)
 
     out_tokens = (usage or {}).get('completion_tokens')
