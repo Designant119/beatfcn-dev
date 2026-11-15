@@ -1530,6 +1530,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       if(p.validation_count!=null) tpVal.value=String(p.validation_count);
       if(p.loader_workers!=null) tpWk.value=String(p.loader_workers);
       if(p.physical_microbatch!=null) tpMb.value=String(p.physical_microbatch);
+      if(p.max_train_wall_s!=null) {
+        var prodHr=Math.max(1,Math.min(168,Math.round(p.max_train_wall_s/3600)));
+        tpHr.value=String(prodHr); tpHrR.value=String(prodHr);
+      }
     }
   }
   function tpShowVals(){               /* 纯读数：有没有方案都要立刻跟上，否则拖了像死机 */
