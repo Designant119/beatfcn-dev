@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""训练机操作台后端 —— 零依赖，一条命令跑起来。
+"""BeatFCN 训练服务器后端 —— 零依赖，一条命令跑起来。
 
 用法（WSL / Linux 里）:
     python3 console_server.py                      # 默认只在 127.0.0.1:7777（本机访问）
@@ -15,7 +15,7 @@
 然后浏览器打开 http://localhost:7777 （手机连同一 WiFi 用 http://本机IP:7777）。
 页面会自动进入 LIVE 模式：01/02 自检全自动，不需要复制粘贴任何东西。
 
-接口（给 同学训练操作页.html 用，也可手动 curl）:
+接口（给 train_server.html 用，也可手动 curl）:
     GET  /api/ping      探活
     GET  /api/env       环境自检（硬件 hw / 软件 sw / 各盘 disk；WSL 里还会经 powershell.exe 读 Windows 宿主侧的卡/内存/盘）
     GET  /api/status    训练阶段状态（读同目录 stages.json，暂无则空表）
@@ -53,7 +53,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 REPO = os.environ.get('BEATFCN_REPO') or os.path.dirname(os.path.abspath(__file__))   # 代码目录：默认跟着本文件走，换机器也不会指错
 EXPECTED_HEAD = ''                             # 期望的 git 短提交号；空串=不校验（只显示当前版本）。
                                                # 别写死具体 SHA：每次提交都会变，页面会永远报"不是这一版"。
-HTML_NAMES = ('同学训练操作页.html', 'index.html')
+HTML_NAMES = ('train_server.html', 'index.html')
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOKEN = ''          # 非空时所有 /api/* 需带 ?token= 或 X-Token 头

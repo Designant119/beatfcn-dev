@@ -49,7 +49,7 @@ bash run.sh                       # 起控制台，默认 http://127.0.0.1:7777/
 | `plans/evolve/` | 11 个预注册实验计划（C1–C9 + peer RL R1） |
 | `bench/` | 评测口径与历史指标数据；`beatfcn/cloud/*` 有引用 |
 | `phira_all_charts.jsonl` | Phira 谱面目录，`beatfcn/cloud/ingest_app.py` 使用 |
-| `同学训练操作页.html` + `console_server.py` | 给同学用的一键操作台：网页看机器/环境/数据/开跑状态，后端只读探活、不 import torch |
+| `train_server.html` + `console_server.py` | 给同学用的一键操作台：网页看机器/环境/数据/开跑状态，后端只读探活、不 import torch |
 | `双击安装训练系统.bat` / `启动控制台.sh` | Windows 双击装 WSL 系统并起后端；Linux 侧起后端（tmux 会话 `console`） |
 
 ## r5 现状
