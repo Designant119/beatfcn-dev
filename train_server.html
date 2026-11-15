@@ -479,7 +479,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       <div class="tp-h">PHIRA DATA / 下载谱面（这一步要联网，下完就不用再连了）</div>
 
       <div class="tp-row">
-        <span class="tp-lab">下哪些难度<small>写谱只写高难，勾 <b>IN</b> 和 <b>AT</b> 就够。这两档约 7930 个包 / 49 GiB；全勾是 9760 个 / 60.6 GiB，多的那些低难度用不上</small></span>
+        <span class="tp-lab">下哪些难度<small>写谱只写高难，勾 <b>IN</b> 和 <b>AT</b> 就够。这两档约 7930 个包 / 49 GiB；全勾是 9760 个 / 60.6 GiB（表内 8452 个，另有约 1308 个无难度标注的包），多的那些低难度用不上</small></span>
         <span class="tp-ctl" style="display:block">
           <div class="tp-flags" style="margin-top:2px">
             <label class="tp-flag"><input type="checkbox" class="dl-lv" value="IN" checked><span>IN</span></label>
@@ -1511,7 +1511,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       if(p.physical_microbatch!=null) tpMb.value=String(p.physical_microbatch);
       if(p.max_train_wall_s!=null) {
         var prodHr=Math.max(1,Math.min(168,Math.round(p.max_train_wall_s/3600)));
-        tpHr.value=String(prodHr); tpHrR.value=String(prodHr);
+        tpHr.value=String(prodHr);
       }
     }
   }
@@ -1845,6 +1845,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   }catch(e){}
   paint();
   show((location.hash||'#ov').replace('#',''));
+  /* 第三块（AI 面板）要用流水线函数：显式导出，避免跨闭包 ReferenceError */
+  window.__r5Pipe={outLine:outLine,pollPipe:pollPipe,markRun:markRun,
+                  markJustEnded:markJustEnded,burstPipe:burstPipe};
   api('/api/ping',function(j){ if(j&&j.ok&&!j.authed){ setMode(false,'要访问码：在网址末尾加 ?token=访问码 再回车'); return; } setMode(!!(j&&j.ok)); });
   envTimer=setInterval(function(){
     if(isLive&&document.visibilityState==='visible') pollEnv();
@@ -1869,7 +1872,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   function paint(){
     var a=picked(), n=0, g=0;
     a.forEach(function(k){ var v=LV[k]; if(v){ n+=v[0]; g+=v[1]; } });
-    lvVal.textContent=(a.length?a.join('+'):'没选')+(a.length?' · '+(a.length===5?'约 60.6 GiB':'约 '+g.toFixed(1)+' GiB'):'');
+    lvVal.textContent=(a.length?a.join('+'):'没选')+(a.length?' · '+((a.length===5)?'约 60.6 GiB（含未标级）':'约 '+g.toFixed(1)+' GiB'):'');
     wkVal.textContent=wk.value+' 个';
     var cmd='cd <仓库目录> && python3 scripts/phira_local_download.py --dest '+dest.value
           +' --levels '+(a.length?a.join(','):'IN,AT')+' --workers '+wk.value
@@ -2066,6 +2069,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 <script>
 (function(){
   var TOKEN=''; try{ TOKEN=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
+  var __pipe=window.__r5Pipe||{};
+  var outLine=__pipe.outLine||function(){}, pollPipe=__pipe.pollPipe||function(){},
+      markRun=__pipe.markRun||function(){}, markJustEnded=__pipe.markJustEnded||function(){},
+      burstPipe=__pipe.burstPipe||function(){};
   var hist=[];
   var chatStore=[], K_CHAT='phira-ai-chat';
   try{ chatStore=JSON.parse(localStorage.getItem(K_CHAT)||'[]')||[]; }catch(e){ chatStore=[]; }

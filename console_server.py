@@ -891,9 +891,9 @@ def _train_start(body):
     report_note = ''
     if feishu:
         # 上报独立跑在一个 tmux 会话里，挂了不影响训练；重启时先清掉旧的
-        rcmd = ('cd {repo} && python3 -m scripts.report_progress --plan {plan} --out-dir {out} '
+        rcmd = ('cd {repo} && {py} -m scripts.report_progress --plan {plan} --out-dir {out} '
                 '--webhook {hook} --interval 120').format(
-            repo=q(REPO), plan=q(os.path.join(REPO, 'plans', 'evolve', plan)),
+            py=q(sys.executable), repo=q(REPO), plan=q(os.path.join(REPO, 'plans', 'evolve', plan)),
             out=q(known[plan].get('checkpoint_dir') or known[plan].get('out_dir') or ''), hook=q(feishu))
         try:
             subprocess.run(['tmux', 'kill-session', '-t', 'report'], capture_output=True, timeout=8)
@@ -1465,6 +1465,9 @@ def _train_log_tail():
     candidates += [os.path.join(HERE, 'train.log'),
                    os.path.join(REPO, 'train.log'),
                    os.path.join(REPO, 'reports', 'train_console.log')]
+    # 多个日志都在时按修改时间取最新的一份：优先级只做同刻兜底，
+    # 否则环境变量指向的旧冒烟日志会永远压住网页刚起的这一跑。
+    existing = []
     seen = set()
     for raw_path in candidates:
         path = os.path.abspath(os.path.expanduser(str(raw_path)))
@@ -1472,15 +1475,19 @@ def _train_log_tail():
             continue
         seen.add(path)
         try:
-            if not os.path.isfile(path) or os.path.getsize(path) == 0:
-                continue
+            if os.path.isfile(path) and os.path.getsize(path) > 0:
+                existing.append((os.path.getmtime(path), path))
+        except Exception:
+            continue
+    for mtime, path in sorted(existing, key=lambda item: item[0], reverse=True):
+        try:
             with open(path, 'rb') as f:
                 f.seek(0, os.SEEK_END)
                 f.seek(max(0, f.tell() - TRAIN_READ_BYTES))
                 lines = f.read().decode('utf-8', 'replace').replace('\r', '\n').splitlines()
             lines = [l for l in lines if l.strip()][-TRAIN_TAIL_LINES:]
             if lines:
-                return ('日志 ' + path, lines, round(max(0, time.time() - os.path.getmtime(path)), 1))
+                return ('日志 ' + path, lines, round(max(0, time.time() - mtime), 1))
         except Exception:
             continue
     raw = _run_all(['tmux', 'capture-pane', '-p', '-t', 'train', '-S', '-4000'], timeout=5)
@@ -1706,18 +1713,29 @@ class Handler(BaseHTTPRequestHandler):
             got = self.headers.get('X-Token') or ''
         return got == TOKEN
 
+    def _allowed_origin(self):
+        """None=没带 Origin（curl/本机页）；字符串=同源，可回显；False=跨站，拒绝。"""
+        origin = self.headers.get('Origin')
+        if not origin:
+            return None
+        return origin if urlparse(origin).netloc == (self.headers.get('Host') or '') else False
+
     def _send(self, code, body, ctype='application/json; charset=utf-8'):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode('utf-8')
         self.send_response(code)
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(data)))
-        self.send_header('Access-Control-Allow-Origin', '*')
+        origin = self._allowed_origin()
+        if origin:
+            self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         self.wfile.write(data)
 
     def do_OPTIONS(self):
+        if self._allowed_origin() is False:
+            return self._send(403, {'ok': False, 'note': 'cross-origin request rejected'})
         self._send(204, b'', 'text/plain')
 
     def do_GET(self):
@@ -1776,6 +1794,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split('?')[0]
         if path != '/api/action':
             return self._send(404, {'ok': False, 'note': 'no such endpoint'})
+        if self._allowed_origin() is False:
+            return self._send(403, {'ok': False, 'note': 'cross-origin request rejected'})
         if not self._authed():
             return self._send(401, {'ok': False, 'note': 'wrong token: 网址后加 ?token=访问码'})
         try:
@@ -1825,11 +1845,15 @@ class Handler(BaseHTTPRequestHandler):
             allow_shell = bool(body.get('allow_shell')) and \
                 self.client_address[0] in ('127.0.0.1', '::1')
             # 流式：没有 Content-Length，一条条 data: JSON 写出去再 flush
+            if self._allowed_origin() is False:
+                return self._send(403, {'ok': False, 'note': 'cross-origin request rejected'})
             self.send_response(200)
             self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
             self.send_header('Cache-Control', 'no-cache, no-transform')
             self.send_header('X-Accel-Buffering', 'no')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            origin = self._allowed_origin()
+            if origin:
+                self.send_header('Access-Control-Allow-Origin', origin)
             self.end_headers()
             try:
                 for ev in stream(msg, hist, model=model, thinking=thinking,
@@ -1847,16 +1871,7 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:                  # noqa: BLE001
                     pass
             return
-        if action == 'chat':
-            from scripts.chat_agent import respond
-            msg = str(body.get('message') or '').strip()
-            if not msg:
-                return self._send(400, {'ok': False, 'note': 'message 为空'})
-            hist = body.get('history') if isinstance(body.get('history'), list) else []
-            model = body.get('model') if isinstance(body.get('model'), str) else None
-            thinking = body.get('thinking', 'auto')
-            return self._send(200, respond(msg, hist, model=model, thinking=thinking,
-                                           allow_shell=bool(body.get('allow_shell'))))
+        # 非流式 chat 入口已移除（只保 chat-stream）；scripts.chat_agent.respond 仍保留供脚本/测试使用
         # 阶段动作：只允许 stages.json 里声明过的 start/stop，且命令逐字来自声明
         path_cfg = os.path.join(HERE, 'stages.json')
         if os.path.isfile(path_cfg):
