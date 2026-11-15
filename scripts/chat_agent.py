@@ -492,7 +492,11 @@ def stream(message, history=None, model=None, thinking=None):
     payload = {'model': model, 'messages': _build_messages(message, history),
                'temperature': 0.2, 'stream': True,
                'stream_options': {'include_usage': True}}
-    ctx_max = 200_000                     # GLM-5.3 的上下文上限（保守口径，给页面显示用）
+    # 官方口径：GLM-5.3 / 5.3-Flash 都是 1M 上下文（zcode 客户端自报 200K 是它自己的保守值）
+    try:
+        ctx_max = int(os.environ.get('PHIRA_CTX_MAX') or 1_000_000)
+    except ValueError:
+        ctx_max = 1_000_000
     payload.update(_thinking_extra(thinking))
     req = urllib.request.Request(base, data=json.dumps(payload, ensure_ascii=False).encode(),
                                  method='POST',

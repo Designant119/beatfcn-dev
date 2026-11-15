@@ -2136,7 +2136,11 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         if(ev.seconds) bits.push(ev.seconds+'s');
         if(ev.model) bits.push(ev.model);
         if(ev.ctx){
-          var cm=ev.ctx_max?('/'+Math.round(ev.ctx_max/1000)+'K'):'';
+          var cm='';
+          if(ev.ctx_max){
+            cm='/'+(ev.ctx_max>=1000000 ? (ev.ctx_max/1000000).toFixed(0)+'M'
+                                        : Math.round(ev.ctx_max/1000)+'K');
+          }
           bits.push('上下文 '+(ev.ctx>=1000?(ev.ctx/1000).toFixed(1)+'K':ev.ctx)+cm);
         }
         if(hist.length>=20) bits.push('聊挺长了，必要时点＋开新对话');
