@@ -190,9 +190,11 @@ def _quote(text):
 
 def start(step, args, *, dry_run=False):
     """校验 + 起 tmux。返回 dict，网页和命令行都直接用这个结构。"""
+    explicit = set((args or {}).keys())
     filled, errors = validate(step, args)
     if errors:
         return dict(ok=False, step=step, errors=errors)
+    filled = apply_aliases(step, filled, explicit)
     cmd = build(step, filled)
     if dry_run:
         return dict(ok=True, step=step, command=cmd, dry_run=True)
@@ -206,6 +208,7 @@ def start(step, args, *, dry_run=False):
     if has.returncode == 0:
         return dict(ok=False, step=step, command=cmd,
                     errors=[f'已有 {session} 在跑，先 tmux attach -t {session} 看看'])
+    remember_paths(step, filled)
     log_path = _state_dir() / 'logs' / f'{session}.log'
     wrapped = f'{cmd} 2>&1 | tee {log_path}'
     try:
@@ -260,6 +263,7 @@ def status():
         for name, (default, required, _kind) in spec['args'].items():
             if default is not None:
                 args[name] = default
+        args = apply_aliases(step, args, ())
         # 上次真跑过就按那次的实际参数查产物，否则默认路径会误报
         saved = _state_dir() / 'state' / f'{step}.json'
         if saved.is_file():
@@ -286,6 +290,7 @@ def output_paths(step):
     for name, (default, _required, _kind) in spec['args'].items():
         if default is not None:
             args[name] = default
+    args = apply_aliases(step, args, ())
     saved = _state_dir() / 'state' / f'{step}.json'
     if saved.is_file():
         try:
@@ -309,6 +314,74 @@ def output_paths(step):
             item['note'] = '只拉了清单，谱面还没下'
         out.append(item)
     return out
+
+# ---- 路径记忆：某一处改过目录，后面几步自动跟着走 ----
+# arg 名 -> (别名, 子路径)；别名之间像接力，谁先说就听谁的
+PATH_ALIAS = {
+    'download': {'dest': ('charts', '')},
+    'ingest':   {'zips': ('charts', ''), 'out': ('db', '')},
+    'audio':    {'zips': ('charts', ''), 'output': ('audio', '')},
+    'tape':     {'canon': ('db', '/canon/phira'), 'output': ('tape_min', '')},
+    'features': {'tape_dir': ('tape_min', ''), 'audio_dir': ('audio', ''),
+                 'features_dir': ('features', '')},
+    'full_tape': {'targets_root': ('db', '/targets'),
+                  'features_root': ('features', '/features'), 'output': ('tape', '')},
+    'exposure': {'tape_dir': ('tape', ''), 'canon': ('db', '/canon/phira'),
+                 'output_pool': ('evolve', '/pool.json'),
+                 'output_exposure': ('evolve', '/exposure.json')},
+    'train':    {'tape': ('tape', ''), 'features': ('features', '/features'),
+                 'out': ('ckpt', '')},
+}
+
+
+def _paths_file():
+    return _state_dir() / 'paths.json'
+
+
+def load_paths():
+    """已经定下来的几个位置（charts/db/audio/…）。"""
+    f = _paths_file()
+    if not f.is_file():
+        return {}
+    try:
+        data = json.loads(f.read_text(encoding='utf-8'))
+        return data if isinstance(data, dict) else {}
+    except Exception:                         # noqa: BLE001
+        return {}
+
+
+def remember_paths(step, args):
+    """把这步真正用的目录记下来，后面几步照着走。"""
+    mapping = PATH_ALIAS.get(step) or {}
+    known = load_paths()
+    changed = False
+    for arg, (alias, suffix) in mapping.items():
+        value = args.get(arg)
+        if not isinstance(value, str) or not value:
+            continue
+        base = value[:-len(suffix)] if suffix and value.endswith(suffix) else value
+        if known.get(alias) != base:
+            known[alias] = base
+            changed = True
+    if changed:
+        try:
+            _paths_file().parent.mkdir(parents=True, exist_ok=True)
+            _paths_file().write_text(json.dumps(known, ensure_ascii=False, indent=1), encoding='utf-8')
+        except Exception:                    # noqa: BLE001
+            pass
+
+
+def apply_aliases(step, args, explicit=()):
+    """没被用户明确指定的路径参数，用记忆里的位置替换默认值。"""
+    mapping = PATH_ALIAS.get(step) or {}
+    known = load_paths()
+    for arg, (alias, suffix) in mapping.items():
+        if arg in explicit:
+            continue
+        base = known.get(alias)
+        if base:
+            args[arg] = base + suffix
+    return args
 
 
 def pipeline_next():
