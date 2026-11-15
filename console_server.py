@@ -1039,11 +1039,14 @@ def _phira_download_start(body):
     def bad(note):
         return 400, {'ok': False, 'command': '', 'note': note}
 
+    # levels 不给（或给空）＝全量：页面已经去掉难度勾选，训练要的就是全量谱面。
     levels = body.get('levels')
+    if levels is None:
+        levels = []
     if isinstance(levels, str):
         levels = [x.strip().upper() for x in levels.split(',') if x.strip()]
-    if not isinstance(levels, list) or not levels:
-        return bad('难度至少选一个（IN / AT / SP / HD / EZ）')
+    if not isinstance(levels, list):
+        return bad('levels 要么不给（表示全量），要么给难度列表')
     levels = [str(x).strip().upper() for x in levels]
     unknown = [x for x in levels if x not in PHIRA_LEVELS]
     if unknown:
@@ -1078,9 +1081,10 @@ def _phira_download_start(body):
         return bad('仓库里没有 phira_charts_meta.json，先 git pull')
 
     cmd = ('cd {repo} && python3 scripts/phira_local_download.py --dest {dest} '
-           '--levels {lv} --workers {wk}').format(
-        repo=shlex.quote(HERE), dest=shlex.quote(dest),
-        lv=','.join(levels), wk=workers)
+           '--workers {wk}').format(
+        repo=shlex.quote(HERE), dest=shlex.quote(dest), wk=workers)
+    if levels:                      # 空列表＝全量，不加 --levels，脚本默认全下
+        cmd += ' --levels ' + ','.join(levels)
     if list_only:
         cmd += ' --list-only'
     if not hash_audio:
@@ -1106,7 +1110,7 @@ def _phira_download_start(body):
     try:                                     # 每段任务之间打分隔线，前端只显示最后一段
         with open(PHIRA_DL_LOG, 'a', encoding='utf-8') as f:
             f.write('\n===== %s 新任务 levels=%s workers=%d =====\n'
-                    % (time.strftime('%m-%d %H:%M:%S'), ','.join(levels), workers))
+                    % (time.strftime('%m-%d %H:%M:%S'), ','.join(levels) or 'ALL', workers))
     except Exception:
         pass
     try:
@@ -1150,10 +1154,53 @@ def _phira_download_stop(body):
     return 200, {'ok': True, 'how': 'kill', 'note': 'Ctrl-C 没让它退，直接把 tmux 会话收掉了'}
 
 
+def _phira_dl_progress(seg):
+    """从最后一段下载日志里抽出进度数字，给页面画进度条。
+
+    只认 phira_local_download.py 自己打的这几行（格式见该脚本）：
+        元数据 N 条 | 符合条件 M 个 | 输出到 ...
+        目录里已有 K 个包，按谱面 id 认 ...
+        [n/M] 新下 ok | 已有 cached | 失败 f | x GB | y MB/s | 用时 z 分
+        完成：新下 ok，跳过 cached，失败 f，共 x GB
+    抽不到的项就不放进结果，前端显示占位，不报错。
+    """
+    total = done = None
+    ok = cached = failed = None
+    finished = False
+    for line in seg:
+        m = re.search(r'符合条件\s*(\d+)\s*个', line)
+        if m and total is None:
+            total = int(m.group(1))
+        m = re.match(r'\s*\[(\d+)/(\d+)\]', line)
+        if m:
+            done, total = int(m.group(1)), int(m.group(2))
+            mm = re.search(r'新下\s*(\d+)\s*\|\s*已有\s*(\d+)\s*\|\s*失败\s*(\d+)', line)
+            if mm:
+                ok, cached, failed = int(mm.group(1)), int(mm.group(2)), int(mm.group(3))
+        m = re.search(r'目录里已有\s*(\d+)\s*个包', line)
+        if m and done is None:
+            done = int(m.group(1))
+        m = re.search(r'完成：新下\s*(\d+)[，,]\s*跳过\s*(\d+)[，,]\s*失败\s*(\d+)', line)
+        if m:
+            ok, cached, failed = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            done, finished = ok + cached, True
+    out = {}
+    if total is not None:
+        out['total'] = total
+    if done is not None:
+        out['done'] = done
+    for k, v in (('ok', ok), ('cached', cached), ('failed', failed)):
+        if v is not None:
+            out[k] = v
+    if finished:
+        out['finished'] = True
+    return out
+
+
 def _phira_download_log(lines=30):
-    """下载日志尾部 + 是否在跑 + 已下多少。前端的下载面板就靠这个轮询。"""
+    """下载日志尾部 + 是否在跑 + 进度数字。前端的下载面板就靠这个轮询。"""
     running = _phira_dl_alive()
-    shown, age = [], None
+    shown, age, progress = [], None, {}
     if os.path.isfile(PHIRA_DL_LOG):
         age = round(time.time() - os.path.getmtime(PHIRA_DL_LOG), 1)
         try:
@@ -1164,11 +1211,14 @@ def _phira_download_log(lines=30):
                 if alllines[i].startswith('====='):
                     start = i + 1
                     break
-            tail = alllines[start:][-lines:]
+            seg = alllines[start:]              # 最后一段全量，用来算进度
+            progress = _phira_dl_progress(seg)
+            tail = seg[-lines:]                 # 只把尾部 30 行回给前端显示
             shown = [(l.rstrip('\n')[:400] + '…') if len(l) > 400 else l.rstrip('\n') for l in tail]
         except Exception:
             shown = []
     return {'ok': True, 'running': running, 'lines': shown, 'age_s': age,
+            'progress': progress,
             'session': PHIRA_DL_SESSION, 'log': PHIRA_DL_LOG, 'ts': time.time()}
 
 

@@ -294,6 +294,16 @@
   .toast.on{opacity:1;transform:translate(-50%,0)}
   .foot{border-top:1px solid var(--line);margin-top:26px;padding-top:10px;font-family:var(--ui);font-size:10.5px;
     letter-spacing:.04em;color:var(--dim);line-height:2}
+
+  /* ---------- 04 页：下载进度 ---------- */
+  .dlprog{padding:10px 12px 12px;border-bottom:1px solid var(--line)}
+  .dlprog-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--dim);margin-bottom:7px}
+  .dlprog-top b{color:var(--ph);font-weight:400;font-size:16px;font-variant-numeric:tabular-nums}
+  .dlprog-top .pct{color:var(--ph);font-size:14px;font-variant-numeric:tabular-nums}
+  .dlprog-track{height:10px;border:1px solid var(--line);background:#080b0a;padding:2px}
+  .dlprog-track i{display:block;height:100%;width:0;background:var(--ph);transition:width .35s}
+  .dlprog-track i.bad{background:var(--warn)}
+  .dlprog-sub{margin-top:7px;font-size:11.5px;color:var(--dim);font-family:var(--mono)}
 </style>
 </head>
 <body>
@@ -432,39 +442,39 @@ echo "HEAD=$(cd ~/beatfcn-dev 2&gt;/dev/null &amp;&amp; git rev-parse --short HE
       这个窗口<b>别关</b>；关掉页面就退回手动模式（已经在跑的训练不受影响）。
     </div>
     <p class="hint">为什么要重启：Windows 默认没开 Linux 这个功能，开它属于改动系统组件。这一步绕不过去，但一辈子只做一次。<b>除了点“是”和重启，剩下的都是复制粘贴。</b></p>
-    <div class="chk"><input type="checkbox" data-k="s0"><span class="t">双击 run_server.bat 后，这页顶部亮了 LIVE<small>亮了就说明环境齐了，下面的导入步骤不用碰。</small></span></div>
+    <div class="chk"><input type="checkbox" checked data-k="s0"><span class="t">双击 run_server.bat 后，这页顶部亮了 LIVE<small>亮了就说明环境齐了，下面的导入步骤不用碰。</small></span></div>
 
     <details id="man3">
       <summary>第一次装：三条命令导入镜像，再一条起服务</summary>
 
-      <div class="chk"><input type="checkbox" data-k="s1"><span class="t">管理员 PowerShell 打开 WSL 平台<small>已经开着就跳过。装完要重启一次，重启完再回来。</small></span></div>
+      <div class="chk"><input type="checkbox" checked data-k="s1"><span class="t">管理员 PowerShell 打开 WSL 平台<small>已经开着就跳过。装完要重启一次，重启完再回来。</small></span></div>
       <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --install --no-distribution</pre></div>
       <p class="hint">这条报“不认识这个参数”，说明 Windows 太老或 WSL 是旧版：去掉 <code class="mono">--no-distribution</code> 直接跑 <code class="mono">wsl --install</code>，它会顺带装一个 Ubuntu，多一个不影响，后面导入的还是你自己的那个。</p>
 
-      <div class="chk"><input type="checkbox" data-k="s2"><span class="t">把打包好的系统导进来<small>三个路径按实际位置改：起个名 / 装到哪 / 镜像包在哪。装到哪这格要落在他的 SSD 上，别落在硬盘上，否则训练读数据会慢。包要 NTFS 盘。</small></span></div>
+      <div class="chk"><input type="checkbox" checked data-k="s2"><span class="t">把打包好的系统导进来<small>三个路径按实际位置改：起个名 / 装到哪 / 镜像包在哪。装到哪这格要落在他的 SSD 上，别落在硬盘上，否则训练读数据会慢。包要 NTFS 盘。</small></span></div>
       <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>wsl --import beatfcn D:\wsl\beatfcn E:\beatfcn-train.tar --version 2</pre></div>
       <p class="hint">最后的 <code class="mono">--version 2</code> 别删，不加可能按 WSL 1 导进来，torch 会直接跑不了。<code class="mono">D:\wsl\beatfcn</code> 那格是这块 Linux 盘的落点，训练会把它撑大，别指到快满的分区。</p>
       <p class="hint">这里起的名字 <b>beatfcn</b> 要跟 <code class="mono">run_server.bat</code> 里第二行的 <code class="mono">set DISTRO=beatfcn</code> 一致，不一致就双击不进去。</p>
 
-      <div class="chk"><input type="checkbox" data-k="s2b"><span class="t">导入完默认是 root 用户<small>不用也行，能跑。想换普通用户：微软文档写明 <code class="mono">config --default-user</code> 对导入的发行版无效，要写 /etc/wsl.conf 里的 <code class="mono">[user] default=用户名</code>。</small></span></div>
+      <div class="chk"><input type="checkbox" checked data-k="s2b"><span class="t">导入完默认是 root 用户<small>不用也行，能跑。想换普通用户：微软文档写明 <code class="mono">config --default-user</code> 对导入的发行版无效，要写 /etc/wsl.conf 里的 <code class="mono">[user] default=用户名</code>。</small></span></div>
 
-      <div class="chk"><input type="checkbox" data-k="s3"><span class="t">镜像里没带代码时才需要：拉代码、装依赖、装 ffmpeg<small>镜像是整套导出的就跳过这步。torch 那个轮子很大，慢是正常的，别中途 Ctrl+C。</small></span></div>
+      <div class="chk"><input type="checkbox" checked data-k="s3"><span class="t">镜像里没带代码时才需要：拉代码、装依赖、装 ffmpeg<small>镜像是整套导出的就跳过这步。torch 那个轮子很大，慢是正常的，别中途 Ctrl+C。</small></span></div>
       <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~
 git clone https://github.com/Designant119/beatfcn-dev.git
 cd beatfcn-dev
 pip install -r requirements-fc.txt
 sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
-      <div class="chk"><input type="checkbox" data-k="s3b"><span class="t">起操作台后端<small>就一条命令。跑起来之后回到这个页面，顶部亮 LIVE，01/02 全自动。</small></span></div>
+      <div class="chk"><input type="checkbox" checked data-k="s3b"><span class="t">起操作台后端<small>就一条命令。跑起来之后回到这个页面，顶部亮 LIVE，01/02 全自动。</small></span></div>
       <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>cd ~/beatfcn-dev &amp;&amp; ./run_server.sh</pre></div>
       <p class="hint">然后 Windows 浏览器打开 <code class="mono">http://localhost:7777</code>。关掉这个黑窗口页面就退回手动模式，训练不受影响。</p>
       <p class="hint">想让它每 2 分钟把进度推到飞书：打开 <code class="mono">run_server.sh</code>，把第二行 <code class="mono">FEISHU=""</code> 里填上群机器人地址，之后点「开始训练」就自动推。</p>
     </details>
 
-    <div class="chk"><input type="checkbox" data-k="s3c"><span class="t">手机也要能打开<small>只在同一个 WiFi 下有效。打不开就右键管理员运行仓库里的 fix_lan_access.bat。</small></span></div>
+    <div class="chk"><input type="checkbox" checked data-k="s3c"><span class="t">手机也要能打开<small>只在同一个 WiFi 下有效。打不开就右键管理员运行仓库里的 fix_lan_access.bat。</small></span></div>
       <div class="cmd"><div class="h"><span>ADMIN / POWERSHELL</span><button type="button">COPY</button></div><pre>fix_lan_access.bat</pre></div>
 
-      <div class="chk"><input type="checkbox" data-k="s4"><span class="t">回 02 重跑一遍自检，全绿再往下</span></div>
+      <div class="chk"><input type="checkbox" checked data-k="s4"><span class="t">回 02 重跑一遍自检，全绿再往下</span></div>
     <div class="btnrow"><a class="btn ghost" href="#l2" style="text-decoration:none;display:inline-block">去 02 自检</a></div>
     <div class="flag"><span class="k">内存小的话</span>进 05 之前设一个数，别让它把内存吃光。</div>
   </section>
@@ -479,21 +489,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       <div class="tp-h">PHIRA DATA / 下载谱面（这一步要联网，下完就不用再连了）</div>
 
       <div class="tp-row">
-        <span class="tp-lab">下哪些难度<small>写谱只写高难，勾 <b>IN</b> 和 <b>AT</b> 就够。这两档约 7930 个包 / 49 GiB；全勾是 9760 个 / 60.6 GiB（表内 8452 个，另有约 1308 个无难度标注的包），多的那些低难度用不上</small></span>
-        <span class="tp-ctl" style="display:block">
-          <div class="tp-flags" style="margin-top:2px">
-            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="IN" checked><span>IN</span></label>
-            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="AT" checked><span>AT</span></label>
-            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="SP"><span>SP</span></label>
-            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="HD"><span>HD</span></label>
-            <label class="tp-flag"><input type="checkbox" class="dl-lv" value="EZ"><span>EZ</span></label>
-          </div>
-        </span>
-        <span class="tp-val" id="dlLvVal">IN+AT · 约 49 GiB</span>
+        <span class="tp-lab">下哪些谱面<small><b>全量</b>：所有难度一次下齐，这里不用挑。训练要的是全量谱面，挑着下反而拖后腿</small></span>
+        <span class="tp-val">全量 · 全部难度</span>
       </div>
 
       <div class="tp-row">
-        <span class="tp-lab">下到哪个目录<small>盘上要留够：IN+AT 约 49 GiB，全量 61 GiB。<b>别放在 /mnt/c 那种一层层翻译的路径</b>，越直接的目录越快</small></span>
+        <span class="tp-lab">下到哪个目录<small>盘上空间自己留够就行。<b>别放在 /mnt/c 那种一层层翻译的路径</b>，越直接的目录越快</small></span>
         <span class="tp-ctl"><input type="text" id="dlDest" value="/data/phira_charts" spellcheck="false" autocomplete="off"></span>
       </div>
 
@@ -519,6 +520,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
     <div class="result on" id="dlLive" style="display:none">
       <div class="rh"><span>下载进度 · 后端实测</span><span id="dlStat"></span></div>
+      <div class="dlprog">
+        <div class="dlprog-top">
+          <span>已下 <b id="dlDone">—</b> / <b id="dlTotal">—</b> 个谱面包</span>
+          <span class="pct" id="dlPct">—</span>
+        </div>
+        <div class="dlprog-track"><i id="dlBar"></i></div>
+        <div class="dlprog-sub" id="dlSub">点「开始下载」后这里会跟着涨</div>
+      </div>
       <pre id="dlOut" style="max-height:240px;overflow:auto;margin:0;font-size:12px;line-height:1.5;white-space:pre-wrap"></pre>
     </div>
 
@@ -557,7 +566,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="flag"><span class="k">你要做的</span>别删数据目录里的东西（默认是 <b>/data</b>，换位置就在 run_server.sh 的 DATA_ROOT 里指过去）。盘够不够不用自己算，下面有实测数字。别的不用管。</div>
     <div id="diskLive" style="display:none" class="result on"><div class="rh"><span>盘与数据 · 后端实测</span><span></span></div><div id="diskBody"></div></div>
     <p class="hint">上面每一行都是后端真的去看了那个文件，不是谁口头说“导好了”。数据集和权重全绿、最后一行 <b>可开跑的方案</b> 是满的，就可以进 05 开跑；有红的说明缺文件，红行里写了缺哪个。</p>
-    <div class="chk"><input type="checkbox" data-k="d1"><span class="t">数据集和起始权重都 PASS<small>全绿了自动勾，不用你点。</small></span></div>
+    <div class="chk"><input type="checkbox" checked data-k="d1"><span class="t">数据集和起始权重都 PASS<small>全绿了自动勾，不用你点。</small></span></div>
   </section>
 
   <!-- ===== 05 训练 ===== -->
@@ -649,9 +658,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
 
       <div class="tp-flags">
-        <label class="tp-flag"><input type="checkbox" id="tpResume"><span>接着上次继续<small>从最新快照往下练</small></span></label>
-        <label class="tp-flag"><input type="checkbox" id="tpSaveOpt"><span>连优化器状态一起存<small>文件大一倍，续跑不用重新热身；不确定就别勾</small></span></label>
-        <label class="tp-flag"><input type="checkbox" id="tpNoComp"><span>关掉编译加速<small>只有报编译错误才勾</small></span></label>
+        <label class="tp-flag"><input type="checkbox" checked id="tpResume"><span>接着上次继续<small>从最新快照往下练</small></span></label>
+        <label class="tp-flag"><input type="checkbox" checked id="tpSaveOpt"><span>连优化器状态一起存<small>文件大一倍，续跑不用重新热身；不确定就别勾</small></span></label>
+        <label class="tp-flag"><input type="checkbox" checked id="tpNoComp"><span>关掉编译加速<small>只有报编译错误才勾</small></span></label>
         <label class="tp-flag"><span>用哪个算</span>
           <select id="tpDev"><option value="cuda">显卡（正常选这个）</option><option value="cpu">CPU（只是试跑，很慢）</option></select>
         </label>
@@ -668,17 +677,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
     <div class="cmd"><div class="h"><span>LINUX / 启动命令（随上面控件实时生成）</span><button type="button">COPY</button></div><pre id="tpCmd"></pre></div>
 
-    <div class="chk"><input type="checkbox" data-k="t3"><span class="t">看进度：日志里 loss 有数字就说明在练<small>数字上下跳很正常；后端连着时，下面「训练输出」框里直接看，不用手动 tail。</small></span></div>
+    <div class="chk"><input type="checkbox" checked data-k="t3"><span class="t">看进度：日志里 loss 有数字就说明在练<small>数字上下跳很正常；后端连着时，下面「训练输出」框里直接看，不用手动 tail。</small></span></div>
     <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>tail -f train.log</pre></div>
 
     <div class="flag"><span class="k">它自己会存</span>生产配方默认每 500 个优化步存一份快照（上面的「多久存一次快照」可以改），只留最近几份。断电重启，勾上「接着上次继续」就接着跑。</div>
 
     <h3 style="font-size:15px;margin:22px 0 4px">跑的时候别做这几件事</h3>
-    <div class="chk"><input type="checkbox" data-k="t4"><span class="t">别删文件夹<small>中间产物删了要重跑。</small></span></div>
-    <div class="chk"><input type="checkbox" data-k="t5"><span class="t">别更新显卡驱动、别重装系统</span></div>
-    <div class="chk"><input type="checkbox" data-k="t6"><span class="t">别同时开大型游戏<small>显存被抢会直接退出。</small></span></div>
-    <div class="chk"><input type="checkbox" data-k="t7"><span class="t">别拔装着代码和数据的这块盘</span></div>
-    <div class="chk"><input type="checkbox" data-k="t8"><span class="t">别自己改命令里的数字</span></div>
+    <div class="chk"><input type="checkbox" checked data-k="t4"><span class="t">别删文件夹<small>中间产物删了要重跑。</small></span></div>
+    <div class="chk"><input type="checkbox" checked data-k="t5"><span class="t">别更新显卡驱动、别重装系统</span></div>
+    <div class="chk"><input type="checkbox" checked data-k="t6"><span class="t">别同时开大型游戏<small>显存被抢会直接退出。</small></span></div>
+    <div class="chk"><input type="checkbox" checked data-k="t7"><span class="t">别拔装着代码和数据的这块盘</span></div>
+    <div class="chk"><input type="checkbox" checked data-k="t8"><span class="t">别自己改命令里的数字</span></div>
 
     <div class="console" id="sysBox">
       <div class="h"><span>MACHINE / 机器现在忙不忙</span>
@@ -842,7 +851,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     tx.textContent=step; el.style.display='block';
   }
   boxes.forEach(function(b){
-    if(saved['k:'+b.getAttribute('data-k')]) b.checked=true;
+    var ck='k:'+b.getAttribute('data-k');
+    if(ck in saved) b.checked=!!saved[ck];        // 有记录就按记录；没记录就吃 HTML 默认（已默认勾上）
     b.addEventListener('change',function(){
       saved['k:'+b.getAttribute('data-k')]=b.checked;
       try{localStorage.setItem(K_CHK,JSON.stringify(saved))}catch(e){}
@@ -1857,31 +1867,48 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 <script>
 /* ---------- 04 页：谱面下载 ---------- */
 (function(){
-  var LV={IN:[5660,34.18],AT:[2270,14.91],SP:[265,1.69],HD:[179,1.01],EZ:[78,0.41]};
-  var pcs=document.querySelectorAll('.dl-lv');
   var dest=document.getElementById('dlDest'), wk=document.getElementById('dlWk');
-  var wkVal=document.getElementById('dlWkV'), lvVal=document.getElementById('dlLvVal');
+  var wkVal=document.getElementById('dlWkV');
   var cmdPre=document.getElementById('dlCmd'), note=document.getElementById('dlNote');
   var live=document.getElementById('dlLive'), out=document.getElementById('dlOut'), stat=document.getElementById('dlStat');
+  var doneEl=document.getElementById('dlDone'), totalEl=document.getElementById('dlTotal');
+  var pctEl=document.getElementById('dlPct'), barEl=document.getElementById('dlBar'), subEl=document.getElementById('dlSub');
   var API=(location.protocol.indexOf('http')===0)?'':('http://'+(location.hostname||'localhost')+':7777');
   var TOKEN=''; try{ TOKEN=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
   function tq(p){ return API+p+(TOKEN?((p.indexOf('?')<0?'?':'&')+'token='+encodeURIComponent(TOKEN)):''); }
-  function picked(){
-    var a=[]; Array.prototype.forEach.call(pcs,function(c){ if(c.checked) a.push(c.value); }); return a;
-  }
   function paint(){
-    var a=picked(), n=0, g=0;
-    a.forEach(function(k){ var v=LV[k]; if(v){ n+=v[0]; g+=v[1]; } });
-    lvVal.textContent=(a.length?a.join('+'):'没选')+(a.length?' · '+((a.length===5)?'约 60.6 GiB（含未标级）':'约 '+g.toFixed(1)+' GiB'):'');
     wkVal.textContent=wk.value+' 个';
     var cmd='cd <仓库目录> && python3 scripts/phira_local_download.py --dest '+dest.value
-          +' --levels '+(a.length?a.join(','):'IN,AT')+' --workers '+wk.value
+          +' --workers '+wk.value
           +(document.getElementById('dlHash').checked?'':' --no-hash-audio');
     cmdPre.textContent=cmd;
   }
-  Array.prototype.forEach.call(pcs,function(c){ c.addEventListener('change',paint); });
   dest.addEventListener('input',paint); wk.addEventListener('input',paint);
   document.getElementById('dlHash').addEventListener('change',paint);
+
+  /* 进度：直接用后端算好的 progress（total/done/ok/cached/failed/finished），没数就占位 */
+  function drawProg(p){
+    p=p||{};
+    var total=Number(p.total)||0, done=Number(p.done)||0;
+    if(total>0){
+      if(done>total) done=total;
+      var pct=(done/total)*100;
+      doneEl.textContent=done; totalEl.textContent=total;
+      pctEl.textContent=pct.toFixed(1)+'%';
+      barEl.style.width=pct+'%';
+      barEl.className=(p.finished&&done<total)?'bad':'';
+      var bits=[];
+      if(p.finished) bits.push('跑完了');
+      bits.push('新下 '+(p.ok==null?'—':p.ok));
+      bits.push('原本就有 '+(p.cached==null?'—':p.cached));
+      if(p.failed) bits.push('失败 '+p.failed);
+      subEl.textContent=bits.join(' · ');
+    } else {
+      doneEl.textContent='—'; totalEl.textContent='—'; pctEl.textContent='—';
+      barEl.style.width='0%'; barEl.className='';
+      subEl.textContent=(p.running?'正在拉清单，等第一行进度…':'点「开始下载」后这里会跟着涨');
+    }
+  }
 
   function send(body,cb){
     fetch(tq('/api/action'),{method:'POST',headers:TOKEN?{'X-Token':TOKEN}:{},'Content-Type':'application/json',
@@ -1898,6 +1925,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     stat.textContent=(j.running?'● 正在下载':'○ 没在跑')+(j.age_s!=null?(' · 日志 '+j.age_s+'s 前更新'):'');
     if(j.lines&&j.lines.length){ out.textContent=j.lines.join('\n'); out.scrollTop=out.scrollHeight; }
     else if(!j.lines||!j.lines.length){ out.textContent='还没有输出。点了「开始下载」后这里会滚起来。'; }
+    var pg=j.progress||{}; pg.running=j.running; drawProg(pg);
   }
   function poll(){
     fetch(tq('/api/downloadlog')).then(function(r){ return r.json(); })
@@ -1905,20 +1933,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       .catch(function(){});
   }
   document.getElementById('dlStart').addEventListener('click',function(){
-    var a=picked();
-    if(!a.length){ note.textContent='至少勾一个难度'; return; }
     note.textContent='启动中…';
-    send({id:'download-start',levels:a,dest:dest.value,workers:parseInt(wk.value,10)||4,
+    send({id:'download-start',dest:dest.value,workers:parseInt(wk.value,10)||4,
           list_only:false,hash_audio:document.getElementById('dlHash').checked},function(j){
       note.textContent=(j&&j.note)||'后端没回 note';
       if(j&&j.ok){ live.style.display='block'; poll(); setTimeout(poll,1500); }
     });
   });
   document.getElementById('dlListBtn').addEventListener('click',function(){
-    var a=picked();
-    if(!a.length){ note.textContent='至少勾一个难度'; return; }
     note.textContent='生成清单中…';
-    send({id:'download-start',levels:a,dest:dest.value,workers:parseInt(wk.value,10)||4,
+    send({id:'download-start',dest:dest.value,workers:parseInt(wk.value,10)||4,
           list_only:true,hash_audio:document.getElementById('dlHash').checked},function(j){
       note.textContent=(j&&j.note)||'后端没回 note';
       if(j&&j.ok){ live.style.display='block'; out.textContent=(j.output||j.command||''); }
@@ -2016,7 +2040,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </select>
       <label id="aiadvwrap" title="允许它真跑命令（默认关）"
         style="display:flex;align-items:center;gap:3px;font-size:11px;color:#8fa3a8;flex:none;cursor:pointer">
-        <input type="checkbox" id="aiadv">高级</label>
+        <input type="checkbox" checked id="aiadv">高级</label>
       <button id="aiclose" type="button">×</button></div>
     <div id="ailog"><div class="aimsg bot">不知道点哪个按钮、看不懂报错，都可以直接问。比如“帮我下载 IN/AT 的谱面”“现在跑到哪一步了”。</div></div>
     <div id="airow">
