@@ -730,6 +730,17 @@ def _kill_report_session():
 
 
 
+def _train_session_alive():
+    """页面判断“训练在跑没有”：真实 r5 用 tmux train；演示/极简训练用 tmux phira-train。"""
+    if _tmux_session_state('train') is True:
+        return True
+    try:
+        from scripts.harness import running as _hrunning
+        return bool(_hrunning('train'))
+    except Exception:                         # noqa: BLE001
+        return _tmux_session_state('train')
+
+
 def _train_stop(body):
     """停掉 tmux 会话 train 里的训练：先 Ctrl-C 让它自己收尾，几秒不退再 kill-session。
 
@@ -747,6 +758,25 @@ def _train_stop(body):
     except Exception as e:
         return 200, {'ok': False, 'note': 'tmux has-session 没跑起来：' + str(e)}
     if probe.returncode != 0:
+        # 演示/极简训练跑在 tmux phira-train 里，页面同一个按钮也要能停
+        try:
+            from scripts.harness import running as _hrunning
+            alive = _hrunning('train')
+        except Exception:                     # noqa: BLE001
+            alive = False
+        if alive:
+            subprocess.run(['tmux', 'send-keys', '-t', 'phira-train', 'C-c'],
+                           capture_output=True, timeout=8)
+            t0 = time.time()
+            while time.time() - t0 < 4.0:
+                time.sleep(0.4)
+                if subprocess.run(['tmux', 'has-session', '-t', 'phira-train'],
+                                  capture_output=True, timeout=5).returncode != 0:
+                    return 200, {'ok': True, 'how': 'sigint',
+                                 'note': '已发 Ctrl-C，训练自己退了'}
+            subprocess.run(['tmux', 'kill-session', '-t', 'phira-train'],
+                           capture_output=True, timeout=8)
+            return 200, {'ok': True, 'how': 'kill', 'note': '训练没理 Ctrl-C，直接把会话收了'}
         return 200, {'ok': False, 'note': '现在没有在跑的训练（tmux 会话 train 不存在）'}
     try:
         subprocess.run(['tmux', 'send-keys', '-t', 'train', 'C-c'], capture_output=True, timeout=8)
@@ -1538,7 +1568,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, {'ok': True, 'source': src, 'age_s': age,
                                         'lines': shown, 'metrics': metrics,
                                         'progress': _run_progress(),
-                                        'session': _tmux_session_state('train'),
+                                        'session': _train_session_alive(),
                                         'ts': time.time()})
             return self._send(200, {'ok': True, **get_status()})
         return self._send(404, {'ok': False, 'note': 'no such endpoint'})

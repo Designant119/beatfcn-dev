@@ -983,6 +983,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   function drawPipe(j){
     var box=document.getElementById('plchips'); if(!box||!j||!j.ok||!j.steps) return;
     window.DEMO=!!j.demo;
+    // AI 或后端起了训练：这一秒就把按钮换成「停止训练」，别等 5 秒的日志轮询
+    if(j.steps && j.steps.train && j.steps.train.running && typeof tpRunState==='function'){
+      tpRunState('train', true);
+    }
     if(window.DEMO){
       var dn=document.getElementById('tpStartNote');
       if(dn && !dn.textContent) dn.textContent='演示环境：这台机器没有真实数据/显卡，点「开始训练」会用假数据跑一遍，只验证流程能跑通。';
