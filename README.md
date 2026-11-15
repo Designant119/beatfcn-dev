@@ -73,6 +73,23 @@ python editor/infer.py --audio song.mp3 --bpm-map bpm.json --model ckpt.pt --out
 python editor/infer.py --audio song.mp3 --raw --model ckpt.pt --out-dir out/
 ```
 
+## 322M 生产配方（从0）
+
+训练页默认是 `plans/evolve/l322m-production.json`，不是简化脚本。它会在开跑前用生产入口
+`scripts/build_l322m_production.py` 生成冻结 exposure/plan，再交给
+`scripts/run_local_song_baseline.py` 跑 native counterfactual、own-target 条件、EMA、
+held-out teacher 诊断和 checkpoint/light checkpoint。
+
+```bash
+python -m scripts.build_l322m_production --recipe plans/evolve/l322m-production.json
+python -m scripts.run_local_song_baseline --plan /data/evolve/l322m-production-plan.json
+```
+
+需要生产结构模板 `/data/round5-level/plan.json`、native tape
+`/data/full-database-v1/native-v2-tape/tape.json`、MERT 特征
+`/data/full-database-v1/mert-graph-diagnostic-v2/features` 和 mel 统计。学习率、warmup、
+最低学习率、累积条数、EMA、验证集条数、checkpoint 间隔都可以在训练页上改。
+
 ## 给同学用的一键操作台
 
 Windows 上双击 `双击安装训练系统.bat`：装 WSL（要重启一次）→ 从训练盘导入系统 → 起后端 → 自动打开页面。
