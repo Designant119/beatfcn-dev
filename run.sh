@@ -9,17 +9,23 @@ PY="${PYTHON:-python3}"
 mkdir -p "$ROOT/.harness/logs" "$ROOT/data"
 
 # 自带的 Python 优先：整盘带走时连解释器都不用装
+USE_RUNTIME=0
 if [ -x "$ROOT/runtime/python/bin/python3" ] && "$ROOT/runtime/python/bin/python3" -c "import sys" >/dev/null 2>&1; then
   PY="$ROOT/runtime/python/bin/python3"
+  USE_RUNTIME=1
+  export PYTHONNOUSERSITE=1     # 别借同学 ~/.local 里的包，版本会打架
+  unset PYTHONPATH
 fi
 
 # 没自带解释器时，再用 .venv 里的包（PYTHONPATH 带，换挂载点也不怕）
-SITE="$(ls -d "$ROOT"/.venv/lib/python3.*/site-packages 2>/dev/null | head -1 || true)"
-if [ -n "$SITE" ]; then
-  export PYTHONPATH="$SITE${PYTHONPATH:+:$PYTHONPATH}"
-fi
-if [ -x "$ROOT/.venv/bin/python3" ] && "$ROOT/.venv/bin/python3" -c "import sys" >/dev/null 2>&1; then
-  PY="$ROOT/.venv/bin/python3"
+if [ "$USE_RUNTIME" = 0 ]; then
+  SITE="$(ls -d "$ROOT"/.venv/lib/python3.*/site-packages 2>/dev/null | head -1 || true)"
+  if [ -n "$SITE" ]; then
+    export PYTHONPATH="$SITE${PYTHONPATH:+:$PYTHONPATH}"
+  fi
+  if [ -x "$ROOT/.venv/bin/python3" ] && "$ROOT/.venv/bin/python3" -c "import sys" >/dev/null 2>&1; then
+    PY="$ROOT/.venv/bin/python3"
+  fi
 fi
 
 export BEATFCN_DATA_ROOT="${BEATFCN_DATA_ROOT:-$ROOT/data}"

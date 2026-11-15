@@ -15,6 +15,8 @@ import argparse
 import json
 import os
 import shlex
+import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -206,8 +208,35 @@ def _quote(text):
     return '"' + text.replace('"', '\\"') + '"' if ' ' in text else text
 
 
+def _tmux_bin():
+    """有 tmux 就用；没有（或 PHIRA_NO_TMUX=1）就退回普通后台进程，插盘就能跑。"""
+    if os.environ.get('PHIRA_NO_TMUX') == '1':
+        return None
+    return shutil.which('tmux')
+
+
+def _pid_file(session):
+    return _state_dir() / 'state' / f'{session}.pid'
+
+
+def _alive_pid(session):
+    f = _pid_file(session)
+    if not f.is_file():
+        return False
+    try:
+        pid = int(f.read_text(encoding='utf-8').strip())
+        os.kill(pid, 0)
+        return True
+    except Exception:                     # noqa: BLE001
+        try:
+            f.unlink()
+        except OSError:
+            pass
+        return False
+
+
 def start(step, args, *, dry_run=False):
-    """校验 + 起 tmux。返回 dict，网页和命令行都直接用这个结构。"""
+    """校验 + 起 tmux（没 tmux 就起后台进程）。返回 dict，网页和命令行都直接用这个结构。"""
     explicit = set((args or {}).keys())
     filled, errors = validate(step, args)
     if errors:
@@ -217,15 +246,16 @@ def start(step, args, *, dry_run=False):
     if dry_run:
         return dict(ok=True, step=step, command=cmd, dry_run=True)
     session = STEPS[step]['session']
-    try:
-        has = subprocess.run(['tmux', 'has-session', '-t', session],
+    tmux = _tmux_bin()
+    if tmux:
+        has = subprocess.run([tmux, 'has-session', '-t', session],
                              capture_output=True, text=True, timeout=10)
-    except FileNotFoundError:
+        if has.returncode == 0:
+            return dict(ok=False, step=step, command=cmd,
+                        errors=[f'已有 {session} 在跑，先 tmux attach -t {session} 看看'])
+    elif running(step):
         return dict(ok=False, step=step, command=cmd,
-                    errors=['机器上没有 tmux：sudo apt install -y tmux'])
-    if has.returncode == 0:
-        return dict(ok=False, step=step, command=cmd,
-                    errors=[f'已有 {session} 在跑，先 tmux attach -t {session} 看看'])
+                    errors=['这一步已经在跑（后台进程还活着）'])
     remember_paths(step, filled)
     log_path = _state_dir() / 'logs' / f'{session}.log'
     # tmux 会丢当前 shell 的部分环境：torch 装在 ~/.local 时，
@@ -239,15 +269,26 @@ def start(step, args, *, dry_run=False):
     inner = (f"set -o pipefail; rm -f {shlex.quote(str(marker))}; "
              f"{cmd} 2>&1 | tee {shlex.quote(str(log_path))}; rc=$?; "
              f"if [ $rc -eq 0 ]; then printf '%s' \"$(date -Iseconds)\" > {shlex.quote(str(marker))}; fi; exit $rc")
-    wrapped = pre + 'bash -lc ' + shlex.quote(inner)
-    try:
-        started = subprocess.run(['tmux', 'new-session', '-d', '-s', session, wrapped],
-                                 capture_output=True, text=True, timeout=10)
-    except Exception as exc:                      # noqa: BLE001
-        return dict(ok=False, step=step, command=cmd, errors=[f'{type(exc).__name__}: {exc}'])
-    if started.returncode != 0:
-        return dict(ok=False, step=step, command=cmd,
-                    errors=[('tmux 启动失败：' + (started.stderr or '无输出'))[:200]])
+    if tmux:
+        wrapped = pre + 'bash -lc ' + shlex.quote(inner)
+        try:
+            started = subprocess.run([tmux, 'new-session', '-d', '-s', session, wrapped],
+                                     capture_output=True, text=True, timeout=10)
+        except Exception as exc:                  # noqa: BLE001
+            return dict(ok=False, step=step, command=cmd,
+                        errors=[f'{type(exc).__name__}: {exc}'])
+        if started.returncode != 0:
+            return dict(ok=False, step=step, command=cmd,
+                        errors=[('tmux 启动失败：' + (started.stderr or '无输出'))[:200]])
+    else:
+        try:
+            proc = subprocess.Popen(['bash', '-lc', pre + inner], cwd=str(ROOT),
+                                    start_new_session=True,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _pid_file(session).write_text(str(proc.pid), encoding='utf-8')
+        except Exception as exc:                  # noqa: BLE001
+            return dict(ok=False, step=step, command=cmd,
+                        errors=[f'起后台进程失败：{exc}'])
     time.sleep(0.6)          # 参数不对的脚本会秒退，别急着报“已启动”
     alive = running(step)
     # 只看最后几行会漏掉 Traceback 的开头（栈有十几行），所以多读一点、多认几种错
@@ -262,7 +303,7 @@ def start(step, args, *, dry_run=False):
     (_state_dir() / 'state' / f'{step}.json').write_text(
         json.dumps(filled, ensure_ascii=False), encoding='utf-8')
     return dict(ok=True, step=step, command=cmd, session=session, alive=alive,
-                log=f'tmux attach -t {session}')
+                log=(f'tmux attach -t {session}' if tmux else '后台进程（没装 tmux，日志照看）'))
 
 
 def log(step, lines=40):
@@ -275,12 +316,15 @@ def log(step, lines=40):
 
 def running(step):
     session = STEPS[step]['session'] if step in STEPS else step
-    try:
-        out = subprocess.run(['tmux', 'has-session', '-t', session],
-                             capture_output=True, text=True, timeout=10)
-        return out.returncode == 0
-    except FileNotFoundError:
-        return False
+    tmux = _tmux_bin()
+    if tmux:
+        try:
+            out = subprocess.run([tmux, 'has-session', '-t', session],
+                                 capture_output=True, text=True, timeout=10)
+            return out.returncode == 0
+        except FileNotFoundError:
+            pass
+    return _alive_pid(session)
 
 
 def _artifact_ok(path):
@@ -361,12 +405,16 @@ def status():
 def start_auto(from_step=None, to_step='train'):
     """一条龙：起一个后台会话，按顺序把各步跑完，哪步失败就停。"""
     session = 'phira-auto'
-    try:
-        if subprocess.run(['tmux', 'has-session', '-t', session],
-                          capture_output=True, timeout=8).returncode == 0:
-            return dict(ok=False, note='自动流水线已经在跑（tmux phira-auto）')
-    except FileNotFoundError:
-        return dict(ok=False, note='机器上没有 tmux')
+    tmux = _tmux_bin()
+    if tmux:
+        try:
+            if subprocess.run([tmux, 'has-session', '-t', session],
+                              capture_output=True, timeout=8).returncode == 0:
+                return dict(ok=False, note='自动流水线已经在跑（tmux phira-auto）')
+        except FileNotFoundError:
+            pass
+    elif _alive_pid(session):
+        return dict(ok=False, note='自动流水线已经在跑（后台进程）')
     log_path = _state_dir() / 'logs' / f'{session}.log'
     cmd = f'python3 -m scripts.auto_pipeline --to {to_step}'
     if from_step:
@@ -377,13 +425,23 @@ def start_auto(from_step=None, to_step='train'):
         value = os.environ.get(key)
         if value:
             env_pre += f'export {key}={shlex.quote(value)}; '
-    proc = subprocess.run(['tmux', 'new-session', '-d', '-s', session, env_pre + inner],
-                          capture_output=True, text=True, timeout=10)
-    if proc.returncode != 0:
-        return dict(ok=False, note=('tmux 启动失败：' + (proc.stderr or '无输出'))[:160])
+    if tmux:
+        proc = subprocess.run([tmux, 'new-session', '-d', '-s', session, env_pre + inner],
+                              capture_output=True, text=True, timeout=10)
+        if proc.returncode != 0:
+            return dict(ok=False, note=('tmux 启动失败：' + (proc.stderr or '无输出'))[:160])
+    else:
+        try:
+            p = subprocess.Popen(['bash', '-lc', env_pre + inner], cwd=str(ROOT),
+                                 start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _pid_file(session).write_text(str(p.pid), encoding='utf-8')
+        except Exception as exc:              # noqa: BLE001
+            return dict(ok=False, note=f'起后台进程失败：{exc}')
     time.sleep(0.6)
-    if not subprocess.run(['tmux', 'has-session', '-t', session],
-                          capture_output=True, timeout=8).returncode == 0:
+    alive = (subprocess.run([tmux, 'has-session', '-t', session],
+                            capture_output=True, timeout=8).returncode == 0) if tmux else _alive_pid(session)
+    if not alive:
         return dict(ok=False, note='自动流水线刚起就退了：' + (log(session, 6) or '无输出'))
     return dict(ok=True, session=session, command=cmd,
                 note='从 ' + (from_step or '当前缺的那步') + ' 开始一路跑到 ' + to_step)
@@ -395,15 +453,45 @@ def stop(step):
     if not spec:
         return dict(ok=False, note=f'没有这一步：{step}')
     session = spec['session']
-    try:
-        has = subprocess.run(['tmux', 'has-session', '-t', session],
-                             capture_output=True, text=True, timeout=8)
-    except FileNotFoundError:
-        return dict(ok=False, note='机器上没有 tmux，停不了；去终端按 Ctrl-C')
-    except Exception as exc:                  # noqa: BLE001
-        return dict(ok=False, note=f'tmux 没跑起来：{exc}')
-    if has.returncode != 0:
-        return dict(ok=False, note='本来就沒在跑')
+    tmux = _tmux_bin()
+    if tmux:
+        try:
+            has = subprocess.run([tmux, 'has-session', '-t', session],
+                                 capture_output=True, text=True, timeout=8)
+        except Exception as exc:              # noqa: BLE001
+            return dict(ok=False, note=f'tmux 没跑起来：{exc}')
+        if has.returncode != 0:
+            return dict(ok=False, note='本来就沒在跑')
+    else:
+        if not _alive_pid(session):
+            return dict(ok=False, note='本来就沒在跑')
+        try:
+            pid = int(_pid_file(session).read_text(encoding='utf-8').strip())
+        except Exception as exc:              # noqa: BLE001
+            return dict(ok=False, note=f'读不到进程号：{exc}')
+        for sig, how, note in ((signal.SIGINT, 'sigint', '已发 Ctrl-C，自己退了'),
+                               (signal.SIGTERM, 'term', 'Ctrl-C 没退，用 TERM 收掉了'),
+                               (signal.SIGKILL, 'kill', 'TERM 也没退，直接 KILL')):
+            try:
+                os.killpg(os.getpgid(pid), sig)
+            except ProcessLookupError:
+                pass
+            except Exception as exc:          # noqa: BLE001
+                return dict(ok=False, note=f'发信号失败：{exc}')
+            t0 = time.time()
+            while time.time() - t0 < 2.0:
+                time.sleep(0.3)
+                if not _alive_pid(session):
+                    try:
+                        _pid_file(session).unlink()
+                    except OSError:
+                        pass
+                    return dict(ok=True, how=how, note=note)
+        try:
+            _pid_file(session).unlink()
+        except OSError:
+            pass
+        return dict(ok=True, how='kill', note='进程还在，但已经发了 KILL')
     try:
         subprocess.run(['tmux', 'send-keys', '-t', session, 'C-c'],
                        capture_output=True, timeout=8)

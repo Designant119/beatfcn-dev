@@ -5,6 +5,9 @@
 #   TORCH_INDEX=https://download.pytorch.org/whl/cu121 bash scripts/build_portable_runtime.sh   # 4090
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# 关键：别让本机的 ~/.local 借包给新解释器，否则“装成功了”其实没进盘
+export PYTHONNOUSERSITE=1
+unset PYTHONPATH
 DEST="${RUNTIME_DIR:-$ROOT/runtime}"
 PY_VER="${PY_VER:-3.12.7}"
 BUILD="${PY_BUILD:-20241016}"
@@ -25,8 +28,9 @@ echo "装 torch / torchaudio…"
 echo "装其余依赖…"
 "$PY" -m pip install -r "$ROOT/requirements.txt"
 
-"$PY" - <<'PY'
-import torch, transformers, numpy
-print('runtime OK:', torch.__version__, '| transformers', transformers.__version__, '| numpy', numpy.__version__)
+env -i HOME=/tmp PYTHONNOUSERSITE=1 "$PY" - <<'PY'
+import torch, transformers, numpy, sys
+assert '/runtime/' in torch.__file__ or str(sys.prefix) in torch.__file__, torch.__file__
+print('runtime OK:', torch.__version__, '| transformers', transformers.__version__, '| numpy', numpy.__version__, '|', torch.__file__)
 PY
 echo "完成：$DEST"

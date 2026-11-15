@@ -750,6 +750,14 @@ def _train_stop(body):
     """
     if body.get('confirm') is not True:
         return 400, {'ok': False, 'note': '停止训练要带 confirm:true（页面里是点两次才发）'}
+    # 没有 tmux、或 tmux 里没有这个会话（后台进程模式）：交给 harness 统一停
+    from scripts.harness import stop as hstop, _tmux_bin
+    if _tmux_bin() is None or not _tmux_session_state('train'):
+        try:
+            r = hstop('train')
+            return 200, {'ok': bool(r.get('ok')), 'note': r.get('note') or '已停'}
+        except Exception as exc:          # noqa: BLE001
+            return 200, {'ok': False, 'note': f'停止失败：{exc}'}
     try:
         probe = subprocess.run(['tmux', 'has-session', '-t', 'train'],
                                capture_output=True, text=True, timeout=8)
