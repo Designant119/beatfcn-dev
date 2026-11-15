@@ -82,7 +82,9 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
   绝对不能回“已启动”“开跑了”。
 - alive 为 false 且没有 errors：说明跑完了（短任务）或自己退了，说“已经跑完/已退出”。
 - 不能用 shell、不能删文件、不能写白名单之外的目录。
-- 只是闲聊或提问：action 用 "answer"，别硬套动作。
+- 只是闲聊、吐槽、情绪、测试、问问题：action 一律用 "answer"，绝不 run。
+  就算状态里写着“建议下一步”，也不许自己开跑——用户没让你动手，就别动手。
+- 只有用户明确让你干活时才 run：下载/建库/提特征/造数据/训练/继续/接着跑/一键跑。
 
 只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
 {"reply": "给同学看的中文回复（一两句，不要长篇）",
@@ -129,6 +131,11 @@ def _config():
 
 
 MODELS = ('glm-5.3', 'glm-5.3-flash')      # 同学可选的模型，别的名字一律不认
+
+# 模型说要跑流水线时，消息里至少得有点“动手”的意思；否则一律按聊天处理
+INTENT_WORDS = ('下载', '谱面', '建库', '入库', '数据集', '数据', '音轨', '特征',
+                '训练', '开训', '跑', '开始', '继续', '接着', '清单', '下一步',
+                '一键', '往下', '搞', '弄')
 
 
 def _thinking_obj(thinking):
@@ -219,6 +226,14 @@ def _build_messages(message, history=None):
     return messages
 
 
+def _gate(message, decision):
+    """模型说要动手，但用户那句话里没有动手的意思 → 压回聊天，别自作主张。"""
+    if decision.get('action') == 'run' and not any(w in message for w in INTENT_WORDS):
+        return dict(action='answer',
+                    reply=decision.get('reply') or '想让我跑哪一步？说一声就开始。')
+    return decision
+
+
 def _parse_decision(text):
     """把模型输出解析成动作意图，但不执行。返回 dict(action/step/args/reply)。"""
     raw = _extract_json(text)
@@ -306,12 +321,12 @@ def _execute(decision):
                 reply=(reply + ' ' if reply else '') + tail)
 
 
-def respond(message, history=None):
+def respond(message, history=None, model=None, thinking=None):
     """返回 dict(ok, reply, action, step, result)。永不抛异常给上层。"""
-    text, err = _call(_build_messages(message, history))
+    text, err = _call(_build_messages(message, history), model=model, thinking=thinking)
     if err:
         return dict(ok=False, reply=err, action='error')
-    return _execute(_parse_decision(text))
+    return _execute(_gate(message, _parse_decision(text)))
 
 
 class _ReplyTap:
@@ -462,7 +477,7 @@ def stream(message, history=None, model=None, thinking=None):
     text = ''.join(full)
     yield dict(type='status', text='正在解析指令…')
     try:
-        decision = _parse_decision(text)
+        decision = _gate(message, _parse_decision(text))
     except Exception as exc:                      # noqa: BLE001
         yield dict(type='error', text=f'解析模型输出失败：{exc}')
         return
@@ -475,11 +490,11 @@ def stream(message, history=None, model=None, thinking=None):
     if estimated:
         out_tokens = max(1, int(len(text) / 1.6))
     secs = (t_last - t_first) if t_first and t_last else 0
-    # 太短的流算 tok/s 会飙到离谱（本地 mock 几百毫秒就能上千），低于 0.2s 就不报
-    tps = round(out_tokens / secs, 1) if secs >= 0.2 else None
+    # 太短的流算 tok/s 会飙到离谱（几百毫秒就能报出上千），不足 1 秒一律不报
+    tps = round(out_tokens / secs, 1) if secs >= 1.0 else None
     yield dict(type='reply', payload=result)
     yield dict(type='done', tokens=int(out_tokens), estimated=estimated,
-               tps=tps, seconds=(round(secs, 1) if secs >= 0.2 else None), model=model)
+               tps=tps, seconds=(round(secs, 1) if secs >= 1.0 else None), model=model)
 
 
 if __name__ == '__main__':

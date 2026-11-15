@@ -1980,8 +1980,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       }
       return pump();
     }).catch(function(e){
-      setStatus(''); wrap.className='aimsg err';
-      raw=raw||('出错了：'+e.message); paint(); unlock();
+      // 已经拿到回复了，后面连接被掐断不该把好好的回复标红
+      setStatus('');
+      if(!gotReply){ wrap.className='aimsg err'; raw=raw||('出错了：'+e.message); paint(); }
+      unlock();
     });
 
     var gotReply=false;
