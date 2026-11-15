@@ -1531,7 +1531,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split('?')[0]
-        if path in ('/', '/index.html'):
+        if path in ('/', '/index.html', '/train_server.html'):
             for name in HTML_NAMES:
                 p = os.path.join(HERE, name)
                 if os.path.isfile(p):
