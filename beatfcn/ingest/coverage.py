@@ -32,7 +32,8 @@ def phira_native_difficulty(row):
     except (ValueError, TypeError):
         pass
     label = row.get('level') or row.get('difficulty_label') or ''
-    match = re.search(r'(?:LV\.?\s*|^(?:EZ|HD|IN|AT)[\s.]+)(\d+(?:\.\d+)?)', label.upper())
+    # 前缀后的分隔符必须可省:谱面常写 "HD12"/"AT16" 这种紧贴格式,要求 [\s.]+ 会把数字静默漏掉
+    match = re.search(r'(?:LV\.?\s*|^(?:EZ|HD|IN|AT)[\s.]*)(\d+(?:\.\d+)?)', label.upper())
     if match and float(match[1]) > 0:
         values.append(float(match[1]))
     if not values:

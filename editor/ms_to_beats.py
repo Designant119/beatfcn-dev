@@ -1,4 +1,4 @@
-"""毫秒(模型钟) -> Phira 拍分数 [整拍, 分子, 分母] 的精确换算。
+"""微秒(模型钟) -> Phira 拍分数 [整拍, 分子, 分母] 的精确换算。
 
 前提:制谱器提供权威 BPM 图(每段变速的 BPM),与仓库内 beatfcn/ingest/timing.py 同一约定:
 时间在谱面自己的节拍网格上是精确分数。换算是确定性的,不是吸附。
@@ -7,7 +7,8 @@
 - 排序键 = 误差 + 分母复杂度罚分(拍长×分母×系数),音乐族只当并列 tie-break:
   纯"族优先"会让 3/64 偷走 1/20、9/28 偷走 7/22;纯"最小分母"会把 1/16 偷换成 1/14;
   纯"最小误差"会跑飞到 3/47 或被大分母的数值巧合淹没。
-- 容差:min(2ms, 1/4格)。相邻怪格族(如 1/22 与 1/24 在 174 BPM 只差 1.3ms)天然无法
+- 候选容差:min(5ms, 1/2格)(以 beat_fraction 里的实际代码为准;比 2ms/1/4格宽,因为真格子
+  常被模型误差推出 2ms,仍必须留在候选表里交给谱师确认)。相邻怪格族(如 1/22 与 1/24 在 174 BPM 只差 1.3ms)天然无法
   用毫秒唯一判定——所以本函数永远返回按可信度排序的候选列表,编辑器亮前几个给谱师一键选。
 - 分辨极限是物理事实:任何毫秒位置总在某个 d<=64 的分数 2ms 内,"完全不贴格"不存在。
 纯标准库,无 torch;自测:python editor/ms_to_beats.py
@@ -65,18 +66,35 @@ def beat_value(whole, num, den):
 
 
 def parse_bpm_list(bpm_list):
-    """Phira BPMList [{bpm, startTime:[b,n,d]}] -> [(起始拍, bpm)] 升序;同拍多点只留最后一个。"""
-    segs = sorted((beat_value(*e['startTime']), float(e['bpm'])) for e in bpm_list)
+    """Phira BPMList [{bpm, startTime:[b,n,d]}] -> [(起始拍, bpm)] 升序;同拍多点只留最后一个。
+
+    畸形 BPM(非有限正数)与"第一段不在第 0 拍"都直接拒绝:前者若静默按 60 兜底,
+    该段速度就悄悄错掉;后者会让第 0 拍之前那段凭空消失,整页换算整体错位。
+    两种错都不会报错、只能靠谱师肉眼发现,所以这里改成 fail-fast
+    (与 beatfcn/events/phira.py 对首拍非 0 直接 quarantine 的口径一致)。
+    """
+    if not bpm_list:
+        raise ValueError('empty BPM list')
+    segs = []
+    for e in bpm_list:
+        try:
+            b = beat_value(*e['startTime'])
+            bpm = float(e['bpm'])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f'BPM 段格式不合法: {e!r}') from exc
+        if not math.isfinite(bpm) or bpm <= 0:
+            raise ValueError(f'BPM 必须是有限正数,第 {b:g} 拍处读到 {e.get("bpm")!r}')
+        segs.append((b, bpm))
+    segs.sort()
     out = []
     for b, bpm in segs:
-        if not math.isfinite(bpm) or bpm <= 0:  # 畸形 BPM：按 60 兜底，别让候选整页崩
-            bpm = 60.0
         if out and abs(b - out[-1][0]) < 1e-9:
             out[-1] = (out[-1][0], bpm)
         else:
             out.append((b, bpm))
-    if not out:
-        raise ValueError('empty BPM list')
+    if abs(out[0][0]) > 1e-9:
+        raise ValueError(f'BPM 图第一段必须从第 0 拍开始(读到第 {out[0][0]:g} 拍);'
+                         '第 0 拍之前没有速度定义,继续换算会让整页整体错位')
     return out
 
 

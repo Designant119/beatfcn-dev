@@ -62,7 +62,8 @@ def declared_burden(row):
     except (TypeError, ValueError):
         pass
     label = row.get('level') or row.get('difficulty_label') or ''
-    match = re.search(r'(?:LV\.?\s*|^(?:EZ|HD|IN|AT)[\s.]+)(\d+(?:\.\d+)?)', label.upper())
+    # 与 coverage.py 同一口径:前缀后的分隔符可省,否则 "HD12"/"AT16" 会被静默判成没有难度
+    match = re.search(r'(?:LV\.?\s*|^(?:EZ|HD|IN|AT)[\s.]*)(\d+(?:\.\d+)?)', label.upper())
     if match:
         nums.append(float(match[1]))
     value = max(nums) if nums else None
