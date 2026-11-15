@@ -256,11 +256,29 @@ def _state_brief():
             f'正在跑：{"、".join(_label(k) for k in run) or "无"}；' + tail)
 
 
+def _digest(older):
+    """把更早的对话压成一小段“聊过什么”，让模型别把上下文忘干净。"""
+    lines = []
+    for turn in (older or [])[-20:]:
+        if turn.get('role') not in ('user', 'assistant'):
+            continue
+        text = ' '.join(str(turn.get('content', '')).split())[:120]
+        if text:
+            lines.append(('用户：' if turn['role'] == 'user' else '它：') + text)
+    if not lines:
+        return ''
+    return ('早前聊过这些（压缩过，细节可能丢，别当成当前指令）：\n' + '\n'.join(lines))[:2200]
+
+
 def _build_messages(message, history=None):
     messages = [dict(role='system', content=TOOL_DOC + '\n\n当前状态：' + _state_brief())]
-    for turn in (history or [])[-6:]:
-        if turn.get('role') in ('user', 'assistant'):
-            messages.append(dict(role=turn['role'], content=str(turn.get('content', ''))[:2000]))
+    turns = [t for t in (history or []) if t.get('role') in ('user', 'assistant')]
+    older, recent = turns[:-6], turns[-6:]
+    digest = _digest(older)
+    if digest:
+        messages.append(dict(role='system', content=digest))
+    for turn in recent:
+        messages.append(dict(role=turn['role'], content=str(turn.get('content', ''))[:2000]))
     messages.append(dict(role='user', content=str(message)[:2000]))
     return messages
 
@@ -474,6 +492,7 @@ def stream(message, history=None, model=None, thinking=None):
     payload = {'model': model, 'messages': _build_messages(message, history),
                'temperature': 0.2, 'stream': True,
                'stream_options': {'include_usage': True}}
+    ctx_max = 200_000                     # GLM-5.3 的上下文上限（保守口径，给页面显示用）
     payload.update(_thinking_extra(thinking))
     req = urllib.request.Request(base, data=json.dumps(payload, ensure_ascii=False).encode(),
                                  method='POST',
@@ -552,6 +571,7 @@ def stream(message, history=None, model=None, thinking=None):
     result = _execute(decision)
 
     out_tokens = (usage or {}).get('completion_tokens')
+    ctx_tokens = (usage or {}).get('prompt_tokens')
     estimated = out_tokens is None
     if estimated:
         out_tokens = max(1, int(len(text) / 1.6))
@@ -559,8 +579,14 @@ def stream(message, history=None, model=None, thinking=None):
     # 太短的流算 tok/s 会飙到离谱（几百毫秒就能报出上千），不足 1 秒一律不报
     tps = round(out_tokens / secs, 1) if secs >= 1.0 else None
     yield dict(type='reply', payload=result)
+    if ctx_tokens is None:                    # 有些返回不带 usage，按字符数粗估
+        try:
+            ctx_tokens = sum(len(str(m.get('content', ''))) for m in payload['messages']) // 2
+        except Exception:                     # noqa: BLE001
+            ctx_tokens = None
     yield dict(type='done', tokens=int(out_tokens), estimated=estimated,
-               tps=tps, seconds=(round(secs, 1) if secs >= 1.0 else None), model=model)
+               tps=tps, seconds=(round(secs, 1) if secs >= 1.0 else None), model=model,
+               ctx=(int(ctx_tokens) if ctx_tokens else None), ctx_max=ctx_max)
 
 
 if __name__ == '__main__':
