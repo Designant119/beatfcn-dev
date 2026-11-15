@@ -1005,7 +1005,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       }
       prevRun[k]=!!s.running;
       var tag=el.querySelector('.pcs');
-      var txt=s.running?'在跑':(s.done?'完成':'');
+      var txt=s.running?'在跑':(s.done?('完成'+(s.failed?('·失败'+s.failed):'')):'');
       if(tag.textContent!==txt) tag.textContent=txt;
     });
     drawWhere(j);

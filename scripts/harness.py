@@ -254,6 +254,34 @@ def running(step):
         return False
 
 
+def _artifact_ok(path):
+    """文件就看在不在；目录还得非空，否则半截中断也会被当成已完成。"""
+    try:
+        if path.is_file():
+            return True, None
+        if path.is_dir():
+            return any(True for _ in path.iterdir()), '目录是空的'
+        return False, '还没生成'
+    except Exception as exc:                  # noqa: BLE001
+        return False, str(exc)
+
+
+def _download_failed(step, args):
+    """下载报告里失败几个，页面可以顺手提一句。"""
+    if step != 'download':
+        return 0
+    dest = args.get('dest')
+    if not dest:
+        return 0
+    f = Path(str(dest)) / '_download_report.json'
+    if not f.is_file():
+        return 0
+    try:
+        return int(json.loads(f.read_text(encoding='utf-8')).get('failed') or 0)
+    except Exception:                         # noqa: BLE001
+        return 0
+
+
 def status():
     """各步产物是否已存在，供网页显示“哪步已经跑完”。"""
     report = {}
@@ -273,11 +301,14 @@ def status():
                 pass
         # 只拉了清单不算“下载完成”，否则下一步会以为谱面已经在盘上
         if step == 'download' and args.get('list_only'):
-            present = False
+            present, why = False, '只拉了清单'
         else:
-            present = all(_resolve_output(step, args, o).exists() for o in spec['outputs'])
+            checks = [_artifact_ok(_resolve_output(step, args, o)) for o in spec['outputs']]
+            present = all(ok for ok, _ in checks)
+            why = next((msg for ok, msg in checks if not ok), None)
         report[step] = dict(done=present, running=running(step),
-                            session=spec['session'])
+                            session=spec['session'], why=why,
+                            failed=_download_failed(step, args) if present else 0)
     return report
 
 
