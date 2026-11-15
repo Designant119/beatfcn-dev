@@ -983,6 +983,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   function drawPipe(j){
     var box=document.getElementById('plchips'); if(!box||!j||!j.ok||!j.steps) return;
     window.DEMO=!!j.demo;
+    if(window.DEMO){
+      var dn=document.getElementById('tpStartNote');
+      if(dn && !dn.textContent) dn.textContent='演示环境：这台机器没有真实数据/显卡，点「开始训练」会用假数据跑一遍，只验证流程能跑通。';
+    }
     if(!box.dataset.built){
       box.innerHTML=PIPE_ORDER.map(function(k){
         return '<div class="pc" id="pc-'+k+'"><span class="dot"></span><span>'+PIPE_LABEL[k]+
@@ -1514,7 +1518,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     },8000);
   }
   tpStart.addEventListener('click',function(){
-    if(!tpPlan.value && window.DEMO){
+    if(window.DEMO){
       // 演示环境：没有真方案，直接让后端用假数据起一次训练，验证流程能跑通
       tpStart.disabled=true; tpStart.textContent='启动中…';
       var durl=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
