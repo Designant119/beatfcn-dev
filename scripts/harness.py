@@ -267,7 +267,11 @@ def status():
                 args.update(json.loads(saved.read_text(encoding='utf-8')))
             except Exception:                     # noqa: BLE001
                 pass
-        present = all(_resolve_output(step, args, o).exists() for o in spec['outputs'])
+        # 只拉了清单不算“下载完成”，否则下一步会以为谱面已经在盘上
+        if step == 'download' and args.get('list_only'):
+            present = False
+        else:
+            present = all(_resolve_output(step, args, o).exists() for o in spec['outputs'])
         report[step] = dict(done=present, running=running(step),
                             session=spec['session'])
     return report

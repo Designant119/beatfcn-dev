@@ -145,6 +145,8 @@
   .pc.done{border-color:rgba(159,179,131,.5);color:var(--ok)} .pc.done .dot{background:var(--ok)}
   .pc.next{border-color:rgba(61,255,124,.45);color:var(--ph)} .pc.next .dot{background:var(--ph)}
   .pc.run{border-color:var(--ph);color:var(--ph);background:rgba(61,255,124,.07)} .pc.run .dot{background:var(--ph);animation:pulse 1s infinite}
+  .pc.flash{background:rgba(61,255,124,.22);border-color:var(--ph);color:#0d100f}
+  .pc.flash .dot{background:#0d100f}
   @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(61,255,124,.6)}50%{opacity:.55;box-shadow:0 0 0 4px rgba(61,255,124,0)}}
 
   /* ---------- 命令块 ---------- */
@@ -971,6 +973,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var PIPE_ORDER=['download','ingest','audio','tape','features','full_tape','exposure','train'];
   var PIPE_LABEL={download:'下载谱面',ingest:'建数据集',audio:'摊平音轨',tape:'提特征清单',
                   features:'提特征',full_tape:'训练数据',exposure:'冻结采样',train:'冒烟训练'};
+  var prevRun={};
   function drawPipe(j){
     var box=document.getElementById('plchips'); if(!box||!j||!j.ok||!j.steps) return;
     if(!box.dataset.built){
@@ -985,7 +988,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       var s=j.steps[k]||{}, el=document.getElementById('pc-'+k); if(!el) return;
       var cls='pc'; if(s.running){cls+=' run';anyRun=true;} else if(s.done){cls+=' done';}
       else if(j.next===k){cls+=' next';}
-      if(el.className!==cls) el.className=cls;
+      if(el.className!==cls){
+        el.className=cls;
+        if(prevRun[k] && !s.running){   // 刚从“在跑”变结束（不管成没成），留个 3 秒痕迹
+          el.classList.add('flash');
+          el.querySelector('.pcs').textContent = s.done ? '刚跑完' : '刚结束';
+          setTimeout(function(){ el.classList.remove('flash');
+                                 el.querySelector('.pcs').textContent = s.done ? '完成' : ''; }, 3000);
+        }
+      }
+      prevRun[k]=!!s.running;
       var tag=el.querySelector('.pcs');
       var txt=s.running?'在跑':(s.done?'完成':'');
       if(tag.textContent!==txt) tag.textContent=txt;
@@ -996,6 +1008,22 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     return anyRun;
   }
   function pollPipe(){ if(!isLive) return; api('/api/harness-status', drawPipe); }
+  // 秒级轮询可能错过短任务，聊天里起了步骤就密集补刷 6 次
+  function burstPipe(){ for(var i=0;i<6;i++) setTimeout(pollPipe, 300*(i+1)); }
+  // AI 一说要跑，先把那颗芯片点亮，别等下一次轮询（短任务不到 1 秒就结束了）
+  function markRun(step){
+    var el=document.getElementById('pc-'+step); if(!el) return;
+    el.className='pc run'; el.querySelector('.pcs').textContent='在跑';
+    setTimeout(function(){ pollPipe(); }, 1200);
+    setTimeout(function(){ pollPipe(); }, 3000);
+  }
+  function markJustEnded(step,ok){
+    var el=document.getElementById('pc-'+step); if(!el) return;
+    el.className='pc'+(ok?' done':'')+' flash';
+    el.querySelector('.pcs').textContent = ok?'刚跑完':'刚结束';
+    setTimeout(function(){ el.classList.remove('flash');
+      el.querySelector('.pcs').textContent = ok?'完成':''; pollPipe(); }, 3000);
+  }
   setInterval(function(){ if(isLive&&document.visibilityState==='visible') pollPipe(); },1000);
 
   function api(path,cb,tmo){
@@ -1923,6 +1951,13 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         if(pl.action==='error') wrap.className='aimsg err';
         if(tbody.textContent) sum.textContent='思考过程（点击展开，'+tbody.textContent.length+' 字）';
         setStatus(''); hist.push({role:'assistant',content:raw}); gotReply=true;
+        if(pl.action==='run'){
+          var st=(pl.result&&pl.result.step)||pl.step;
+          if(pl.result && pl.result.ok===false) markJustEnded(st,false);
+          else if(pl.result && pl.result.alive===false) markJustEnded(st,true);
+          else markRun(st);
+          burstPipe();
+        }
       } else if(ev.type==='done'){
         var bits=[];
         if(ev.tps) bits.push(ev.tps+' tok/s');
