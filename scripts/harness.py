@@ -218,10 +218,12 @@ def start(step, args, *, dry_run=False):
                     errors=[('tmux 启动失败：' + (started.stderr or '无输出'))[:200]])
     time.sleep(0.6)          # 参数不对的脚本会秒退，别急着报“已启动”
     alive = running(step)
-    tail = [l.rstrip() for l in log(step, 10).splitlines() if l.strip()]
+    # 只看最后几行会漏掉 Traceback 的开头（栈有十几行），所以多读一点、多认几种错
+    tail = [l.rstrip() for l in log(step, 40).splitlines() if l.strip()]
     blow = '\n'.join(tail)
-    crashed = any(k in blow for k in ('Traceback', 'error:', 'unrecognized arguments',
-                                      'No such file', 'Permission denied'))
+    crashed = any(k in blow for k in ('Traceback', 'error:', 'Error:', 'unrecognized arguments',
+                                      'Permission denied', 'No such file',
+                                      'ModuleNotFoundError', 'ImportError'))
     if not alive and crashed:
         return dict(ok=False, step=step, command=cmd, session=session, alive=False,
                     errors=['启动后立刻就退了：' + (tail[-1][:200] if tail else '无输出')])

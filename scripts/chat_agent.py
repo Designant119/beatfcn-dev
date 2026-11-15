@@ -31,6 +31,17 @@ if str(ROOT) not in sys.path:
 
 from scripts.harness import ORDER, STEPS, log, pipeline_next, running, start, status
 
+# 给同学看的人话名称；内部还是那八个英文步骤
+STEP_LABEL = {
+    'download': '下载谱面', 'ingest': '建数据集', 'audio': '摊平音轨',
+    'tape': '造提特征清单', 'features': '提特征', 'full_tape': '造训练数据',
+    'exposure': '冻结采样', 'train': '冒烟训练',
+}
+
+
+def _label(name):
+    return STEP_LABEL.get(name, name)
+
 TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参数，只看懂人话。
 
 八个步骤（每步都有默认参数，默认值就是对的，不要追问）：
@@ -50,8 +61,14 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - “建库 / 入库 / 整理数据” → {"step": "ingest", "args": {}}
 - “提特征 / 跑特征” → {"step": "features", "args": {}}
 - “训练 / 开训 / 跑一下” → {"step": "train", "args": {}}
-- “下一步干啥 / 继续” → {"action": "status"}
-- 只说“跑一遍 / 一键跑” → 用 status 给出的下一步
+- “下一步干啥 / 看看进度” → {"action": "status"}
+- “接着跑 / 继续 / 一键跑 / 往下走” → {"action": "run"}（不填 step，后端自动挑下一步）
+
+用户想直接跳到后面的步骤（比如数据还没下就说“开始训练”）时：
+- 不要只说“不能跳过”“必须先做前面的”，更不要教训人。
+- 说清楚还差哪几步（一句人话），然后自己从该跑的那一步开始：
+  {"action": "run"}，step 留空，后端会用流水线的下一步。
+- 例：reply “训练得先有数据，现在还没下载，我先帮你把谱面下下来，好了再接着建库、提特征。”
 
 说话规矩（很重要，违反就是事故）：
 - reply 里不要出现参数名、文件路径、脚本名、tmux、sha256、npy 这些词；
@@ -71,6 +88,74 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
  "args": {参数对象，可省略，内部参数不要念出来}}
 
 """
+def _call(messages):
+    cfg = _config()
+    key = cfg.get('key')
+    if not key:
+        return None, ('后端没有配置 PHIRA_CHAT_KEY，AI 助手不可用。'
+                      '把 key 写进后端环境变量，或放到 ~/.config/phira/chat.json 再试。')
+    base = cfg.get('base') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+    model = cfg.get('model') or 'glm-4-flash'
+    body = json.dumps({'model': model, 'messages': messages, 'temperature': 0.2}, ensure_ascii=False)
+    req = urllib.request.Request(base, data=body.encode(), method='POST',
+                                 headers={'Content-Type': 'application/json',
+                                          'Authorization': 'Bearer ' + key})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            payload = json.loads(resp.read().decode())
+    except Exception as exc:                      # noqa: BLE001
+        return None, f'调用模型失败：{type(exc).__name__}: {exc}'
+    try:
+        return payload['choices'][0]['message']['content'], None
+    except (KeyError, IndexError):
+        return None, '模型返回结构不认识：' + json.dumps(payload, ensure_ascii=False)[:200]
+
+
+def _extract_json(text):
+    """从模型输出里挖出那个 JSON 对象，容忍 Markdown 包裹和前后解释文字。
+
+    模型很爱干两件事：把 JSON 包进 ```json 代码块，或者在 JSON 前后唠一句
+    “好的，我来帮你……”。这两种都不能当成失败——挖出那个对象就行。
+    """
+    if not text:
+        return None
+    m = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.S)
+    if m:
+        return m.group(1)
+    start = text.find('{')
+    while start >= 0:
+        depth, in_str, esc = 0, False, False
+        for i in range(start, len(text)):
+            ch = text[i]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == '\\':
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+            elif ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
+        start = text.find('{', start + 1)
+    return None
+
+
+def _state_brief():
+    st = status()
+    done = [k for k in ORDER if st[k]['done']]
+    run = [k for k in ORDER if st[k]['running']]
+    return (f'已完成的步骤：{"、".join(_label(k) for k in done) or "无"}；'
+            f'正在跑：{"、".join(_label(k) for k in run) or "无"}；'
+            f'建议下一步：{_label(pipeline_next()) if pipeline_next() else "全部完成"}')
+
+
 def _build_messages(message, history=None):
     messages = [dict(role='system', content=TOOL_DOC + '\n\n当前状态：' + _state_brief())]
     for turn in (history or [])[-6:]:
@@ -97,6 +182,34 @@ def _parse_decision(text):
                 reply=str(decision.get('reply') or '').strip())
 
 
+def _prereq_report(step):
+    """看前面那些步骤是不是真跑完了。返回 (还缺的, 正在跑的)。"""
+    st = status()
+    idx = ORDER.index(step) if step in ORDER else len(ORDER)
+    missing, busy = [], []
+    for name in ORDER[:idx]:
+        if st[name]['running']:
+            busy.append(name)
+        elif not st[name]['done']:
+            missing.append(name)
+    return missing, busy
+
+
+def _human_error(text):
+    """把脚本报错翻译成同学看得懂的一句话。"""
+    raw = str(text or '').strip()
+    m = re.search(r"No module named '([^']+)'", raw)
+    if m:
+        return f'这台机器还缺 Python 依赖 {m.group(1)}，先把 requirements 装上再跑'
+    if 'Permission denied' in raw:
+        return '那个目录没权限写，换一个有权限的位置'
+    if 'No such file or directory' in raw:
+        return '要读的目录不存在，前面那步可能还没跑'
+    if 'unrecognized arguments' in raw:
+        return '启动参数对不上脚本，这部分我来修'
+    return raw
+
+
 def _execute(decision):
     """按意图真正干活，返回最终 dict(ok, action, step, reply, result)。"""
     action = decision.get('action') or 'answer'
@@ -107,16 +220,30 @@ def _execute(decision):
         return dict(ok=True, action='answer', reply=reply or '没太明白，能再说具体点吗？')
     step = decision.get('step')
     args = decision.get('args') or {}
+    if not step:                              # 没指定就按流水线顺序挑下一步，别让用户自己找
+        step = pipeline_next()
+        if not step:
+            return dict(ok=True, action='status', reply='八步都跑完了，没有下一步了。')
     if step not in STEPS:
         return dict(ok=False, action='run', reply=f'模型想调一个不存在的步骤 {step!r}，没有执行。')
+    missing, busy = _prereq_report(step)
+    if busy:
+        return dict(ok=False, action='run', step=step,
+                    reply=f'「{_label(busy[0])}」还在跑，等它跑完再往下。')
+    if missing:
+        # 前置没齐就不硬跳：告诉他还差哪几步，问一句再动
+        labels = '、'.join(_label(m) for m in missing)
+        return dict(ok=False, action='answer', step=step, missing=missing,
+                    reply=f'「{_label(step)}」前面还差 {len(missing)} 步：{labels}。'
+                          f'要我从「{_label(missing[0])}」开始跑吗？')
     if running(step):
         return dict(ok=False, action='run', step=step,
                     reply=f'{step} 已经在跑，不重复启动。用日志看进度。')
     result = start(step, args)
     if not result.get('ok'):
         return dict(ok=False, action='run', step=step, result=result,
-                    reply=(reply + ' ' if reply else '') + '没启动成功：'
-                    + '；'.join(result.get('errors') or []))
+                    reply='没启动成功：' + _human_error(
+                        '；'.join(result.get('errors') or []) or '原因不明，看日志'))
     tail = '已启动，日志可以随时看。'
     if result.get('alive') is False:          # 起完就退：短任务跑完，或者自己崩了
         tail = f'{step} 已经跑完了（会话已退出），结果看日志末尾。'

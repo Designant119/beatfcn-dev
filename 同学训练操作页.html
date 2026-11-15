@@ -132,6 +132,20 @@
   .nexthop{border:1px solid var(--line);border-left:2px solid var(--live);background:var(--panel2);
     padding:10px 12px;margin:14px 0;font-size:13.5px}
   .nexthop .k{display:block;font-family:var(--ui);font-size:10px;letter-spacing:.12em;color:var(--live);margin-bottom:2px}
+  .pline{border:1px solid var(--line);background:var(--panel);padding:9px 11px;margin:12px 0}
+  .plhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .plhead .k{font-family:var(--ui);font-size:10px;letter-spacing:.12em;color:var(--dim)}
+  .plnext{font-family:var(--mono);font-size:11px;color:var(--ph)}
+  .plchips{display:flex;flex-wrap:wrap;gap:6px}
+  .pc{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:96px;
+      border:1px solid var(--line);background:var(--panel2);padding:5px 8px;
+      font-family:var(--mono);font-size:11px;color:var(--dim);transition:border-color .15s,color .15s}
+  .pc .dot{width:6px;height:6px;border-radius:50%;background:var(--line);flex:none}
+  .pc .pcs{font-size:10px;opacity:.8}
+  .pc.done{border-color:rgba(159,179,131,.5);color:var(--ok)} .pc.done .dot{background:var(--ok)}
+  .pc.next{border-color:rgba(61,255,124,.45);color:var(--ph)} .pc.next .dot{background:var(--ph)}
+  .pc.run{border-color:var(--ph);color:var(--ph);background:rgba(61,255,124,.07)} .pc.run .dot{background:var(--ph);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(61,255,124,.6)}50%{opacity:.55;box-shadow:0 0 0 4px rgba(61,255,124,0)}}
 
   /* ---------- 命令块 ---------- */
   .cmd{border:1px solid var(--line);background:#080b0a;margin:8px 0 16px}
@@ -308,6 +322,11 @@
     <p class="hint">这台机器只跑一条训练线。五层，顺序别颠倒，前一层没绿就别点下一层。<b>哪一层跟你看到的不一样，就停下来。</b></p>
 
     <div class="nexthop" id="nexthop" style="display:none"><span class="k">NEXT / 现在该干嘛</span><span id="nexthopTxt"></span></div>
+
+    <div class="pline">
+      <div class="plhead"><span class="k">PIPELINE / 八步流水线</span><span id="plnext" class="plnext">—</span></div>
+      <div class="plchips" id="plchips"></div>
+    </div>
 
     <table>
       <colgroup><col style="width:12%"><col style="width:22%"><col style="width:auto"><col style="width:22%"></colgroup>
@@ -948,6 +967,37 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var apiToken='';
   try{ apiToken=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
   if(apiToken){ try{ localStorage.setItem('r5runbook:v4:token',apiToken); }catch(e){} }
+  // ---- 八步流水线实时状态（1 秒一次，AI 一动手就能看见灯变色）----
+  var PIPE_ORDER=['download','ingest','audio','tape','features','full_tape','exposure','train'];
+  var PIPE_LABEL={download:'下载谱面',ingest:'建数据集',audio:'摊平音轨',tape:'提特征清单',
+                  features:'提特征',full_tape:'训练数据',exposure:'冻结采样',train:'冒烟训练'};
+  function drawPipe(j){
+    var box=document.getElementById('plchips'); if(!box||!j||!j.ok||!j.steps) return;
+    if(!box.dataset.built){
+      box.innerHTML=PIPE_ORDER.map(function(k){
+        return '<div class="pc" id="pc-'+k+'"><span class="dot"></span><span>'+PIPE_LABEL[k]+
+               '</span><span class="pcs"></span></div>';
+      }).join('');
+      box.dataset.built='1';
+    }
+    var anyRun=false;
+    PIPE_ORDER.forEach(function(k){
+      var s=j.steps[k]||{}, el=document.getElementById('pc-'+k); if(!el) return;
+      var cls='pc'; if(s.running){cls+=' run';anyRun=true;} else if(s.done){cls+=' done';}
+      else if(j.next===k){cls+=' next';}
+      if(el.className!==cls) el.className=cls;
+      var tag=el.querySelector('.pcs');
+      var txt=s.running?'在跑':(s.done?'完成':'');
+      if(tag.textContent!==txt) tag.textContent=txt;
+    });
+    var nx=document.getElementById('plnext');
+    if(nx){ var t=j.next?('下一步：'+PIPE_LABEL[j.next]):'八步都跑完了';
+            if(nx.textContent!==t) nx.textContent=t; }
+    return anyRun;
+  }
+  function pollPipe(){ if(!isLive) return; api('/api/harness-status', drawPipe); }
+  setInterval(function(){ if(isLive&&document.visibilityState==='visible') pollPipe(); },1000);
+
   function api(path,cb,tmo){
     var done=false;
     var url=apiBase+path+(apiToken?((path.indexOf('?')<0?'?':'&')+'token='+encodeURIComponent(apiToken)):'');
@@ -1822,7 +1872,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var raw='', finalText='', closed=false;
     function paint(){ tx.innerHTML=fmt(raw||'…'); logEl.scrollTop=logEl.scrollHeight; }
     function setStatus(t){ st.hidden=!t; stx.textContent=t||''; }
-    function unlock(){ if(closed) return; closed=true; btn.disabled=false; btn.textContent='发送'; }
+    function unlock(){ if(closed) return; closed=true; btn.disabled=false; btn.textContent='发送'; pollPipe(); setTimeout(pollPipe,250); }
     paint();
 
     fetch('/api/action'+(TOKEN?('?token='+encodeURIComponent(TOKEN)):''),{
