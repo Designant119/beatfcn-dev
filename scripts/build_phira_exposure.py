@@ -48,7 +48,7 @@ def condition_view(row, rng):
         keep, kind = known, 'all'
     hide = [i for i in range(len(value)) if i not in keep]
     value[hide, :3] = 0
-    return value, kind
+    return value, kind, [int(i) for i in keep]
 
 
 def load_pool(tape_dir, canon_dir=None, limit_charts=0):
@@ -98,8 +98,8 @@ def sample(pool, seed, steps):
         ids = sampler.next_batch()
         specified = []
         for i in ids:
-            _, kind = condition_view(pool[i], views)
-            specified.append(kind)
+            _, kind, keep = condition_view(pool[i], views)
+            specified.append(keep)
         out.append(dict(effective_update=step, indices=ids,
                         specified_condition_fields=specified))
     return out, sampler.pool_identity
@@ -119,7 +119,7 @@ def summary(pool, steps, seed):
             counts['chart'][r['chart_id']] += 1
             counts['stratum'][str(r['stratum'])] += 1
             counts['kind'][kind] += 1
-    return dict(seed=seed, steps=len(steps), requests=sum(sum(c.values()) for c in counts.values()),
+    return dict(seed=seed, steps=len(steps), requests=sum(len(s['indices']) for s in steps),
                 valid_tokens=tokens, independent_songs=len(counts['song']),
                 charts=len(counts['chart']),
                 by_mode=dict(counts['mode']), by_stratum=dict(counts['stratum']),

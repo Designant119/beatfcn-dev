@@ -6,6 +6,7 @@ events in32drafts and count probabilities by at most3.58e-7. This candidate
 adds its already-encoded, time-addressed state directly to each canvas query.
 There are no new weights and the original concatenation remains as context.
 """
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import torch
 from torch.nn import functional as F
 
@@ -31,7 +32,7 @@ class DirectSongCanvas(MambaCanvas):
         x=self.frame_read(mel.flatten(-2))
         clock=torch.stack((query/8,(query/8).square(),torch.sin(query*torch.pi),torch.cos(query*torch.pi)),-1)
         x=x+self.clock_read(clock)+self.mode_ids(inputs['mode'])[:,None]
-        visible=inputs['reference_valid'] & (inputs['reference'][...,10]>0)
+        visible=inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')]>0)
         reference=inputs['reference'].masked_fill(~visible[...,None],0)
         style=reference.sum(1)/visible.sum(1,keepdim=True).clamp_min(1)
         scale,bias=self.direct(controls.flatten(1)).chunk(2,-1)

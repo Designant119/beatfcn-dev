@@ -225,7 +225,7 @@ def combo_chunk(rows: list) -> list:
                 return b0 + (sec - s0) * bpm / 60.0
             native_sec = lambda t_us: t_us / 1e6  # canon onset is audio time; beats need chart time
             off = float(Fraction(doc.get('offset_sec', '0')))
-            beats = np.array([beat_of(t / 1e6 + off) for t in times])
+            beats = np.array([beat_of(t / 1e6 - off) for t in times])
 
             def iois(mask):
                 b = beats[np.asarray(mask)]

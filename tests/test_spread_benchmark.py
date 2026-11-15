@@ -6,6 +6,7 @@ import torch
 from beatfcn.events.canonical import TYPES
 from beatfcn.model.event_canvas import RhythmEvent
 from beatfcn.train import spread_benchmark as sb
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 
 AUDIO = ['%064x' % (i + 1) for i in range(2)]
 DURATION = 48_000_000
@@ -25,7 +26,10 @@ class Features:
 
 
 def _chart(step):
-    rows = [(t, t, 0, ((t // step) ** 2 + t // 1_000_000) % 4) for t in range(0, DURATION, step)]  # not shift-invariant
+    rows = []
+    for k, t in enumerate(range(0, DURATION, step)):
+        onset = t + (k * 37_000) % step  # 轻微错位，避免整张谱在 1 s 平移后与自身重合（参考数组不含 lane）
+        rows.append((onset, onset, 0, ((t // step) ** 2 + t // 1_000_000) % 4))
     return {k: np.asarray([r[i] for r in rows], np.int64) for i, k in enumerate(('onset_us', 'end_us', 'kind', 'lane'))}
 
 
@@ -77,7 +81,9 @@ class SpreadProbeTest(unittest.TestCase):
         self.assertGreater(info['sibling']['reference_events'], 0)
         ref = variants['sibling']['reference']
         rel = ref[:, 0] * 1_200_000_000 / 1e6
-        self.assertTrue(((ref[:, 10] == 1) & (ref[:, 13] == 1) & (rel >= 0) & (rel < 8)).any())
+        self.assertTrue(((ref[:, REFERENCE_COLUMNS.index('event')] == 1)
+                         & (ref[:, REFERENCE_COLUMNS.index('human_alternative')] == 1)
+                         & (rel >= 0) & (rel < 8)).any())
         a, b = variants['sibling']['reference'], variants['sibling_shift1s']['reference']
         self.assertFalse(a.shape == b.shape and np.array_equal(a, b))
         torch.manual_seed(0)

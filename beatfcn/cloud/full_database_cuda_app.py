@@ -148,7 +148,7 @@ def encode_cuda_profile(run_id, contract_json, dispatch_deadline_unix):
                     outstanding += 1
                 pending = set(prefetch_futures) | set(gpu_futures) | set(writer_futures)
                 if not pending:
-                    continue
+                    break  # 已停止提交且无在飞作业：循环没有可推进的状态，继续只会空转
                 done, _ = wait(pending, timeout=1, return_when=FIRST_COMPLETED)
                 for future in done:
                     if future in prefetch_futures:

@@ -9,3 +9,5 @@ with training.app.run(detach=True):
         '/data/data-contract-v2-mel.json',
         '600m-native-cf', 2000, 16)  # optimizer updates, accum steps
 print(json.dumps(result, ensure_ascii=False, indent=1))
+if isinstance(result, dict) and result.get('returncode'):
+    raise SystemExit(result['returncode'])

@@ -41,7 +41,8 @@ def main():
     try:
         from huggingface_hub import hf_hub_download
     except ImportError:
-        return print('先 pip install huggingface_hub')
+        print('先 pip install huggingface_hub')
+        return 1
 
     for name, expected in FILES.items():
         target = out / name
@@ -52,7 +53,8 @@ def main():
                                endpoint=args.mirror or None)
         got = sha_file(path)
         if got != expected:
-            return print(f'{name} 校验失败：{got} != {expected}')
+            print(f'{name} 校验失败：{got} != {expected}')
+            return 1
         print(f'下载并校验通过 {name}（{Path(path).stat().st_size >> 20} MB）')
 
     print(f'\n权重就绪：{out}')

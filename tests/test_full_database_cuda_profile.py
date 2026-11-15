@@ -16,7 +16,7 @@ import numpy as np
 
 from beatfcn.audio.cuda_mel import complete_song_mel_cuda, mel_parity
 from beatfcn.audio.local_mel_cache import complete_song_mel
-from beatfcn.cloud.full_database_app import verify_feature_folder
+from beatfcn.cloud.feature_contract import verify_feature_folder
 from beatfcn.train.cuda_pipeline import (
     commit_feature_hashing, decoded_audio_from_receipt, load_raw_index)
 from beatfcn.train.full_database import digest, feature_payloads

@@ -78,6 +78,9 @@ def main():
     files = sorted(zips.rglob('*.zip'))
     if args.limit:
         files = files[:args.limit]
+    if not files:
+        print(f'未在 {zips} 找到任何 zip（路径不存在或为空）', flush=True)
+        return 1
     written = skipped = failed = 0
     for i, zp in enumerate(files, 1):
         try:

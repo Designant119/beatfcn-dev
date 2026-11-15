@@ -5,6 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'beatfcn/cloud/full_database_app.py'
+MONITOR_SOURCE = ROOT / 'beatfcn/cloud/feature_contract.py'
 
 
 class FullDatabaseCloudAppTests(unittest.TestCase):
@@ -38,7 +39,7 @@ class FullDatabaseCloudAppTests(unittest.TestCase):
 
     def test_gpu_monitor_uses_legacy_stable_period_last_eight_average(self):
         import time
-        from beatfcn.cloud.full_database_app import StableGpuMonitor
+        from beatfcn.cloud.feature_contract import StableGpuMonitor
         monitor = StableGpuMonitor()
         with monitor.lock:
             monitor.interval_means = [90.] * 8
@@ -53,7 +54,7 @@ class FullDatabaseCloudAppTests(unittest.TestCase):
 
     def test_gpu_monitor_fails_short_stable_period_or_low_legacy_mean(self):
         import time
-        from beatfcn.cloud.full_database_app import StableGpuMonitor
+        from beatfcn.cloud.feature_contract import StableGpuMonitor
         short = StableGpuMonitor()
         with short.lock:
             short.interval_means = [90.] * 8
@@ -70,7 +71,7 @@ class FullDatabaseCloudAppTests(unittest.TestCase):
         self.assertLess(summary['last_eight_interval_mean_utilization_percent'], 85)
 
     def test_gpu_monitor_reuses_existing_gpu_util_sampler(self):
-        text = SOURCE.read_text()
+        text = MONITOR_SOURCE.read_text()
         self.assertIn('from beatfcn.cloud.gpu_util import GpuUtil', text)
         self.assertIn('GpuUtil(period_ms=500)', text)
         self.assertNotIn('phase_callback=monitor.phase', text)

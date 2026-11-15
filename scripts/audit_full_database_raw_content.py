@@ -31,7 +31,7 @@ def main():
     audio_map = {value['audio_sha256']: value for value in values}
     split_by_audio = {row['audio_sha256']: row['split'] for row in rows}
     for value in values:
-        value['split'] = split_by_audio[value['audio_sha256']]
+        value['split'] = split_by_audio.get(value['audio_sha256'], 'unexpected')
     missing = sorted(expected_audio - set(audio_map))
     unexpected = sorted(set(audio_map) - expected_audio)
     bad = [value for value in values if not value.get('verified')]

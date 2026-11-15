@@ -69,7 +69,8 @@ class PhiraTrainingSelection(unittest.TestCase):
         for approval, accepted in [(1, True), (2, True), (4, False), (0, False)]:
             self.assertEqual(selected_for_training(dict(source='osu', approved=approval)), accepted)
 
-    def test_expansion_entrypoint_uses_both_gates_without_stable_bypass(self):
+    def test_expansion_entrypoint_accepts_every_chart_with_a_file(self):
+        # 全量口径（2026-11-15 用户决定）：不再按评分/票数/reviewed 过滤，只要有谱面文件就收。
         from data_expand.select_ids import main
         rows = [dict(id=1, name='First', level='EZ Lv.3', difficulty=3,
                      reviewed=True, tags=['regular'], file='https://example.org/1',
@@ -88,7 +89,7 @@ class PhiraTrainingSelection(unittest.TestCase):
             with patch('sys.argv', ['select_ids.py', str(catalog), str(existing), '10', str(output)]):
                 with contextlib.redirect_stdout(io.StringIO()):
                     main()
-            self.assertEqual(output.read_text().split(), ['1'])
+            self.assertEqual(sorted(output.read_text().split()), ['1', '2', '3'])
 
 
 if __name__ == '__main__':

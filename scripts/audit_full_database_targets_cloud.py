@@ -64,7 +64,8 @@ async def main():
             for key, count in stats['types_before'].items():types_before[key] += count
             for key, count in stats['types_after'].items():types_after[key] += count
             split_audio[row['chart_id']] = row
-            by_split[parsed_by_id[row['chart_id']]['split']] += 1
+            if row['chart_id'] in parsed_by_id:
+                by_split[parsed_by_id[row['chart_id']]['split']] += 1
         failures.extend(marker['permanent_failures'])
     missing = sorted(set(expected) - set(success))
     unexpected = sorted(set(success) - set(expected))

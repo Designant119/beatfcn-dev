@@ -45,7 +45,8 @@ def main():
                 break
             save()
             time.sleep(.5)
-        report.update(exit_code=child.wait(), ended_at_unix=time.time(), complete=True)
+        code = child.wait()
+        report.update(exit_code=code, ended_at_unix=time.time(), complete=(code == 0 and not report.get('terminated_by')))
         save()
     print(json.dumps(report))
     if report['exit_code'] != 0 or report.get('terminated_by'):

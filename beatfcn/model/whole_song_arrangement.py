@@ -1,4 +1,5 @@
 """From-scratch full-song mel/flux + four-state canonical event emitter."""
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import math
 
 import numpy as np
@@ -42,7 +43,7 @@ class WholeSongArrangement(CanonicalPackageCanvas):
         # Input dictionary deliberately contains no local/song pretrained keys.
         control=inputs['controls'].clone();density=control[:,0].clone();control[:,0]=0
         scale,bias=self.direct(control.flatten(1)).chunk(2,-1)
-        style_mask=inputs['reference_valid'] & (inputs['reference'][...,10]>0)
+        style_mask=inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')]>0)
         style=(inputs['reference']*style_mask[...,None]).sum(1)/style_mask.sum(1,keepdim=True).clamp_min(1)
         common=bias+self.style(style)
         song=self.song_input(inputs['whole_song'])+common[:,None]

@@ -13,7 +13,7 @@ RECEIPTS = 48
               timeout=600, retries=0, max_containers=1, scaledown_window=2)
 def census(run_id, contract_json):
     from beatfcn.audio.mert2 import REVISION
-    from beatfcn.cloud.full_database_app import FEATURE_FILES
+    from beatfcn.cloud.feature_contract import FEATURE_FILES
     contract = json.loads(contract_json)
     jobs = {job['audio_sha256']: job for job in contract['jobs']}
     features = Path(DATA) / 'full-database-v1/mert-graph-diagnostic-v2/features'

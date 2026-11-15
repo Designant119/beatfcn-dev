@@ -44,7 +44,7 @@ def main():
     for chart in source['charts']:
         try:
             dur = duration(args.features_root, chart['audio_sha256'])
-            events = events_from(chart['target_path'], chart['mode'])
+            events = events_from(str(Path(args.tape).parent / chart['target_path']), chart['mode'])
             rows, tokens, targets = requests_for_chart(events, chart['mode'], dur, chart['split'])
             stem = chart['chart_id'].replace(':', '-')
             tp, kp = output/f'{stem}-targets.npz', output/f'{stem}-tokens.npy'
@@ -54,7 +54,7 @@ def main():
                 target_sha256=sha(tp), token_sha256=sha(kp), requests=rows))
         except Exception as exc:
             skipped.append(dict(chart_id=chart.get('chart_id'), reason=str(exc)))
-    tape = dict(complete=True, failures=[], skipped=skipped,
+    tape = dict(complete=not skipped, failures=[], skipped=skipped,
         clock_contract='native-v1', drag_policy_id=RULE['id'],
         source_tape_sha256=sha(args.tape), canonical_receipt_sha256=None,
         charts=charts, removals=[])

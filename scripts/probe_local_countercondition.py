@@ -111,7 +111,7 @@ def run():
         write_json(output,report)
         print(json.dumps(dict(passed=report['passed'],equivalence=report['equivalence'],final=final,wall_s=report['wall_s'])))
     except Exception as exc:
-        report.update(error=f'{type(exc).__name__}: {exc}',complete=True,wall_s=time.monotonic()-started)
+        report.update(error=f'{type(exc).__name__}: {exc}',complete=False,wall_s=time.monotonic()-started)
         write_json(output,report);raise
 
 

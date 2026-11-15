@@ -1,4 +1,5 @@
 """Canonical native/COPY targets, separate from the inherited token codec."""
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 from dataclasses import replace
 
 import numpy as np
@@ -58,7 +59,7 @@ def probability_batch(rows,device='cpu',*,mask_reference=False):
                 else:seen.add(value)
     for key in layouts[0]:inputs[key]=torch.from_numpy(np.stack([v[key] for v in layouts]))
     if mask_reference:
-        content=inputs['reference'][...,10]>0
+        content=inputs['reference'][..., REFERENCE_COLUMNS.index('event')]>0
         inputs['reference_valid']=inputs['reference_valid'] & ~content
         inputs['reference']=inputs['reference'].masked_fill(content[...,None],0)
         inputs['reference_times']=inputs['reference_times'].masked_fill(content,0)

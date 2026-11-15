@@ -17,6 +17,19 @@ ROOT=Path(__file__).resolve().parents[1]
 REPORT=ROOT/'reports/local-portfolio-v1/final-candidates-queue-v1.json'
 
 
+def _wait_or_kill(child, timeout):
+    """Wait for a stage child; on wall-clock timeout terminate, then kill, then re-raise."""
+    try:
+        return child.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        child.terminate()
+        try:
+            child.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            child.kill(); child.wait()
+        raise
+
+
 def main():
     if REPORT.exists():raise FileExistsError('Preserve queue')
     process=json.loads((ROOT/'artifacts/local-whole-song-arrangement-v1/process.json').read_text())
@@ -42,7 +55,7 @@ def main():
             child=subprocess.Popen([str(ROOT/'.venv/bin/python'),'-u','-m','scripts.run_grouped_chart_experiment'],cwd=ROOT,
                 stdin=subprocess.DEVNULL,stdout=out,stderr=subprocess.STDOUT)
             report['grouped_chart_pid']=child.pid;write(REPORT,report)
-            code=child.wait(timeout=7900)
+            code=_wait_or_kill(child, 7900)
         path=ROOT/'reports/local_grouped_chart_v1.json';state=json.loads(path.read_text()) if path.exists() else {}
         report['stages'].append(dict(stage='grouped_chart',exit_code=code,status=state.get('status','no_terminal_report'),report=str(path.relative_to(ROOT))))
         report['status']='completed' if code==0 and state.get('status') in ('completed','health_failed') else 'stopped'

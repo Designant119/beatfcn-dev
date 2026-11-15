@@ -137,12 +137,12 @@ def main(argv=None):
     for request_index in chosen:
         record = panel.records[request_index]
         native = panel.targets(request_index)
-        unconditional, curve_specified, fields = first.get(request_index, (False, True, list(range(8))))
+        unconditional, curve_specified, fields = first.get(request_index, (False, True, list(range(len(CONTROL_FIELDS)))))
         for item in mix:
             name, rate = item['name'], item['multiplier']
             try:
                 row, audit = datasets['default'].sample(request_index, rate, edit_seed=request_index,
-                    curve_specified=True, specified_fields=list(range(8)))
+                    curve_specified=True, specified_fields=list(range(len(CONTROL_FIELDS))))
             except Exception as exc:  # report, never hide
                 failures.append(dict(index=request_index, treatment=name, error=f'{type(exc).__name__}: {exc}'))
                 continue

@@ -3,6 +3,7 @@
 Canonical members are generated only within a cell; no sampled type history
 crosses cell boundaries. Greedy conditional decisions are not joint MAP.
 """
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import math
 
 import numpy as np
@@ -48,7 +49,7 @@ class NativeCellChain(MambaCanvas):
         x=self.frame_read(mel.flatten(-2))
         clock=torch.stack((times/8,(times/8).square(),torch.sin(times*math.pi),torch.cos(times*math.pi)),-1)
         x=x+self.clock_read(clock)+self.mode_ids(inputs['mode'])[:,None]
-        visible=inputs['reference_valid']&(inputs['reference'][...,10]>0)
+        visible=inputs['reference_valid']&(inputs['reference'][..., REFERENCE_COLUMNS.index('event')]>0)
         ref=inputs['reference'].masked_fill(~visible[...,None],0)
         style=ref.sum(1)/visible.sum(1,keepdim=True).clamp_min(1)
         scale,bias=self.direct(inputs['controls'].flatten(1)).chunk(2,-1)

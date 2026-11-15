@@ -6,6 +6,7 @@ canonically ordered members.  This module contains objectives and decoding only;
 it does not provide a training driver.  The current objective/decoder contract
 explicitly requires microbatch=1.
 """
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import math
 
 import torch
@@ -85,7 +86,7 @@ class EventPackageCanvas(LocalTypedCanvas):
         clock = torch.stack((query / 8, (query / 8).square(),
             torch.sin(query * math.pi), torch.cos(query * math.pi)), -1)
         x = x + self.clock_read(clock) + self.mode_ids(inputs['mode'])[:, None]
-        visible = inputs['reference_valid'] & (inputs['reference'][..., 10] > 0)
+        visible = inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')] > 0)
         style = ((inputs['reference'] * visible[..., None]).sum(1)
             / visible.sum(1, keepdim=True).clamp_min(1))
         scale, bias = self.direct(controls.flatten(1)).chunk(2, -1)

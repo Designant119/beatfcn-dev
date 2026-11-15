@@ -119,7 +119,7 @@ class ConditionTest(unittest.TestCase):
 
     def test_curve_is_the_achieved_two_second_density(self):
         update, audit = sample_conditions('mania_4k', self.events, self.request,
-            curve_specified=True, specified_fields=list(range(8)))
+            curve_specified=True, specified_fields=list(range(len(CONTROL_FIELDS))))
         segments = achieved_density_segments(self.events, 8_000_000, 16_000_000)
         self.assertEqual([s['density'] for s in segments], [10., 10., .5, 0.])
         self.assertEqual(audit['curve_segments'], segments)
@@ -138,7 +138,7 @@ class ConditionTest(unittest.TestCase):
         self.assertAlmostEqual(raw['density_notes_per_second'], len(edited) / 8)
         self.assertGreater(raw['hold_occupancy_ratio'], 1_000_000 / 8_000_000)  # carry counted
         update, _ = sample_conditions('mania_4k', edited, self.request,
-            curve_specified=True, specified_fields=list(range(8)))
+            curve_specified=True, specified_fields=list(range(len(CONTROL_FIELDS))))
         np.testing.assert_array_equal(update['controls'],
             encode_controls('mania_4k', bands, (8_000_000, 16_000_000), origin_us=8_000_000))
         native, _ = target_conditions('mania_4k', self.events, self.request, carry=self.request.known_carry)

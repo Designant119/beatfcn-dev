@@ -204,7 +204,7 @@ def run(plan_path):
         report['checkpoint_sha256']=digest(checkpoint)
         report['complete']=True;save('complete_health_only')
     except Exception as exc:
-        report['error']=f'{type(exc).__name__}: {exc}';report['complete']=True
+        report['error']=f'{type(exc).__name__}: {exc}';report['complete']=False
         save('failed');raise
 
 

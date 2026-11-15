@@ -12,6 +12,8 @@ def main():
     with training.app.run(detach=True):
         result = training.train_large_plan.remote(args.plan)
     print(json.dumps(result, ensure_ascii=False, indent=1))
+    if isinstance(result, dict) and result.get('returncode'):
+        raise SystemExit(result['returncode'])
 
 
 if __name__ == '__main__':

@@ -15,6 +15,8 @@ def main():
     with training.app.run(detach=True):
         result = training.benchmark_large.remote(args.plan, args.checkpoint, args.out, args.limit)
     print(json.dumps(result, ensure_ascii=False, indent=1))
+    if isinstance(result, dict) and result.get('returncode'):
+        raise SystemExit(result['returncode'])
 
 
 if __name__ == "__main__":

@@ -2,6 +2,11 @@ from pathlib import Path
 import json
 import unittest
 
+try:
+    import modal  # noqa: F401  （云端作业依赖；本地不装就跳过这些云端定义测试）
+except ImportError:
+    raise unittest.SkipTest('modal is not installed in this local environment')
+
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -10,6 +10,19 @@ from scripts.run_local_portfolio_scale import write
 ROOT=Path(__file__).resolve().parents[1];REPORT=ROOT/'reports/local-portfolio-v1/noisy-refiner-queue-v1.json'
 
 
+def _wait_or_kill(child, timeout):
+    """Wait for a stage child; on wall-clock timeout terminate, then kill, then re-raise."""
+    try:
+        return child.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        child.terminate()
+        try:
+            child.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            child.kill(); child.wait()
+        raise
+
+
 def main():
     if REPORT.exists():raise FileExistsError('Preserve noisy-refiner queue')
     report=dict(status='waiting_for_prior_sequence',cloud_compute_calls=0);write(REPORT,report);started=time.monotonic()
@@ -24,7 +37,7 @@ def main():
         report['status']='running';write(REPORT,report)
         with (ROOT/'artifacts/local-noisy-proposal-refiner-v1.log').open('ab') as out:
             child=subprocess.Popen([str(ROOT/'.venv/bin/python'),'-u','-m','scripts.run_noisy_proposal_refiner'],cwd=ROOT,stdin=subprocess.DEVNULL,stdout=out,stderr=subprocess.STDOUT)
-            report['pid']=child.pid;write(REPORT,report);code=child.wait(timeout=5000)
+            report['pid']=child.pid;write(REPORT,report);code=_wait_or_kill(child, 5000)
         result=json.loads((ROOT/'reports/local_noisy_proposal_refiner_v1.json').read_text())
         report.update(status='completed' if code==0 and result['status'] in ('completed','health_failed') else 'stopped',exit_code=code,experiment_status=result['status'],wall_s=time.monotonic()-started)
         write(REPORT,report)

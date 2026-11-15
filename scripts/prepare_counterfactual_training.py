@@ -84,11 +84,14 @@ def main():
     if not curve:
         raise ValueError('No curve samples in tape')
     steps = []
+    free_at = curve_at = 0
     for update in range(args.steps):
         chosen = []
         for slot in range(4):
-            chosen.append(free[(update*4+slot) % len(free)] if free and slot == 0
-                          else curve[(update*4+slot) % len(curve)])
+            if free and slot == 0:
+                chosen.append(free[free_at % len(free)]); free_at += 1
+            else:
+                chosen.append(curve[curve_at % len(curve)]); curve_at += 1
         steps.append(dict(effective_update=update+1, indices=chosen,
             specified_condition_fields=[[]]*4))
     exposure = dict(pool_identity=hashlib.sha256(json.dumps(panel.records,

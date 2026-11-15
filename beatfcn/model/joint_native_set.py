@@ -4,6 +4,7 @@ Matching is a permutation-invariant surrogate, not a marginal set likelihood.
 Every query has the same native/COPY head support, including duplicate events.
 The relative endpoint law is normalized on the predicted head's legal domain.
 """
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import math
 
 import torch
@@ -67,7 +68,7 @@ class JointNativeSet(MambaCanvas):
         clock = torch.stack((frame_times / 8, (frame_times / 8).square(),
                              torch.sin(frame_times * math.pi), torch.cos(frame_times * math.pi)), -1)
         x = x + self.clock_read(clock) + self.mode_ids(inputs['mode'])[:, None]
-        visible = inputs['reference_valid'] & (inputs['reference'][..., 10] > 0)
+        visible = inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')] > 0)
         reference = inputs['reference'].masked_fill(~visible[..., None], 0)
         style = reference.sum(1) / visible.sum(1, keepdim=True).clamp_min(1)
         scale, bias = self.direct(inputs['controls'].flatten(1)).chunk(2, -1)

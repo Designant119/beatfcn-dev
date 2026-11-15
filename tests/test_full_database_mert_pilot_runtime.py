@@ -17,7 +17,7 @@ from unittest import mock
 import modal
 import numpy as np
 
-from beatfcn.cloud.full_database_app import StableGpuMonitor, verify_feature_folder
+from beatfcn.cloud.feature_contract import StableGpuMonitor, verify_feature_folder
 from beatfcn.train.full_database import commit_feature, feature_payloads
 from scripts.run_full_database_mert_pilot import (
     normalized_rates, poll_call, recompute_gpu_acceptance)

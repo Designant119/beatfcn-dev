@@ -154,7 +154,7 @@ class DraftSongTests(unittest.TestCase):
         self.assertEqual(np.load(folder/'mel10_complete.npy').shape, (frames*4, 128))
         np.testing.assert_array_equal(np.load(folder/'times_s.npy'), (np.arange(frames)*960+360)/SR)
         try:
-            from beatfcn.cloud.full_database_app import verify_feature_folder
+            from beatfcn.cloud.feature_contract import verify_feature_folder
         except ImportError:  # modal not installed: the explicit checks above stand
             verify_feature_folder = None
         if verify_feature_folder is not None:  # the database's own receipt/shape/clock verifier

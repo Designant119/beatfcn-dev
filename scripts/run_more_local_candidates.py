@@ -10,6 +10,19 @@ from scripts.run_local_portfolio_scale import write
 ROOT=Path(__file__).resolve().parents[1];REPORT=ROOT/'reports/local-portfolio-v1/more-candidates-queue-v1.json'
 
 
+def _wait_or_kill(child, timeout):
+    """Wait for a stage child; on wall-clock timeout terminate, then kill, then re-raise."""
+    try:
+        return child.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        child.terminate()
+        try:
+            child.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            child.kill(); child.wait()
+        raise
+
+
 def main():
     if REPORT.exists():raise FileExistsError('Preserve extension queue')
     report=dict(status='waiting_for_lattice',stages=[],cloud_compute_calls=0);write(REPORT,report);started=time.monotonic()
@@ -26,7 +39,7 @@ def main():
             report['status']='running_'+name;write(REPORT,report)
             with (ROOT/f'artifacts/local-{name}-v1.log').open('ab') as out:
                 child=subprocess.Popen([str(ROOT/'.venv/bin/python'),'-u','-m',module],cwd=ROOT,stdin=subprocess.DEVNULL,stdout=out,stderr=subprocess.STDOUT)
-                report['pid']=child.pid;write(REPORT,report);code=child.wait(timeout=wall)
+                report['pid']=child.pid;write(REPORT,report);code=_wait_or_kill(child, wall)
             path=ROOT/target;result=json.loads(path.read_text()) if path.exists() else {}
             report['stages'].append(dict(id=name,exit_code=code,status=result.get('status','no_report'),report=target));write(REPORT,report)
             if code or result.get('status') not in ('completed','health_failed'):raise RuntimeError('Candidate requires explicit failure review: '+name)

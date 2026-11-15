@@ -10,3 +10,5 @@ with training.app.run():
         '/data/data-contract-v2-mel.json',
         '600m-cf-580', 20000)
 print(json.dumps(result, ensure_ascii=False, indent=1))
+if isinstance(result, dict) and result.get('returncode'):
+    raise SystemExit(result['returncode'])

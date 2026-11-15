@@ -21,9 +21,13 @@ with ProcessPoolExecutor(8) as ex:
         for k,v in o.items(): allr.setdefault(k,{})[sid]=v
 T='/data/full-database-v1/native-v2-tape'
 V=['--floor','/data/evolve/floor.json','--tape',T,'--timing','/data/full-database-v1/chart-timing/chart_timing-v2.json','--features-dir','/root/data/feat_new/features']
-ps=[]
+ps=[];failed=[]
 for k,v in allr.items():
     f=O+k+'.json'; json.dump(v,open(f,'w'))
     ps.append(subprocess.Popen(['/root/envs/bf/bin/python','scripts/benchmark_v3.py','score','--drafts',f,'--panel',G+'run-meta.json','--out',O+k+'_v3.json','--label',k]+V,cwd='/root/beatfcn',stdout=subprocess.DEVNULL,stderr=open(O+k+'.err','w'),env=dict(os.environ,OMP_NUM_THREADS='1')))
-    if len(ps)>=5: [p.wait() for p in ps]; ps=[]
-[p.wait() for p in ps]; print('front done')
+    if len(ps)>=5:
+        failed.extend(code for p in ps if (code:=p.wait()))
+        ps=[]
+failed.extend(code for p in ps if (code:=p.wait()))
+if failed: print('front scoring failed:',failed,flush=True); raise SystemExit(1)
+print('front done')

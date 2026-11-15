@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import shlex
+import shlex
 import shutil
 import signal
 import subprocess
@@ -205,7 +206,7 @@ def build(step, args):
 
 
 def _quote(text):
-    return '"' + text.replace('"', '\\"') + '"' if ' ' in text else text
+    return shlex.quote(text)
 
 
 def _tmux_bin():

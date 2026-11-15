@@ -4,6 +4,7 @@ This explicitly tests the older lattice+counterfactual recipe as a complete
 alternative. Focal/log-prior objectives are not claimed to yield calibrated
 natural sampling probabilities. Deterministic direct decoding is primary.
 """
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import math
 
 import torch
@@ -50,7 +51,7 @@ class LatticeCanvas(LocalTypedCanvas):
         x=read_grid(memory['values'][:,n:n+m],inputs['mel_times'],inputs['mel_valid'],query,.01)
         clock=torch.stack((query/8,(query/8).square(),torch.sin(query*math.pi),torch.cos(query*math.pi)),-1)
         x=x+self.clock_read(clock)+self.mode_ids(inputs['mode'])[:,None]
-        visible=inputs['reference_valid'] & (inputs['reference'][...,10]>0)
+        visible=inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')]>0)
         style=(inputs['reference']*visible[...,None]).sum(1)/visible.sum(1,keepdim=True).clamp_min(1)
         scale,bias=self.direct(controls.flatten(1)).chunk(2,-1)
         x=x*(1+.1*scale[:,None].tanh())+bias[:,None]+self.style(style)[:,None]

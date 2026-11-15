@@ -5,6 +5,7 @@ readout, and a learned onset-group cardinality share the production decoder.
 Targets never enter encode/decode. Cardinality is supervised separately and
 used only at the first member decision of each generated onset group.
 """
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import math
 import time
 
@@ -78,7 +79,7 @@ class LocalBundleModel(FullEventModel):
                       song_audio=self.song_read(memory['values'][:, n + m:n + m + s]),
                       song_times=inputs['song_times'], song_valid=inputs['song_valid'],
                       origin_s=inputs['origin_s'])
-        visible = inputs['reference_valid'] & (inputs['reference'][..., 10] > 0)
+        visible = inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')] > 0)
         style = (inputs['reference'] * visible[..., None]).sum(1) / visible.sum(1, keepdim=True).clamp_min(1)
         memory['direct_condition'] = self.condition_direct(inputs['controls'].flatten(1)) + self.style_direct(style)
         memory['head_range'] = (int(inputs['origin_s'].min().item() // 2),

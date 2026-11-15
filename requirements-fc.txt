@@ -4,4 +4,4 @@ numpy==2.2.6
 safetensors==0.5.3
 jsonschema==4.26.0
 pyyaml==6.0.3
-modal[api-proxy-support]==1.6.2
+# 云端训练才需要，本地 CPU/MPS 不装：modal[api-proxy-support]==1.6.2

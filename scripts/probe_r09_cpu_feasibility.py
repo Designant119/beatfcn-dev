@@ -9,7 +9,7 @@ import torch
 
 from beatfcn.model.p1 import P1Config,P1Model
 from beatfcn.train.probe import metrics_json,tensor_summary
-from r09_local_data import LocalPairs,verify_files,file_sha,ROOT
+from scripts.r09_local_data import LocalPairs,verify_files,file_sha,ROOT
 
 
 def main():

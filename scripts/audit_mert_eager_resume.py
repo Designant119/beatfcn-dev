@@ -11,10 +11,13 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import modal
+try:
+    import modal
+except ImportError:  # 本地没装 modal：import 仍可用，真跑时给出明确提示
+    modal = None
 
 from beatfcn.audio.mert2 import REVISION
-from beatfcn.cloud.full_database_app import FEATURE_FILES
+from beatfcn.cloud.feature_contract import FEATURE_FILES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +46,8 @@ def main():
     parser.add_argument('--concurrency', type=int, default=48)
     arguments = parser.parse_args()
     jobs = [json.loads(line) for line in JOBS.read_text().splitlines() if line.strip()]
+    if modal is None:
+        raise SystemExit('这个审计要读 Modal Volume 收据，需要装 modal；本地训练用不到它。')
     volume = modal.Volume.from_name('beatfcn-data', create_if_missing=False)
     started = time.monotonic()
     skip_ids, invalid_ids, missing_ids = [], [], []
@@ -54,8 +59,6 @@ def main():
             receipt = json.loads(payload)
         except Exception:
             return job, 'missing'
-        except BaseException as exc:  # pragma: no cover
-            return job, f'read_error: {type(exc).__name__}'
         reason = identity(receipt, job)
         return job, reason or 'ok'
 

@@ -29,6 +29,7 @@ import torch
 from beatfcn.model.full_event_codec import encode_events
 from beatfcn.model.full_event_generate import generate_batch
 from beatfcn.model.full_event_model import FullEventConfig, FullEventModel
+from beatfcn.events.controls import CONTROL_FIELDS
 from beatfcn.train.charter_timing import ChartTimingTable, window_beat_features
 from beatfcn.train.checkpoint_resume import file_sha
 from beatfcn.train.exposure_loader import CounterfactualExposureDataset
@@ -137,7 +138,7 @@ def main(argv=None):
                   config=asdict(config), loss=LOSS, device=str(device))
     rows, audits = [], []
     for index, shown in BATCH:
-        fields = list(range(8)) if shown else []
+        fields = list(range(len(CONTROL_FIELDS))) if shown else []
         row, audit = dataset.sample(index, None, edit_seed=0, curve_specified=shown, specified_fields=fields,
                                     timing_key=0)
         audit['chart_id'] = panel.records[index]['chart_id']

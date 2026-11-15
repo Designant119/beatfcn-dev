@@ -57,14 +57,14 @@ async def read_stream(volume, remote, *, attempts=4):
 async def verify_osu(volume, audio, row, size_by_name, semaphore):
     async with semaphore:
         ext = row['audio_ext']
-    name = f'{audio}.{ext}'
-    inventory = size_by_name.get(name)
-    if inventory is None:
-        raise FileNotFoundError('OSU raw archive missing: ' + name)
-    digest_value, size, _ = await read_stream(volume, 'raw/osu/audio/' + name)
-    return [dict(audio_sha256=audio, source='osu', archive='raw/osu/audio/' + name,
-        archive_member=None, archive_bytes=inventory['bytes'], payload_bytes=size,
-        payload_sha256=digest_value, verified=digest_value == audio and size == inventory['bytes'])]
+        name = f'{audio}.{ext}'
+        inventory = size_by_name.get(name)
+        if inventory is None:
+            raise FileNotFoundError('OSU raw archive missing: ' + name)
+        digest_value, size, _ = await read_stream(volume, 'raw/osu/audio/' + name)
+        return [dict(audio_sha256=audio, source='osu', archive='raw/osu/audio/' + name,
+            archive_member=None, archive_bytes=inventory['bytes'], payload_bytes=size,
+            payload_sha256=digest_value, verified=digest_value == audio and size == inventory['bytes'])]
 
 
 async def verify_phira(volume, native, rows, size_by_name, semaphore):

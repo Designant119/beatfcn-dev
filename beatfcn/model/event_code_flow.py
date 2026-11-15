@@ -4,6 +4,7 @@ Count is one variable per cell/type, with16 ordered complete members. This is
 continuous Gaussian-to-code velocity matching and16 Euler steps, not discrete
 mask diffusion. Frozen native/COPY sets define the final nearest-code decision.
 """
+from beatfcn.train.event_reference import REFERENCE_COLUMNS
 import time
 
 import numpy as np
@@ -104,7 +105,7 @@ class EventCodeFlow(MambaCanvas):
         x=self.frame_read(mel.flatten(-2))
         clock=torch.stack((query/8,(query/8).square(),torch.sin(query*torch.pi),torch.cos(query*torch.pi)),-1)
         x=x+self.clock_read(clock)+self.mode_ids(inputs['mode'])[:,None]
-        visible=inputs['reference_valid'] & (inputs['reference'][...,10]>0)
+        visible=inputs['reference_valid'] & (inputs['reference'][..., REFERENCE_COLUMNS.index('event')]>0)
         style=(inputs['reference']*visible[...,None]).sum(1)/visible.sum(1,keepdim=True).clamp_min(1)
         scale,bias=self.direct(controls.flatten(1)).chunk(2,-1)
         x=x*(1+.1*scale[:,None].tanh())+bias[:,None]+self.style(style)[:,None]

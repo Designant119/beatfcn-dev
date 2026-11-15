@@ -81,6 +81,7 @@ def arm(name):
         failure=dict(type=type(exc).__name__,error=str(exc),memory=physical_footprint())
     finally:
         signal.alarm(0);write(ART/f'{name}.json',dict(status=status,initial_weight_sha256=initial,rows=rows,failure=failure,wall_s=time.monotonic()-started,optimizer_updates=0,cloud_compute_calls=0))
+    if status!='completed':raise SystemExit(f'{name}: {status}: {failure}')
 
 
 def run():
@@ -105,7 +106,8 @@ def run():
         with np.load(ART/'dynamic-first-gradients.npz') as x,np.load(ART/'static_context-first-gradients.npz') as y:
             if set(x.files)!=set(y.files):raise ValueError('Gradient name mismatch')
             gradient=max(float(np.abs(x[k]-y[k]).max()) for k in x.files)
-    summary=dict(id=ID,status='completed_bounded_probe',arm_status={n:r['status'] for n,r in [('dynamic',a),('static_context',b)]},
+    statuses={n:r['status'] for n,r in [('dynamic',a),('static_context',b)]}
+    summary=dict(id=ID,status='completed_bounded_probe' if all(v=='completed' for v in statuses.values()) else 'failed_bounded_probe',arm_status=statuses,
         common_requests=common,max_count_logit_difference=count_diff,max_loss_difference=loss_diff,max_first_gradient_difference=gradient,
         wall_s=time.monotonic()-start,optimizer_updates=0,cloud_compute_calls=0,quality_authorized=False)
     write(ART/'summary.json',summary);print(json.dumps(summary,indent=2),flush=True)
@@ -113,4 +115,5 @@ def run():
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('action',choices=('prepare','run','arm'));p.add_argument('name',nargs='?');a=p.parse_args()
-    {'prepare':prepare,'run':run,'arm':lambda:arm(a.name)}[a.action]()
+    if a.action=='arm' and not a.name: raise SystemExit('arm requires a name')
+{'prepare':prepare,'run':run,'arm':lambda:arm(a.name)}[a.action]()

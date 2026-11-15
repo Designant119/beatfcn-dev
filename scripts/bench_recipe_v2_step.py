@@ -12,7 +12,7 @@ from dataclasses import replace
 
 import torch
 
-from beatfcn.model.full_event_codec import EventVocabulary
+from beatfcn.model.full_event_codec import FIELDS, EventVocabulary
 from beatfcn.model.full_event_model import FullEventConfig, FullEventModel, event_loss
 
 FLAGS = ('timed_intensity', 'timed_memory_values', 'onset_head')
@@ -40,7 +40,7 @@ def inputs(c, b, device, frames=400, mel=1600, song=400, cells=80):
 def sequence(vocab, b, n, device):
     g = torch.Generator(device='cpu').manual_seed(1)
     seq = dict(tokens=torch.randint(2, vocab.size, (b, n), generator=g),
-               fields=torch.randint(0, 10, (b, n), generator=g),
+               fields=torch.randint(0, len(FIELDS), (b, n), generator=g),
                times=torch.rand(b, n, generator=g) * 8,
                valid=torch.ones(b, n, dtype=torch.bool),
                targets=torch.randint(2, vocab.size, (b, n), generator=g),

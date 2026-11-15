@@ -10,5 +10,5 @@ app = training.app
 
 @app.local_entrypoint()
 def main(plan: str):
-    result = training.train_large_plan.remote(plan)
-    print(json.dumps(result, ensure_ascii=False, indent=1))
+    handle = training.train_large_plan.spawn(plan)
+    print(json.dumps(dict(spawned=True, handle=str(handle)), ensure_ascii=False, indent=1))

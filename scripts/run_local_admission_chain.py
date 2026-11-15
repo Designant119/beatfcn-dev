@@ -46,7 +46,11 @@ def run(plan_path):
         print(json.dumps(dict(phase=report['phase'], pid=os.getpid(), transfer_pid=plan['transfer_pid'])), flush=True)
         deadline = time.monotonic() + plan['max_transfer_wait_s']
         while True:
-            receipt = json.loads((ROOT / plan['transfer_receipt']).read_text())
+            receipt_path = ROOT / plan['transfer_receipt']
+            receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
+            if not receipt:
+                if time.monotonic() > deadline: raise TimeoutError('Registered local wait limit reached; no transfer receipt yet')
+                time.sleep(10); continue
             if receipt['plan_sha256'] != sha(plan['transfer_plan']):
                 raise ValueError('Registered transfer identity changed')
             process = subprocess.run(['ps', '-p', str(plan['transfer_pid']), '-o', 'command='],

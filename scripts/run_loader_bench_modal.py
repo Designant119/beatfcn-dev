@@ -14,6 +14,8 @@ def main():
     with training.app.run():
         result = training.bench_loader.remote(args.plan, args.workers, args.batches)
     print(json.dumps(result, ensure_ascii=False, indent=1))
+    if isinstance(result, dict) and result.get('returncode'):
+        raise SystemExit(result['returncode'])
 
 
 if __name__ == '__main__':

@@ -57,6 +57,8 @@ def main():
             if len(hv) >= 2:
                 spreads.append(h.std(0))
         d = np.array(diffs)
+        if not len(d):
+            print(mode, 0, 'songs'); out[mode] = {'_songs': 0}; continue
         boots = np.array([d[rng.integers(0, len(d), len(d))].mean(0) for _ in range(4000)])
         lo, hi = np.percentile(boots, [10, 90], axis=0)
         sp = np.mean(spreads, 0) if spreads else np.full(len(names), np.nan)

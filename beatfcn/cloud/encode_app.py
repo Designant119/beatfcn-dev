@@ -300,7 +300,11 @@ def encode_songs(shas: list, layers: list, taps_key: str, batch: int = 32, pca: 
             base = f'{DATA}/taps/{taps_key}/{sha}'
             os.makedirs(base, exist_ok=True)
             for name, a in arrays:  # S20 last: its presence marks a finished song
-                np.save(f'{base}/{name}.npy', a)
+                final = f'{base}/{name}.npy'
+                tmp = f'{final}.tmp-{os.getpid()}'
+                with open(tmp, 'wb') as fh:  # 先写临时文件再原子替换：被打断不会留下“存在但截断”的完成标记
+                    np.save(fh, a)
+                os.replace(tmp, final)
         util = {}
 
         def guard(secs, wins):  # cost guard: stop early when the GPU is not kept busy enough
