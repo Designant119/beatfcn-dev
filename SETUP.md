@@ -125,7 +125,7 @@ python3 -m scripts.build_phira_exposure \
 ## 六、训练与推理
 
 ```bash
-# 极小闭环：2 步就能出一个能被推理加载的 ckpt
+# 极小闭环（legacy 冒烟）：2 步出一个能被推理加载的 ckpt；正式训练走 322M 方案
 python3 -m scripts.train_phira_tiny \
     --tape /data/tape --features $FEAT/features \
     --steps 2 --out /data/ckpt/tiny.pt

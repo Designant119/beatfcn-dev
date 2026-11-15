@@ -44,7 +44,7 @@ bash run.sh                       # 起控制台，默认 http://127.0.0.1:7777/
 | `beatfcn/spatial/` | 空间侧：RPE 坐标、上下文 |
 | `beatfcn/cloud/` | Modal 云作业（摄取 / 编码 / 训练 / 进化轮）。需 Owner 显式授权才启动 |
 | `scripts/` | 运行入口与运维：`evolve_finetune.py`（有界微调）、`evolve_surgery.py`（改深/改 FFN 的外科手术）、`draft_song.py`（出谱）、`benchmark_v3.py`（W/H/M 评分）、`ops_autodl/`（租卡无人值守，到点自动关机） |
-| `tests/` | 274 个回归测试（205 个直接 import `beatfcn`），与 scripts 一一对应 |
+| `tests/` | 270 个测试文件、1446 个测试函数（206 个文件直接 import `beatfcn`），与 scripts 一一对应 |
 | `editor/` | 编辑器推理入口：`infer.py`（出谱 + 出口二选一）、`ms_to_beats.py`（毫秒 → 拍分数精确换算，纯标准库自测） |
 | `plans/evolve/` | 11 个预注册实验计划（C1–C9 + peer RL R1） |
 | `bench/` | 评测口径与历史指标数据；`beatfcn/cloud/*` 有引用 |
@@ -95,7 +95,7 @@ python -m scripts.run_local_song_baseline --plan /data/evolve/l322m-production-p
 Windows 上双击 `双击安装训练系统.bat`：装 WSL（要重启一次）→ 从训练盘导入系统 → 起后端 → 自动打开页面。
 Linux / WSL 里手动起：`bash 启动控制台.sh`，然后开 `http://localhost:7777`（手机连同一 WiFi 用 `http://本机IP:7777`）。
 
-后端默认认 `~/beatfcn-dev` 为代码目录（换过路径设环境变量 `BEATFCN_REPO`），公网暴露时用 `--token 口令` 给 `/api/*` 加访问码。
+后端默认用自己所在目录作为代码根（换过路径设环境变量 `BEATFCN_REPO`），公网暴露时用 `--token 口令` 给 `/api/*` 加访问码。
 页面不是训练必需项：关掉后端页面就退回手动模式，训练进程不受影响。
 
 ## 环境

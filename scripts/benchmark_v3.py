@@ -38,9 +38,11 @@ SCHEMA = 'benchmark-v3-1'
 TYPES = ('tap', 'hold', 'flick', 'drag')  # beatfcn.events.canonical.TYPES (that import pulls torch; a test pins equality)
 PANEL_SEED = 20261102  # run_workflow_benchmark.PANEL_SEED (a test pins equality)
 SCAN_MS = tuple(range(-40, 41, 4))  # best-shift clock: same scan as random100/score_r100.py
-DEFAULT_TAPE = '/Users/yukoval/beatfcn-backup/data/native-v2-tape'
-DEFAULT_TIMING = '/Users/yukoval/beatfcn-backup/data/chart_timing-v2.json'
-REPO = Path(os.environ.get('BEATFCN_REPO', '/Users/yukoval/yukoval-projects/beatfcn'))
+# 数据根与代码根都从环境变量取（BEATFCN_DATA_ROOT / BEATFCN_REPO），换盘换机器不用改代码。
+DATA_ROOT = Path(os.environ.get('BEATFCN_DATA_ROOT') or '/data')
+DEFAULT_TAPE = str(DATA_ROOT / 'native-v2-tape')
+DEFAULT_TIMING = str(DATA_ROOT / 'chart_timing-v2.json')
+REPO = Path(os.environ.get('BEATFCN_REPO') or Path(__file__).resolve().parents[1])
 DEFAULT_FLOOR = os.environ.get('BENCHMARK_V3_FLOOR', str(REPO/'reports/evolve-20261104/benchmark_v3/floor.json'))
 EPSILON = .01  # PLAN: ties under .01 go to the cheaper
 COST_TIE = .05  # PLAN: ties under 5% cost

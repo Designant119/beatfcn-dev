@@ -1,5 +1,6 @@
 """Reuse frozen local probe identities for explicit native-prefix requests."""
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -25,7 +26,10 @@ class FrozenLocalInputs:
         self.frozen_rows = {r['chart_id']:r for r in self.spec['rows']}
         benchmark.ROOT = self.root
         self.store = benchmark.local_mert_store()
-        self.timing = ChartTimingTable.load('/Users/yukoval/beatfcn-backup/data/chart_timing-v2.json',
+        # 时间轴表位置可配：BEATFCN_TIMING 优先，否则落到数据根下（换盘不用改代码）。
+        timing_path = os.environ.get('BEATFCN_TIMING') or str(
+            Path(os.environ.get('BEATFCN_DATA_ROOT') or '/data') / 'chart_timing-v2.json')
+        self.timing = ChartTimingTable.load(timing_path,
             sha256='fdbe0e9a47d8e43d7260344c31708f2e54b299af102e2a87f179098e3f759558')
         self.rows = {}
         if 'feature_receipts' in self.spec:
