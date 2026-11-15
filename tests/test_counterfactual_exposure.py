@@ -24,6 +24,11 @@ from beatfcn.train.local_panel import collate
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _lane_blind(events):
+    """r5（a0f3177）后事件恒 lane=-1，这里只核 (onset, end, type) 的还原，不比轨道。"""
+    return sorted((e.onset_us, e.end_us, e.type) for e in events)
+
+
 class ExposureCoverageTest(unittest.TestCase):
     def test_every_request_gets_every_treatment_and_order_is_shuffled(self):
         train = list(range(10, 50))
@@ -263,7 +268,7 @@ class CounterfactualDatasetTest(unittest.TestCase):
                 state = EventState(request)
                 for token in row['sequence']['targets'][row['sequence']['valid']].tolist():
                     state.apply(int(token))
-                self.assertEqual(sorted(state.events), sorted(audit['events']))
+                self.assertEqual(_lane_blind(state.events), _lane_blind(audit['events']))
         self.assertGreaterEqual(len(seen), 4)
         item = dataset[0]
         ids, inputs, sequence = item['batches'][0]
@@ -283,7 +288,7 @@ class CounterfactualDatasetTest(unittest.TestCase):
             state = EventState(audit['request'], vocab)
             for token in row['sequence']['targets'][row['sequence']['valid']].tolist():
                 state.apply(int(token))
-            self.assertEqual(sorted(state.events), sorted(audit['events']))
+            self.assertEqual(_lane_blind(state.events), _lane_blind(audit['events']))
 
     def test_onset_targets_follow_the_actual_target_and_pad_with_the_stream(self):
         try:

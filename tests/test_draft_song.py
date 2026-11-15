@@ -137,9 +137,12 @@ class DraftSongTests(unittest.TestCase):
 
     def test_mania_draft_layout_roundtrip_clock_and_verbatim_timing(self):
         out, feat, mert = self.out('mania'), self.out('mania-features'), FakeMert()
+        # 随机初始化的小模型在 temperature=0.05（近似 greedy）下会一直压着 END 吐到 1084 个音符、
+        # 撑爆 core token 上限；提到 1.0 让 END 有被采样到的机会，长度才收得住。
+        # 「压着 END 必然超限」这个场景由 test_incomplete_samples_are_never_exported... 专门验，那条用默认温度。
         with end_bias(-2.):
             r = run_main(['--model', self.model, '--audio', self.audio, '--mode', 'mania_4k', '--out-dir', out,
-                          '--timing', self.timing, '--device', 'cpu', '--temperature', '0.05', '--features-dir', feat],
+                          '--timing', self.timing, '--device', 'cpu', '--temperature', '1.0', '--features-dir', feat],
                          extractor=mert)
         audio_sha = sha(self.audio)
         # Features: database layout, readable by the unchanged MertFeatureStore.

@@ -30,7 +30,8 @@ class NoisyProposalTests(unittest.TestCase):
         request,_,_=old.EventPackageTests.synthetic_example();request=replace(request,copy_times=(1234,2345))
         target,report=proposal_targets([1000,1234,70000],[RhythmEvent(1234,2345,'hold'),RhythmEvent(1000,1000,'tap')],request)
         self.assertEqual(report['matched'],2);self.assertEqual(int((target['kind']==REJECT).sum()),1)
-        self.assertAlmostEqual(float(target['head_distribution'][0,0].sum()),1.)
+        # float32 分布深累加：7 位小数会卡在 1.19e-7 的舍入上，按 float32 精度取 6 位。
+        self.assertAlmostEqual(float(target['head_distribution'][0,0].sum()),1., places=6)
         self.assertEqual(float(target['head_distribution'][0,1,101]),1.)
         self.assertEqual(int(target['tail_copy'][0,1]),2)
         self.assertEqual(int(target['head_us'][0,1]),1234)
