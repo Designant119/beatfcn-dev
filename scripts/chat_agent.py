@@ -30,7 +30,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.harness import (ORDER, STEPS, demo_train, inspect_charts, log, pipeline_next,
-                             running, start, status, train_progress)
+                             running, start, status, stop as hstop, train_progress)
 
 # 给同学看的人话名称；内部还是那八个英文步骤
 STEP_LABEL = {
@@ -63,6 +63,7 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - “提特征 / 跑特征” → {"step": "features", "args": {}}
 - “训练 / 开训 / 跑一下” → {"step": "train", "args": {}}
 - “下一步干啥 / 看看进度” → {"action": "status"}
+- “停掉训练 / 停下来 / 别跑了 / 暂停” → {"action": "stop"}（step 可省略，省略就停正在跑的那一步；这是真去停，不许只回“好的”）
 - “去看看 / 检验一下 / 查查有没有坏包 / 验一下” → {"action": "inspect"}（真去数包、逐个验，不许只嘴上说“下好了”）
   他要是说了某个目录，就 {"action": "inspect", "args": {"dir": "那个目录"}}
 - “接着跑 / 继续 / 一键跑 / 往下走” → {"action": "run"}（不填 step，后端自动挑下一步）
@@ -92,7 +93,7 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 
 只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
 {"reply": "给同学看的中文回复（一两句，不要长篇）",
- "action": "run|status|inspect|answer", "step": "步骤名（action=run 时）",
+ "action": "run|status|inspect|stop|answer", "step": "步骤名（action=run/stop 时）",
  "args": {参数对象，可省略，内部参数不要念出来}}
 
 """
@@ -348,6 +349,18 @@ def _execute(decision):
         if prog and '步' not in text:
             text = text.rstrip('。') + '。' + prog + '。'
         return dict(ok=True, action='status', reply=text, state=status())
+    if action == 'stop':
+        step = decision.get('step')
+        if step not in STEPS:
+            st = status()
+            busy = [k for k in ORDER if st[k]['running']]
+            step = busy[0] if busy else 'train'
+        res = hstop(step)
+        if res.get('ok'):
+            return dict(ok=True, action='stop', step=step, result=res,
+                        reply=f'已经停了「{_label(step)}」。' + ('自上次存点后的进度会丢。' if res.get('how') == 'kill' else ''))
+        return dict(ok=False, action='stop', step=step, result=res,
+                    reply=f'没停成：{res.get("note") or "原因不明"}。')
     if action == 'inspect':
         d = (decision.get('args') or {}).get('dir')
         info = inspect_charts(d)
@@ -572,6 +585,8 @@ def stream(message, history=None, model=None, thinking=None):
         yield dict(type='status', text=f'正在执行 {decision.get("step")}…')
     elif decision.get('action') == 'inspect':
         yield dict(type='status', text='正在数包、验包…')
+    elif decision.get('action') == 'stop':
+        yield dict(type='status', text='正在停…')
     result = _execute(decision)
 
     out_tokens = (usage or {}).get('completion_tokens')

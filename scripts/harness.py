@@ -337,6 +337,42 @@ def status():
     return report
 
 
+def stop(step):
+    """停掉某一步：先 Ctrl-C 让它收尾，几秒不退再收会话。"""
+    spec = STEPS.get(step)
+    if not spec:
+        return dict(ok=False, note=f'没有这一步：{step}')
+    session = spec['session']
+    try:
+        has = subprocess.run(['tmux', 'has-session', '-t', session],
+                             capture_output=True, text=True, timeout=8)
+    except FileNotFoundError:
+        return dict(ok=False, note='机器上没有 tmux，停不了；去终端按 Ctrl-C')
+    except Exception as exc:                  # noqa: BLE001
+        return dict(ok=False, note=f'tmux 没跑起来：{exc}')
+    if has.returncode != 0:
+        return dict(ok=False, note='本来就沒在跑')
+    try:
+        subprocess.run(['tmux', 'send-keys', '-t', session, 'C-c'],
+                       capture_output=True, timeout=8)
+    except Exception as exc:                  # noqa: BLE001
+        return dict(ok=False, note=f'发 Ctrl-C 失败：{exc}')
+    t0 = time.time()
+    while time.time() - t0 < 4.0:
+        time.sleep(0.4)
+        try:
+            if subprocess.run(['tmux', 'has-session', '-t', session],
+                              capture_output=True, timeout=5).returncode != 0:
+                return dict(ok=True, how='sigint', note='已发 Ctrl-C，自己退了')
+        except Exception:                     # noqa: BLE001
+            pass
+    try:
+        subprocess.run(['tmux', 'kill-session', '-t', session], capture_output=True, timeout=8)
+    except Exception as exc:                  # noqa: BLE001
+        return dict(ok=False, note=f'Ctrl-C 没退，收会话也失败：{exc}')
+    return dict(ok=True, how='kill', note='没理 Ctrl-C，直接把会话收了')
+
+
 def demo_train():
     """有没有“能直接起训练”的演示环境；有就返回它的路径和步数。"""
     f = _state_dir() / 'demo_train.json'
