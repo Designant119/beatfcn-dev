@@ -1622,7 +1622,9 @@ class Handler(BaseHTTPRequestHandler):
             hist = body.get('history') if isinstance(body.get('history'), list) else []
             model = body.get('model') if isinstance(body.get('model'), str) else None
             thinking = body.get('thinking', 'auto')
-            allow_shell = bool(body.get('allow_shell'))
+            # 两道锁：面板勾了 + 请求来自本机回环。局域网里别人打开页面也跑不了命令
+            allow_shell = bool(body.get('allow_shell')) and \
+                self.client_address[0] in ('127.0.0.1', '::1')
             # 流式：没有 Content-Length，一条条 data: JSON 写出去再 flush
             self.send_response(200)
             self.send_header('Content-Type', 'text/event-stream; charset=utf-8')

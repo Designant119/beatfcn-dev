@@ -445,6 +445,9 @@ def _execute(decision, allow_shell=False):
             text = text.rstrip('。') + '。' + prog + '。'
         return dict(ok=True, action='status', reply=text, state=status())
     if action == 'sh':
+        if os.environ.get('PHIRA_ALLOW_SHELL') != '1':
+            return dict(ok=False, action='sh',
+                        reply='服务端没开高级权限（启动时没带 PHIRA_ALLOW_SHELL=1），跑不了命令。')
         if not allow_shell:
             return dict(ok=False, action='sh',
                         reply='高级权限没开。面板顶上那个“高级”勾上，我才能跑命令。')
