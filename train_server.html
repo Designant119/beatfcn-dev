@@ -512,7 +512,6 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="btnrow">
       <button type="button" class="btn" id="dlStart">开始下载</button>
       <button type="button" class="btn" id="dlListBtn">只出清单</button>
-      <button type="button" class="btn danger" id="dlStop">■ 停止下载</button>
       <span class="tp-note" id="dlNote"></span>
     </div>
 
@@ -1873,6 +1872,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var live=document.getElementById('dlLive'), out=document.getElementById('dlOut'), stat=document.getElementById('dlStat');
   var doneEl=document.getElementById('dlDone'), totalEl=document.getElementById('dlTotal');
   var pctEl=document.getElementById('dlPct'), barEl=document.getElementById('dlBar'), subEl=document.getElementById('dlSub');
+  var startBtn=document.getElementById('dlStart'), dlRunning=false;
+
+  /* 一个按钮两个状态：没跑是「开始下载」，跑起来就变「■ 停止下载」 */
+  function setButton(run){
+    dlRunning=!!run;
+    startBtn.textContent=dlRunning?'■ 停止下载':'开始下载';
+    startBtn.className=dlRunning?'btn danger':'btn';
+  }
   var API=(location.protocol.indexOf('http')===0)?'':('http://'+(location.hostname||'localhost')+':7777');
   var TOKEN=''; try{ TOKEN=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
   function tq(p){ return API+p+(TOKEN?((p.indexOf('?')<0?'?':'&')+'token='+encodeURIComponent(TOKEN)):''); }
@@ -1926,18 +1933,27 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(j.lines&&j.lines.length){ out.textContent=j.lines.join('\n'); out.scrollTop=out.scrollHeight; }
     else if(!j.lines||!j.lines.length){ out.textContent='还没有输出。点了「开始下载」后这里会滚起来。'; }
     var pg=j.progress||{}; pg.running=j.running; drawProg(pg);
+    setButton(!!j.running);
   }
   function poll(){
     fetch(tq('/api/downloadlog')).then(function(r){ return r.json(); })
       .then(function(j){ drawLog(j); if(j&&j.running){ if(!pollTick) pollTick=setInterval(poll,3000); } else { clearInterval(pollTick); pollTick=null; } })
       .catch(function(){});
   }
-  document.getElementById('dlStart').addEventListener('click',function(){
+  startBtn.addEventListener('click',function(){
+    if(dlRunning){                       /* 正在跑 → 这一下是停 */
+      if(!confirm('确定停掉下载？已下好的包不会丢，下次接着下。')) return;
+      send({id:'download-stop',confirm:true},function(j){
+        note.textContent=(j&&j.note)||'';
+        setButton(false); poll();
+      });
+      return;
+    }
     note.textContent='启动中…';
     send({id:'download-start',dest:dest.value,workers:parseInt(wk.value,10)||4,
           list_only:false,hash_audio:document.getElementById('dlHash').checked},function(j){
       note.textContent=(j&&j.note)||'后端没回 note';
-      if(j&&j.ok){ live.style.display='block'; poll(); setTimeout(poll,1500); }
+      if(j&&j.ok){ setButton(true); live.style.display='block'; poll(); setTimeout(poll,1500); }
     });
   });
   document.getElementById('dlListBtn').addEventListener('click',function(){
@@ -1948,11 +1964,6 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       if(j&&j.ok){ live.style.display='block'; out.textContent=(j.output||j.command||''); }
     });
   });
-  document.getElementById('dlStop').addEventListener('click',function(){
-    if(!confirm('确定停掉下载？已下好的包不会丢，下次接着下。')) return;
-    send({id:'download-stop',confirm:true},function(j){ note.textContent=(j&&j.note)||''; poll(); });
-  });
-
   /* 04 页一露脸就拉一次，别等用户点 */
   var obs=new MutationObserver(function(){ var v=document.getElementById('v-l4'); if(v&&v.classList.contains('on')) poll(); });
   obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
