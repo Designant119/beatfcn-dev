@@ -570,8 +570,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
       <div class="tp-model">
         <b>当前模型：BeatFCN l322m · 约 322M 可训练参数</b>
+        <small>默认方案是 <b>从0随机初始化</b>，不读旧 checkpoint；旧权重丢了就用它重起一条 322M。</small>
         <small>16 层 decoder 约 277M（FFN 201M + self/cross attention 76M），3 个 encoder 约 45M，embedding/适配约 6M。<b>MERT-v2 632M 是冻结前端，单独算，不在 322M 里。</b></small>
-        <small>4090 24G：一次塞 <b>1 条</b> + 开梯度检查点；4 条以上容易爆显存。tiny 1.59M 只是链路自检，13.9M 是备选小模型。</small>
+        <small>4090 24G：一次塞 <b>1 条</b> + 开梯度检查点；4 条以上容易爆显存。页面不再提供 tiny 自检，直接按 322M 走。</small>
       </div>
 
       <div class="tp-row tp-planrow">
@@ -1422,6 +1423,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       ['随机种子','seed',p.seed],
       ['默认加载进程','loader_workers',p.loader_workers]
     ];
+    if(p.kind==='scratch'){
+      rows.splice(10,1,['输入 tape','tape',p.tape],['特征目录','features',p.features]);
+    }
     tpKv.innerHTML=rows.map(function(r){
       var v=(r[2]==null||r[2]==='')?'未写':String(r[2]);
       return '<span class="k">'+r[0]+'</span><span class="v">'+esc(v)+'<em>'+r[1]+'</em></span>';
@@ -1467,13 +1471,13 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
     tpShowVals();
-    if(window.DEMO){                   /* 演示模式：别拿 r5 的 evolve 命令糊弄人，预览必须对得上真实动作 */
-      if(!tpBusy){ tpStart.disabled=false; tpStart.textContent='开始训练'; }
-      tpCmd.innerHTML=hlCmd('# 演示模式：这台机器没有真实谱面/显卡\n'
-        +'# 上面选的是 322M 主线方案，但演示按钮仍用假数据跑 tiny 600 步\n'
-        +'# 只验证流程能不能跑通，不代表 322M 的真实速度和精度\n'
-        +'# 想跑真 322M：把权重/数据放好，删掉 .harness/demo_train.json，刷新这一页');
-      tpStartNote.textContent='演示环境：跑的是 tiny 假数据，不是 322M 真训练。';
+    if(window.DEMO){                   /* 演示模式：只展示方案，不拿 tiny 假训练冒充 322M */
+      tpStart.disabled=true; tpStart.textContent='演示机不能起322M';
+      tpCmd.innerHTML=hlCmd('# 演示模式：这台机器没有 4090 和数据\n'
+        +'# 页面只展示 322M 从0方案，不会跑 tiny 假训练\n'
+        +'# 去有 4090 和 /data 数据的机器上点「开始训练」\n'
+        +'# 真训练入口：python -m scripts.train_phira_scratch --plan plans/evolve/l322m-scratch.json');
+      tpStartNote.textContent='演示机不训练；tiny 自检已移除。';
       return;
     }
     if(!tpPlan.value){                 /* 没方案就别装成能跑：一条占位命令 + 亮着的按钮最容易骗人 */
@@ -1490,8 +1494,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
     var p=tpPlanObj(), diff=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck);
     var isTiny=!!(p&&p.kind==='tiny');
+    var isScratch=!!(p&&p.kind==='scratch');
     [tpUpd,tpUpdR,tpWk,tpCk,tpCkR,tpHr,tpMb,tpDev,tpResume,tpSaveOpt,tpNoComp]
       .forEach(function(el){ el.disabled=isTiny; });
+    if(isScratch){ tpMb.value='1'; tpMb.disabled=true; }
     if(isTiny){                        /* tiny 只认方案里的 tape/features/steps/lr/out */
       var tsteps=(p.steps!=null)?p.steps:100;
       var tlr=(p.lr!=null)?p.lr:0.001;
@@ -1510,6 +1516,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
              +(tpNoComp.checked?' --no-compile':'');
     var dl=Math.round(Date.now()/1000+hr*3600);
     var mb=parseInt(tpMb.value,10)||4;
+    if(isScratch){
+      var scNote=diff?('# 存点间隔已改成 '+ck+'：点「开始训练」会用临时方案；手跑这条命令仍按方案里的 '
+                      +p.light_checkpoint_every+'\n'):'';
+      if(mb!==1) scNote+='# 从0脚本当前只按 1 条/次跑；选 '+mb+' 只在临时方案里记着，实际仍是 1 条\n';
+      var sctxt=scNote+'export BEATFCN_MAX_LOADER_WORKERS='+wk+'\n'
+        +"tmux new -s train -d 'cd "+tpRepo+" && python -m scripts.train_phira_scratch --plan plans/evolve/"
+        +(name||'<方案名>')+" --updates "+upd+" --deadline-unix "+dl+flags
+        +" --device "+tpDev.value+" 2>&1 | tee -a train.log'";
+      tpCmd.innerHTML=hlCmd(sctxt);
+      return;
+    }
     var note=diff?('# 存点间隔已改成 '+ck+'：点「开始训练」会用临时方案；手跑这条命令仍按方案里的 '
                     +p.light_checkpoint_every+'\n'):'';
     if(mb!==4) note+='# 一次塞 '+mb+' 条只在点「开始训练」时生效（写进临时方案）；手跑这条命令仍按方案默认\n';
@@ -1545,14 +1562,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         tpPlan.innerHTML='<option value="">（后端没连上，拿不到计划列表）</option>';
         tpPlanInfoPaint(); tpPaint(); return;
       }
-      tpPlans=j.plans||[];
+      tpPlans=(j.plans||[]).filter(function(p){ return p.kind!=='tiny'; });
       tpGotPlans=true;           /* 请求成功就算问过了：空列表是确定结果，不用每 5 秒重试 */
       if(!tpPlans.length){
         tpPlan.innerHTML='<option value="">（plans/evolve 里没有 json 计划）</option>';
       }else{
         if(j.repo) tpRepo=j.repo;
         tpPlan.innerHTML=tpPlans.map(function(p){
-          var label=p.default?'322M 主线（继续训练）':(p.kind==='tiny'?'tiny 1.59M（冒烟自检）':p.name);
+          var label=p.kind==='scratch'?'322M 从0训练':(p.model&&/l322m/.test(p.model)?'322M 继续训练':(p.kind==='tiny'?'tiny 1.59M（冒烟自检）':p.name));
           return '<option value="'+esc(p.name)+'">'+esc(label)+'</option>';
         }).join('');
         var def=null;
@@ -1564,25 +1581,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   }
   tpStart.addEventListener('click',function(){
     if(window.DEMO){
-      // 演示环境：没有真方案，直接让后端用假数据起一次训练，验证流程能跑通
-      tpStart.disabled=true; tpStart.textContent='启动中…';
-      var durl=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
-      fetch(durl,{method:'POST',
-                  headers:Object.assign({'Content-Type':'application/json'}, apiToken?{'X-Token':apiToken}:{}),
-                  body:JSON.stringify({id:'harness-start',step:'train'})})
-        .then(function(r){ return r.json(); })
-        .then(function(j){
-          tpStart.disabled=false; tpStart.textContent='开始训练';
-          if(j&&j.ok){
-            tpStartNote.textContent='演示训练已启动：这套是假数据，只验证流程能不能跑通，不代表真实精度。';
-            outLine('ok','CMD '+j.command); pollTrain(); pollPipe();
-          }else{
-            tpStartNote.textContent='没起来：'+((j&&j.errors&&j.errors.join('；'))||(j&&j.note)||'原因不明');
-            outLine('bad','演示训练没起来');
-          }
-        })
-        .catch(function(e){ tpStart.disabled=false; tpStart.textContent='开始训练';
-                            tpStartNote.textContent='请求失败：'+e.message; });
+      // 演示机没有 4090/数据，也不再拿 tiny 假训练冒充 322M
+      tpStart.disabled=true; tpStart.textContent='演示机不能起322M';
+      tpStartNote.textContent='这台演示机没有 322M 的 tape/features 和显卡；tiny 自检已从页面移除。去有 4090 和数据的机器上点开始训练。';
       return;
     }
     if(!tpPlan.value){ tpStartNote.textContent='先选方案（后端连上才有列表）'; return; }

@@ -229,6 +229,7 @@ def data_items():
     root = (DATA_ROOT or '/data').rstrip('/') or '/data'
     plans_dir = os.path.join(REPO, 'plans', 'evolve')
     inits, exposures, total, ready = {}, {}, 0, 0
+    scratch_notes = []
     try:
         names = sorted(os.listdir(plans_dir))
     except OSError:
@@ -243,7 +244,34 @@ def data_items():
             continue           # 坏的方案不参与统计，05 页会给它留空行
         if not isinstance(cfg, dict):
             continue
+        kind = cfg.get('kind')
+        if kind == 'tiny':
+            continue
         total += 1
+        if kind == 'scratch':
+            tape = cfg.get('tape')
+            feat = cfg.get('features')
+            tape_dir = _repoint(tape, root) if isinstance(tape, str) else ''
+            feat_dir = _repoint(feat, root) if isinstance(feat, str) else ''
+            try:
+                ok_tape = bool(tape_dir) and os.path.isdir(tape_dir) and any(
+                    n.endswith('-chart.json') for n in os.listdir(tape_dir))
+            except OSError:
+                ok_tape = False
+            try:
+                ok_feat = False
+                if bool(feat_dir) and os.path.isdir(feat_dir):
+                    for sha in os.listdir(feat_dir)[:80]:
+                        sub = os.path.join(feat_dir, sha)
+                        if os.path.isdir(sub) and os.path.isfile(os.path.join(sub, 'mel10_complete.npy')):
+                            ok_feat = True
+                            break
+            except OSError:
+                ok_feat = False
+            if ok_tape and ok_feat:
+                ready += 1
+            scratch_notes.append((name, tape_dir, ok_tape, feat_dir, ok_feat))
+            continue
         init = cfg.get('init')
         exp = (cfg.get('exposure') or {}).get('path') if isinstance(cfg.get('exposure'), dict) else None
         ok_init = isinstance(init, str) and os.path.isfile(_repoint(init, root))
@@ -255,6 +283,11 @@ def data_items():
                 base = os.path.basename(_repoint(path, root))
                 bucket[base] = bucket.get(base, True) and good
     items = []
+    for name, tape_dir, ok_tape, feat_dir, ok_feat in scratch_notes:
+        items.append(_item('TAPE ' + name, '谱面 tape', name, 'pass' if ok_tape else 'bad',
+                           '' if ok_tape else '不在：%s 里没有 *-chart.json' % tape_dir, 'data'))
+        items.append(_item('FEAT ' + name, '特征目录', name, 'pass' if ok_feat else 'bad',
+                           '' if ok_feat else '不在：%s 里没有特征文件' % feat_dir, 'data'))
     for base, good in sorted(exposures.items()):
         items.append(_item('EXP ' + base, '数据集', base, 'pass' if good else 'bad',
                            '' if good else '不在：%s 里没有这个文件' % root, 'data'))
@@ -666,6 +699,11 @@ def _train_start(body):
             steps=int(t.get('steps') or 100), lr=float(t.get('lr') or 1e-3),
             out=q(t.get('out') or '/tmp/train-tiny'), py=q(sys.executable),
             site=q(_USER_SITE))
+    elif kind == 'scratch':
+        cmd = ('cd {repo} && HOME={home} PYTHONPATH={site} {py} -m scripts.train_phira_scratch '
+               '--plan {plan} --updates {updates} --deadline-unix {deadline}').format(
+            repo=q(REPO), home=q(home), site=q(_USER_SITE), py=q(sys.executable),
+            plan=q(plan_path), updates=updates, deadline=deadline_ts)
     else:
         cmd = ('cd {repo} && HOME={home} PYTHONPATH={site} BEATFCN_MAX_LOADER_WORKERS={workers} {py} -m scripts.evolve_finetune '
            '--plan {plan} --updates {updates} --deadline-unix {deadline}'
