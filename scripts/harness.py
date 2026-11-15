@@ -318,7 +318,7 @@ def status():
         spec = STEPS[step]
         args, _ = validate(step, {})
         for name, (default, required, _kind) in spec['args'].items():
-            if default is not None:
+            if default is not None and name not in args:   # 演示环境已经把 tape/out 换掉了，别再盖回去
                 args[name] = default
         args = apply_aliases(step, args, ())
         # 上次真跑过就按那次的实际参数查产物，否则默认路径会误报
