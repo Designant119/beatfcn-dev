@@ -1887,6 +1887,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         <option value="high">思考：高</option>
         <option value="max">思考：最高</option>
       </select>
+      <label id="aiadvwrap" title="允许它真跑命令（默认关）"
+        style="display:flex;align-items:center;gap:3px;font-size:11px;color:#8fa3a8;flex:none;cursor:pointer">
+        <input type="checkbox" id="aiadv">高级</label>
       <button id="aiclose" type="button">×</button></div>
     <div id="ailog"><div class="aimsg bot">不知道点哪个按钮、看不懂报错，都可以直接问。比如“帮我下载 IN/AT 的谱面”“现在跑到哪一步了”。</div></div>
     <div id="airow">
@@ -1986,6 +1989,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       title='执行：去目录里验包';
       cmd='inspect_charts("'+(info.dest||'')+'")';
       body='目录 '+(info.dest||'')+'\nzip '+(info.count||0)+' 个，验了 '+(info.checked||0)+' 个，坏 '+(info.bad_count||0)+' 个';
+    } else if(action==='sh'){
+      var cmd=(pl.result&&pl.result.cmd)||((pl.args||{}).cmd)||'';
+      title='执行：跑了一条命令';
+      body=(cmd?('$ '+cmd+'\n'):'')+(((pl.result&&pl.result.output)||'').slice(-1200)||'（没有输出）');
     } else if(action==='status'){
       title='执行：读了一遍流水线状态（没动文件）';
     } else { return null; }
@@ -2043,6 +2050,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     }
     if(m) m.onchange=function(){ localStorage.setItem('phira-ai-model', m.value); };
     if(t) t.onchange=function(){ localStorage.setItem('phira-ai-think', t.value); };
+    var adv=document.getElementById('aiadv');
+    if(adv){
+      adv.checked = localStorage.getItem('phira-ai-adv')==='1';
+      adv.onchange=function(){
+        localStorage.setItem('phira-ai-adv', adv.checked?'1':'0');
+        if(adv.checked) outLine('warn','高级权限已开：AI 可以真执行命令。用完记得关。');
+      };
+    }
   })();
 
   function ask(){
@@ -2075,7 +2090,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       method:'POST', headers:Object.assign({'Content-Type':'application/json'}, TOKEN?{'X-Token':TOKEN}:{}),
       body:JSON.stringify({id:'chat-stream',message:msg,history:hist.slice(-24),
                            model:(document.getElementById('aimodel')||{}).value,
-                           thinking:(document.getElementById('aithink')||{}).value})
+                           thinking:(document.getElementById('aithink')||{}).value,
+                           allow_shell:!!(document.getElementById('aiadv')||{}).checked})
     }).then(function(r){
       if(!r.ok || !r.body) throw new Error('HTTP '+r.status);
       if(r.headers.get('content-type') && r.headers.get('content-type').indexOf('event-stream')<0){

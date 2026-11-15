@@ -68,6 +68,8 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - “还剩多少空间 / 磁盘满没满 / 放得下吗” → {"action": "disk"}
 - “日志呢 / 现在在输出什么 / 它跑到哪了” → {"action": "logs", "step": "对应步骤"}（真读日志尾巴，不许编）
 - “把坏包清掉 / 删掉坏的 / 清理一下” → {"action": "clean"}（只把打不开的挪进隔离文件夹，不真删；可带 args.dir）
+- “跑一下这个命令 / 帮我执行 / 看看进程 / 装个依赖” → {"action": "sh", "args": {"cmd": "用户要的那条命令"}}
+  高级权限没开时后端会拒，别硬来；破坏性命令（rm -rf、mkfs、dd、关机、重建系统）一律拒绝并说清原因。
 - “去看看 / 检验一下 / 查查有没有坏包 / 验一下” → {"action": "inspect"}（真去数包、逐个验，不许只嘴上说“下好了”）
   他要是说了某个目录，就 {"action": "inspect", "args": {"dir": "那个目录"}}
 - “接着跑 / 继续 / 一键跑 / 往下走” → {"action": "run"}（不填 step，后端自动挑下一步）
@@ -90,14 +92,14 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - 启动返回 errors 非空 或 alive 为 false：照抄日志里那句人话报失败，
   绝对不能回“已启动”“开跑了”。
 - alive 为 false 且没有 errors：说明跑完了（短任务）或自己退了，说“已经跑完/已退出”。
-- 不能用 shell；删文件只允许“清坏包”这一种，而且是挪进隔离目录、不是真删。
+- 不要自己编命令；只有用户明确让你跑命令时才用 sh。删文件只允许“清坏包”这一种，而且是挪进隔离目录、不是真删。
 - 只是闲聊、吐槽、情绪、测试、问问题：action 一律用 "answer"，绝不 run。
   就算状态里写着“建议下一步”，也不许自己开跑——用户没让你动手，就别动手。
 - 只有用户明确让你干活时才 run：下载/建库/提特征/造数据/训练/继续/接着跑/一键跑。
 
 只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
 {"reply": "给同学看的中文回复（一两句，不要长篇）",
- "action": "run|status|inspect|stop|where|disk|logs|clean|answer", "step": "步骤名（action=run/stop 时）",
+ "action": "run|status|inspect|stop|where|disk|logs|clean|sh|answer", "step": "步骤名（action=run/stop 时）",
  "args": {参数对象，可省略，内部参数不要念出来}}
 
 """
@@ -417,7 +419,22 @@ def _human_error(text):
     return raw
 
 
-def _execute(decision):
+_SH_DENY = (
+    'rm -rf /', 'rm -rf /*', 'mkfs', 'dd if=', 'shutdown', 'reboot', 'poweroff',
+    ':(){', 'chmod -R 777 /', '> /dev/sd', 'sudo ', 'passwd ', 'userdel ',
+    'curl | sh', 'curl | bash', 'wget | sh', 'wget | bash',
+)
+
+
+def _sh_block(cmd):
+    low = (cmd or '').lower()
+    for bad in _SH_DENY:
+        if bad in low:
+            return bad
+    return None
+
+
+def _execute(decision, allow_shell=False):
     """按意图真正干活，返回最终 dict(ok, action, step, reply, result)。"""
     action = decision.get('action') or 'answer'
     reply = decision.get('reply') or ''
@@ -427,6 +444,30 @@ def _execute(decision):
         if prog and '步' not in text:
             text = text.rstrip('。') + '。' + prog + '。'
         return dict(ok=True, action='status', reply=text, state=status())
+    if action == 'sh':
+        if not allow_shell:
+            return dict(ok=False, action='sh',
+                        reply='高级权限没开。面板顶上那个“高级”勾上，我才能跑命令。')
+        cmd = str((decision.get('args') or {}).get('cmd') or '').strip()
+        if not cmd:
+            return dict(ok=False, action='sh', reply='没听到要跑什么命令，再说一遍？')
+        bad = _sh_block(cmd)
+        if bad:
+            return dict(ok=False, action='sh', reply=f'这条我不跑：里面有“{bad}”，太危险，容易把机器搞坏。')
+        import subprocess
+        try:
+            proc = subprocess.run(['bash', '-lc', cmd], cwd=str(Path(__file__).resolve().parent.parent),
+                                  capture_output=True, text=True, timeout=30)
+            out = ((proc.stdout or '') + ('\n' + proc.stderr if proc.stderr else '')).strip()
+            out = out[-3000:]
+            rc = proc.returncode
+        except subprocess.TimeoutExpired:
+            return dict(ok=False, action='sh', result={'cmd': cmd, 'output': '超过 30 秒没跑完，被我掐了。'},
+                        reply='这命令 30 秒还没完，我先掐了；要跑久的东西得放后台。')
+        tail = [x for x in out.splitlines() if x.strip()][-2:]
+        said = ('；'.join(tail)[:180] if tail else '没有输出')
+        return dict(ok=(rc == 0), action='sh', result={'cmd': cmd, 'output': out, 'code': rc},
+                    reply=('跑完了：' if rc == 0 else f'报错了（退出码 {rc}）：') + said)
     if action in ('where', 'disk', 'logs', 'clean'):
         return _look_tool(action, decision, reply)
     if action == 'stop':
@@ -504,12 +545,12 @@ def _execute(decision):
                 reply=(reply + ' ' if reply else '') + tail)
 
 
-def respond(message, history=None, model=None, thinking=None):
+def respond(message, history=None, model=None, thinking=None, allow_shell=False):
     """返回 dict(ok, reply, action, step, result)。永不抛异常给上层。"""
     text, err = _call(_build_messages(message, history), model=model, thinking=thinking)
     if err:
         return dict(ok=False, reply=err, action='error')
-    return _execute(_gate(message, _parse_decision(text)))
+    return _execute(_gate(message, _parse_decision(text)), allow_shell=allow_shell)
 
 
 class _ReplyTap:
@@ -572,7 +613,7 @@ class _ReplyTap:
         return ''.join(out)
 
 
-def stream(message, history=None, model=None, thinking=None):
+def stream(message, history=None, model=None, thinking=None, allow_shell=False):
     """流式版 respond。yield 事件 dict：
 
     think  —— 模型的思考内容（reasoning_content）
@@ -681,7 +722,9 @@ def stream(message, history=None, model=None, thinking=None):
         yield dict(type='status', text='正在翻日志…')
     elif decision.get('action') == 'clean':
         yield dict(type='status', text='正在挑坏包…')
-    result = _execute(decision)
+    elif decision.get('action') == 'sh':
+        yield dict(type='status', text='正在跑命令…')
+    result = _execute(decision, allow_shell=allow_shell)
 
     out_tokens = (usage or {}).get('completion_tokens')
     ctx_tokens = (usage or {}).get('prompt_tokens')
