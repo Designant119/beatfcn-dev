@@ -982,6 +982,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var prevRun={};
   function drawPipe(j){
     var box=document.getElementById('plchips'); if(!box||!j||!j.ok||!j.steps) return;
+    window.DEMO=!!j.demo;
     if(!box.dataset.built){
       box.innerHTML=PIPE_ORDER.map(function(k){
         return '<div class="pc" id="pc-'+k+'"><span class="dot"></span><span>'+PIPE_LABEL[k]+
@@ -1513,6 +1514,28 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     },8000);
   }
   tpStart.addEventListener('click',function(){
+    if(!tpPlan.value && window.DEMO){
+      // 演示环境：没有真方案，直接让后端用假数据起一次训练，验证流程能跑通
+      tpStart.disabled=true; tpStart.textContent='启动中…';
+      var durl=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
+      fetch(durl,{method:'POST',
+                  headers:Object.assign({'Content-Type':'application/json'}, apiToken?{'X-Token':apiToken}:{}),
+                  body:JSON.stringify({id:'harness-start',step:'train'})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          tpStart.disabled=false; tpStart.textContent='开始训练';
+          if(j&&j.ok){
+            tpStartNote.textContent='演示训练已启动：这套是假数据，只验证流程能不能跑通，不代表真实精度。';
+            outLine('ok','CMD '+j.command); pollTrain(); pollPipe();
+          }else{
+            tpStartNote.textContent='没起来：'+((j&&j.errors&&j.errors.join('；'))||(j&&j.note)||'原因不明');
+            outLine('bad','演示训练没起来');
+          }
+        })
+        .catch(function(e){ tpStart.disabled=false; tpStart.textContent='开始训练';
+                            tpStartNote.textContent='请求失败：'+e.message; });
+      return;
+    }
     if(!tpPlan.value){ tpStartNote.textContent='先选方案（后端连上才有列表）'; return; }
     var p=tpPlanObj(), ck=tpCkVal();
     var extra=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck)

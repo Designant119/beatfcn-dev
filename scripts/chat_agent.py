@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.harness import (ORDER, STEPS, inspect_charts, log, pipeline_next,
+from scripts.harness import (ORDER, STEPS, demo_train, inspect_charts, log, pipeline_next,
                              running, start, status)
 
 # 给同学看的人话名称；内部还是那八个英文步骤
@@ -67,11 +67,12 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
   他要是说了某个目录，就 {"action": "inspect", "args": {"dir": "那个目录"}}
 - “接着跑 / 继续 / 一键跑 / 往下走” → {"action": "run"}（不填 step，后端自动挑下一步）
 
-用户想直接跳到后面的步骤（比如数据还没下就说“开始训练”）时：
-- 不要只说“不能跳过”“必须先做前面的”，更不要教训人。
-- 说清楚还差哪几步（一句人话），然后自己从该跑的那一步开始：
-  {"action": "run"}，step 留空，后端会用流水线的下一步。
-- 例：reply “训练得先有数据，现在还没下载，我先帮你把谱面下下来，好了再接着建库、提特征。”
+用户点名要跑某一步时（“下载 / 建库 / 提特征 / 训练 / 开训”）：
+- 就按他点的那一步填 step，不许自作主张换成“下一步”。前置没齐后端会拦下来并说明还差什么。
+- 用户没点名、只说“继续 / 接着跑 / 往下走 / 下一步”时：{"action": "run"}，step 留空，后端自动挑下一步。
+- 这台机器如果有演示训练环境（状态里会写），用户说“开始训练”就直接 {"action": "run", "step": "train"}，
+  别拿“数据还没下”去拦他——演示环境用假数据，能直接跑。
+- 不要教训人“不能跳过”，也不要说“必须先做前面的”。
 
 说话规矩（很重要，违反就是事故）：
 - reply 里不要出现参数名、文件路径、脚本名、tmux、sha256、npy 这些词；
@@ -228,9 +229,12 @@ def _state_brief():
     st = status()
     done = [k for k in ORDER if st[k]['done']]
     run = [k for k in ORDER if st[k]['running']]
+    demo = demo_train()
+    tail = (f'建议下一步：{_label(pipeline_next()) if pipeline_next() else "全部完成"}')
+    if demo:
+        tail += f'；（这台机器有演示训练环境：说“开始训练”能直接用假数据跑起来，不用等他下数据）'
     return (f'已完成的步骤：{"、".join(_label(k) for k in done) or "无"}；'
-            f'正在跑：{"、".join(_label(k) for k in run) or "无"}；'
-            f'建议下一步：{_label(pipeline_next()) if pipeline_next() else "全部完成"}')
+            f'正在跑：{"、".join(_label(k) for k in run) or "无"}；' + tail)
 
 
 def _build_messages(message, history=None):
@@ -269,6 +273,8 @@ def _parse_decision(text):
 
 def _prereq_report(step):
     """看前面那些步骤是不是真跑完了。返回 (还缺的, 正在跑的)。"""
+    if step == 'train' and demo_train():
+        return [], []                       # 演示环境：假数据已经备好，别拿真流水线卡它
     st = status()
     idx = ORDER.index(step) if step in ORDER else len(ORDER)
     missing, busy = [], []

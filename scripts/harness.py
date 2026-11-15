@@ -14,6 +14,7 @@
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -164,6 +165,14 @@ def validate(step, args):
     unknown = set(args) - set(spec['args'])
     if unknown:
         errors.append('不认识的参数：' + ', '.join(sorted(unknown)))
+    # 演示环境：这台机器没真数据也没显卡，用一套假数据让训练真能跑起来
+    demo = demo_train() if step == 'train' else None
+    if demo:
+        for name in ('tape', 'features', 'out'):
+            if name not in (args or {}) and demo.get(name):
+                filled[name] = str(demo[name])
+        if 'steps' not in (args or {}) and demo.get('steps'):
+            filled['steps'] = int(demo['steps'])
     return filled, errors
 
 
@@ -210,7 +219,14 @@ def start(step, args, *, dry_run=False):
                     errors=[f'已有 {session} 在跑，先 tmux attach -t {session} 看看'])
     remember_paths(step, filled)
     log_path = _state_dir() / 'logs' / f'{session}.log'
-    wrapped = f'{cmd} 2>&1 | tee {log_path}'
+    # tmux 会丢当前 shell 的部分环境：torch 装在 ~/.local 时，
+    # 不把 PYTHONUSERBASE 带进去，一进会话就 ModuleNotFoundError
+    pre = ''
+    for key in ('PYTHONUSERBASE', 'PYTHONPATH', 'VIRTUAL_ENV'):
+        value = os.environ.get(key)
+        if value:
+            pre += f'export {key}={shlex.quote(value)}; '
+    wrapped = pre + f'{cmd} 2>&1 | tee {log_path}'
     try:
         started = subprocess.run(['tmux', 'new-session', '-d', '-s', session, wrapped],
                                  capture_output=True, text=True, timeout=10)
@@ -319,6 +335,24 @@ def status():
                             session=spec['session'], why=why,
                             failed=_download_failed(step, args) if present else 0)
     return report
+
+
+def demo_train():
+    """有没有“能直接起训练”的演示环境；有就返回它的路径和步数。"""
+    f = _state_dir() / 'demo_train.json'
+    if not f.is_file():
+        return None
+    try:
+        data = json.loads(f.read_text(encoding='utf-8'))
+    except Exception:                         # noqa: BLE001
+        return None
+    if not isinstance(data, dict):
+        return None
+    if not Path(str(data.get('tape', ''))).is_dir():
+        return None
+    if not Path(str(data.get('features', ''))).is_dir():
+        return None
+    return data
 
 
 def inspect_charts(dest=None, sample=None):
