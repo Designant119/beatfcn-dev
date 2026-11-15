@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from beatfcn.events.canonical import Event, LaneLoc
-from scripts.harness import _state_dir
+from scripts.harness import ROOT, _state_dir
 from scripts.prepare_local_request_tape import requests_for_chart
 
 
@@ -57,8 +57,13 @@ def main():
     for name in ('L12.npy', 'L23.npy'):
         np.save(feat_dir / name, rng.normal(0, 0.5, (frames, 1024)).astype(np.float32))
 
-    cfg = dict(tape=str(tape), features=str(feats),
-               out=str(root / 'ckpt' / 'tiny.pt'), steps=600)
+    def _rel(p):
+        try:
+            return str(Path(p).resolve().relative_to(ROOT))
+        except Exception:                     # noqa: BLE001
+            return str(p)
+    cfg = dict(tape=_rel(tape), features=_rel(feats),
+               out=_rel(root / 'ckpt' / 'tiny.pt'), steps=600)
     (_state_dir() / 'demo_train.json').write_text(json.dumps(cfg, ensure_ascii=False, indent=2),
                                                  encoding='utf-8')
     print(json.dumps(dict(ok=True, **cfg), ensure_ascii=False))

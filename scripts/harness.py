@@ -52,11 +52,20 @@ def _state_dir():
     _HOME['dir'] = Path('/tmp')          # 最后兜底，至少不耽误跑
     return _HOME['dir']
 
+# 数据根：4090 上习惯 /data；插在别人机器上没 /data 时，就放仓库自己的 data/。
+# 想指定就设 BEATFCN_DATA_ROOT。全部用相对仓库的路径，硬盘换个挂载点也不会散架。
+def _data(rel):
+    return str(DATA_ROOT / rel)
+
+
+DATA_ROOT = Path(os.environ.get('BEATFCN_DATA_ROOT')
+                 or ('/data' if Path('/data').is_dir() else ROOT / 'data'))
+
 # 每一步：脚本、会话名、参数表（默认值 + 必填标记 + 类型）
 STEPS = {
     'download': dict(
         module='scripts.phira_local_download', session='phira-dl',
-        args={'dest': ('/data/phira_charts', True, str),
+        args={'dest': (_data('phira_charts'), True, str),
               'levels': (None, False, list), 'workers': (6, False, int),
               'no_hash_audio': (False, False, bool),
               'list_only': (False, False, bool)},
@@ -64,59 +73,59 @@ STEPS = {
     ),
     'ingest': dict(
         module='scripts.ingest_phira_dataset', session='phira-ingest',
-        args={'zips': ('/data/phira_charts', True, str),
-              'out': ('/data/phira_db', True, str),
+        args={'zips': (_data('phira_charts'), True, str),
+              'out': (_data('phira_db'), True, str),
               'meta': (str(ROOT / 'phira_charts_meta.json'), False, str),
               'limit': (0, False, int)},
         outputs=('out/canon/phira', 'out/targets'),
     ),
     'audio': dict(
         module='scripts.extract_phira_audio', session='phira-audio',
-        args={'zips': ('/data/phira_charts', True, str),
-              'output': ('/data/phira_audio', True, str)},
+        args={'zips': (_data('phira_charts'), True, str),
+              'output': (_data('phira_audio'), True, str)},
         outputs=('output',),
     ),
     'tape': dict(
         module='scripts.build_feature_tape', session='phira-tape',
-        args={'canon': ('/data/phira_db/canon/phira', True, str),
-              'output': ('/data/tape_min', True, str)},
+        args={'canon': (_data('phira_db/canon/phira'), True, str),
+              'output': (_data('tape_min'), True, str)},
         outputs=('output',),
     ),
     'features': dict(
         module='scripts.batch_extract_features', session='phira-feat',
-        args={'tape_dir': ('/data/tape_min', True, str),
-              'audio_dir': ('/data/phira_audio', True, str),
-              'features_dir': ('/data/features', True, str),
-              'mert_source': ('/data/weights/mert', True, str),
+        args={'tape_dir': (_data('tape_min'), True, str),
+              'audio_dir': (_data('phira_audio'), True, str),
+              'features_dir': (_data('features'), True, str),
+              'mert_source': (_data('weights/mert'), True, str),
               'device': ('cuda', False, str), 'decode_workers': (6, False, int),
-              'log': ('/data/extract.jsonl', True, str),
+              'log': (_data('extract.jsonl'), True, str),
               'until_idle_s': (900, False, float), 'shard': ('0/1', False, str)},
         outputs=('features_dir/features',),
     ),
     'full_tape': dict(
         module='scripts.build_full_native_tape', session='phira-fulltape',
-        args={'targets_root': ('/data/phira_db/targets', True, str),
-              'features_root': ('/data/features/features', True, str),
-              'output': ('/data/tape', True, str),
+        args={'targets_root': (_data('phira_db/targets'), True, str),
+              'features_root': (_data('features/features'), True, str),
+              'output': (_data('tape'), True, str),
               'workers': (8, False, int), 'limit': (0, False, int)},
         outputs=('output',),
     ),
     'exposure': dict(
         module='scripts.build_phira_exposure', session='phira-exp',
-        args={'tape_dir': ('/data/tape', True, str),
-              'canon': ('/data/phira_db/canon/phira', False, str),
+        args={'tape_dir': (_data('tape'), True, str),
+              'canon': (_data('phira_db/canon/phira'), False, str),
               'seed': (20261108, True, int), 'steps': (2400, True, int),
-              'output_pool': ('/data/evolve/pool.json', True, str),
-              'output_exposure': ('/data/evolve/exposure.json', True, str),
+              'output_pool': (_data('evolve/pool.json'), True, str),
+              'output_exposure': (_data('evolve/exposure.json'), True, str),
               'output_report': ('', False, str)},
         outputs=('output_exposure',),
     ),
     'train': dict(
         module='scripts.train_phira_tiny', session='phira-train',
-        args={'tape': ('/data/tape', True, str),
-              'features': ('/data/features/features', True, str),
+        args={'tape': (_data('tape'), True, str),
+              'features': (_data('features/features'), True, str),
               'steps': (2, False, int), 'lr': (1e-3, False, float),
-              'out': ('/data/ckpt/tiny.pt', True, str),
+              'out': (_data('ckpt/tiny.pt'), True, str),
               'device': ('cpu', False, str)},
         outputs=('out',),
     ),
@@ -427,6 +436,10 @@ def demo_train():
         return None
     if not isinstance(data, dict):
         return None
+    for key in ('tape', 'features', 'out'):      # 硬盘换挂载点后，相对路径照样认
+        value = data.get(key)
+        if isinstance(value, str) and value and not Path(value).is_absolute():
+            data[key] = str(ROOT / value)
     if not Path(str(data.get('tape', ''))).is_dir():
         return None
     if not Path(str(data.get('features', ''))).is_dir():
@@ -475,7 +488,7 @@ def inspect_charts(dest=None, sample=None):
     """
     import zipfile
     paths = load_paths()
-    dest = Path(str(dest or paths.get('charts') or '/data/phira_charts'))
+    dest = Path(str(dest or paths.get('charts') or _data('phira_charts')))
     if not dest.is_dir():
         return dict(ok=False, dest=str(dest), count=0, reason='目录不存在')
     zips = sorted(p for p in dest.glob('*.zip') if p.is_file())
@@ -578,9 +591,26 @@ def load_paths():
         return {}
     try:
         data = json.loads(f.read_text(encoding='utf-8'))
-        return data if isinstance(data, dict) else {}
+        if not isinstance(data, dict):
+            return {}
+        return {k: _read_path(v) for k, v in data.items()}
     except Exception:                         # noqa: BLE001
         return {}
+
+
+def _store_path(value):
+    """仓库内的路径存成相对路径：硬盘换挂载点（/mnt/e、F:）也不会指丢。"""
+    try:
+        return str(Path(value).resolve().relative_to(ROOT))
+    except Exception:                     # noqa: BLE001
+        return str(value)
+
+
+def _read_path(value):
+    if not isinstance(value, str) or not value:
+        return value
+    p = Path(value).expanduser()
+    return str(p if p.is_absolute() else ROOT / p)
 
 
 def remember_paths(step, args):
@@ -593,8 +623,9 @@ def remember_paths(step, args):
         if not isinstance(value, str) or not value:
             continue
         base = value[:-len(suffix)] if suffix and value.endswith(suffix) else value
-        if known.get(alias) != base:
-            known[alias] = base
+        stored = _store_path(base)
+        if known.get(alias) != stored:
+            known[alias] = stored
             changed = True
     if changed:
         try:
