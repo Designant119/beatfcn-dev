@@ -145,6 +145,7 @@
   .pc.done{border-color:rgba(159,179,131,.5);color:var(--ok)} .pc.done .dot{background:var(--ok)}
   .pc.next{border-color:rgba(61,255,124,.45);color:var(--ph)} .pc.next .dot{background:var(--ph)}
   .pc.run{border-color:var(--ph);color:var(--ph);background:rgba(61,255,124,.07)} .pc.run .dot{background:var(--ph);animation:pulse 1s infinite}
+  .pc.warn{border-color:rgba(216,179,106,.55);color:var(--warn)} .pc.warn .dot{background:var(--warn)}
   .pc.flash{background:rgba(61,255,124,.22);border-color:var(--ph);color:#0d100f}
   .pc.flash .dot{background:#0d100f}
   .plwhere{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--dim)}
@@ -1003,7 +1004,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var anyRun=false;
     PIPE_ORDER.forEach(function(k){
       var s=j.steps[k]||{}, el=document.getElementById('pc-'+k); if(!el) return;
-      var cls='pc'; if(s.running){cls+=' run';anyRun=true;} else if(s.done){cls+=' done';}
+      var cls='pc'; var soft=(k==='download'&&s.done&&!s.verified);
+      if(s.running){cls+=' run';anyRun=true;} else if(soft){cls+=' warn';} else if(s.done){cls+=' done';}
       else if(j.next===k){cls+=' next';}
       if(el.className!==cls){
         el.className=cls;
@@ -1016,7 +1018,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       }
       prevRun[k]=!!s.running;
       var tag=el.querySelector('.pcs');
-      var txt=s.running?'在跑':(s.done?('完成'+(s.failed?('·失败'+s.failed):'')):'');
+      var txt=s.running?'在跑':(soft?'有货·待确认':(s.done?('完成'+(s.failed?('·失败'+s.failed):'')):''));
       if(tag.textContent!==txt) tag.textContent=txt;
     });
     drawWhere(j);
