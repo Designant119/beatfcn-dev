@@ -455,8 +455,19 @@ def inspect_charts(dest=None, sample=None):
                     bad.append(p.name)
         except Exception:                     # noqa: BLE001
             bad.append(p.name)
+    # 顺手认一下重：文件名尾部 _<id>.zip 是谱面 id，同一个 id 出现两个文件就是重复
+    ids, noid = {}, []
+    for p in zips:
+        tail = p.stem.rsplit('_', 1)[-1]
+        if tail.isdigit():
+            ids.setdefault(int(tail), []).append(p.name)
+        else:
+            noid.append(p.name)
+    dups = [{'id': k, 'files': v} for k, v in ids.items() if len(v) > 1][:10]
     return dict(ok=True, dest=str(dest), count=len(zips), total_bytes=total,
                 checked=checked, bad=bad[:10], bad_count=len(bad),
+                unique=len(ids), dup_count=sum(len(v) - 1 for v in ids.values()),
+                dups=dups, noid_count=len(noid),
                 report=(dest / '_download_report.json').is_file())
 
 

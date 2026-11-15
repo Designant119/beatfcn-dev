@@ -375,6 +375,12 @@ def _execute(decision):
                 if info['total_bytes'] >= 1024 ** 3
                 else f'{info["total_bytes"] / 1024 ** 2:.0f} MB')
         head = f'点了 {n} 个包，共 {size}，逐个翻开验了 {info["checked"]} 个'
+        if info.get('unique'):
+            head += f'；按谱面 id 算是 {info["unique"]} 张谱'
+            if info.get('dup_count'):
+                head += f'，有 {info["dup_count"]} 个是同 id 重复（下次下载会按 id 直接跳过，不会再多占地方）'
+            if info.get('noid_count'):
+                head += f'，另有 {info["noid_count"]} 个文件名里没有 id，认不出是哪张'
         if info.get('bad_count'):
             names = '、'.join(info.get('bad') or [])
             return dict(ok=False, action='inspect', info=info,
