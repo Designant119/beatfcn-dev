@@ -1513,8 +1513,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/ingestlog':
                 return self._send(200, _phira_ingest_log())
             if path == '/api/harness-status':
-                from scripts.harness import status as hstatus, pipeline_next
+                from scripts.harness import status as hstatus, pipeline_next, output_paths, ORDER
                 return self._send(200, {'ok': True, 'steps': hstatus(),
+                                        'where': {s: output_paths(s) for s in ORDER},
                                         'next': pipeline_next()})
             if path == '/api/harnesslog':
                 from urllib.parse import urlparse, parse_qs

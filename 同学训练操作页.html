@@ -147,6 +147,11 @@
   .pc.run{border-color:var(--ph);color:var(--ph);background:rgba(61,255,124,.07)} .pc.run .dot{background:var(--ph);animation:pulse 1s infinite}
   .pc.flash{background:rgba(61,255,124,.22);border-color:var(--ph);color:#0d100f}
   .pc.flash .dot{background:#0d100f}
+  .plwhere{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .plwhere .k{font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--dim)}
+  .plwhere code{color:var(--text);background:var(--panel2);border:1px solid var(--line);padding:2px 6px}
+  .plwhere code.miss{color:var(--warn);border-color:rgba(216,179,106,.35)}
+  .plwhere a.copy{color:var(--ph);cursor:pointer;text-decoration:none;border-bottom:1px dotted var(--ph)}
   @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(61,255,124,.6)}50%{opacity:.55;box-shadow:0 0 0 4px rgba(61,255,124,0)}}
 
   /* ---------- 命令块 ---------- */
@@ -328,6 +333,7 @@
     <div class="pline">
       <div class="plhead"><span class="k">PIPELINE / 八步流水线</span><span id="plnext" class="plnext">—</span></div>
       <div class="plchips" id="plchips"></div>
+      <div class="plwhere" id="plwhere"></div>
     </div>
 
     <table>
@@ -1002,10 +1008,31 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       var txt=s.running?'在跑':(s.done?'完成':'');
       if(tag.textContent!==txt) tag.textContent=txt;
     });
+    drawWhere(j);
     var nx=document.getElementById('plnext');
     if(nx){ var t=j.next?('下一步：'+PIPE_LABEL[j.next]):'八步都跑完了';
             if(nx.textContent!==t) nx.textContent=t; }
     return anyRun;
+  }
+  function drawWhere(j){
+    var box=document.getElementById('plwhere'); if(!box||!j.where) return;
+    var target=null;
+    for(var i=PIPE_ORDER.length-1;i>=0;i--){ var k=PIPE_ORDER[i];
+      if(j.steps[k]&&j.steps[k].done){ target=k; break; } }
+    if(!target) target='download';
+    var info=(j.where[target]||[])[0];
+    if(!info){ box.innerHTML=''; return; }
+    var key=target+'|'+info.path+'|'+info.exists;
+    if(box.dataset.key===key) return;
+    box.dataset.key=key;
+    box.innerHTML='<span class="k">文件在这</span><code class="'+(info.exists?'':'miss')+'">'+info.path+
+                  '</code><a class="copy">复制</a><span>'+(info.note||(info.exists?'已经生成了':'还没有生成，跑完就有了'))+'</span>';
+    box.querySelector('a.copy').onclick=function(){
+      var t=info.path;
+      if(navigator.clipboard) navigator.clipboard.writeText(t);
+      else { var i=document.createElement('input'); i.value=t; document.body.appendChild(i); i.select(); document.execCommand('copy'); i.remove(); }
+      this.textContent='已复制'; var a=this; setTimeout(function(){ a.textContent='复制'; },1500);
+    };
   }
   function pollPipe(){ if(!isLive) return; api('/api/harness-status', drawPipe); }
   // 秒级轮询可能错过短任务，聊天里起了步骤就密集补刷 6 次

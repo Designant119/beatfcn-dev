@@ -59,7 +59,7 @@ STEPS = {
               'levels': (None, False, list), 'workers': (6, False, int),
               'no_hash_audio': (False, False, bool),
               'list_only': (False, False, bool)},
-        outputs=('dest',),
+        outputs=('dest/_download_report.json',),
     ),
     'ingest': dict(
         module='scripts.ingest_phira_dataset', session='phira-ingest',
@@ -275,6 +275,40 @@ def status():
         report[step] = dict(done=present, running=running(step),
                             session=spec['session'])
     return report
+
+
+def output_paths(step):
+    """这一步的产物现在会写到哪、在不在。给页面显示“文件在哪”。"""
+    spec = STEPS.get(step)
+    if not spec:
+        return []
+    args, _ = validate(step, {})
+    for name, (default, _required, _kind) in spec['args'].items():
+        if default is not None:
+            args[name] = default
+    saved = _state_dir() / 'state' / f'{step}.json'
+    if saved.is_file():
+        try:
+            args.update(json.loads(saved.read_text(encoding='utf-8')))
+        except Exception:                     # noqa: BLE001
+            pass
+    out = []
+    if step == 'download':                    # 用户问“文件在哪”要看谱面目录，不是那份报告
+        dest = Path(str(args.get('dest') or ''))
+        item = dict(path=str(dest), exists=(dest / '_download_report.json').exists())
+        if args.get('list_only'):
+            item['exists'] = False
+            item['note'] = '只拉了清单，谱面还没下'
+        return [item]
+    list_only = step == 'download' and bool(args.get('list_only'))
+    for o in spec['outputs']:
+        path = _resolve_output(step, args, o)
+        item = dict(path=str(path), exists=path.exists())
+        if list_only:
+            item['exists'] = False
+            item['note'] = '只拉了清单，谱面还没下'
+        out.append(item)
+    return out
 
 
 def pipeline_next():
