@@ -570,7 +570,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
       <div class="tp-model">
         <b>当前模型：BeatFCN l322m · 约 322M 可训练参数</b>
-        <small>默认方案是 <b>从0随机初始化</b>，不读旧 checkpoint；旧权重丢了就用它重起一条 322M。</small>
+        <small>默认方案是 <b>322M 生产配方（从0随机初始化）</b>，不读旧 checkpoint；旧权重丢了就用它重起一条 322M。</small>
+        <small>训练不是简化脚本：用的是生产 baseline 的 native counterfactual exposure、own-target 条件、EMA、held-out teacher 诊断、checkpoint/light checkpoint。下面的学习率、warmup、EMA、累积条数都能在网页上改。</small>
         <small>16 层 decoder 约 277M（FFN 201M + self/cross attention 76M），3 个 encoder 约 45M，embedding/适配约 6M。<b>MERT-v2 632M 是冻结前端，单独算，不在 322M 里。</b></small>
         <small>4090 24G：一次塞 <b>1 条</b> + 开梯度检查点；4 条以上容易爆显存。页面不再提供 tiny 自检，直接按 322M 走。</small>
       </div>
@@ -583,6 +584,38 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       <div class="tp-detail">
         <button type="button" id="tpDetailBtn">＋ 看这个方案里写了什么</button>
         <div class="tp-kv" id="tpKv" style="display:none"></div>
+      </div>
+
+      <div class="tp-h" style="margin-top:10px;background:transparent;border:0;padding-left:0">生产配方参数 / 只有 322M 生产方案会生效</div>
+      <div class="tp-row">
+        <span class="tp-lab">学习率<small>模型每步学多快。默认 1e-4；调太大容易炸，调太小会学不动</small></span>
+        <span class="tp-ctl"><input type="number" id="tpLr" min="0.0000001" max="0.01" step="0.00001" value="0.0001" inputmode="decimal"></span>
+        <span class="tp-val" id="tpLrV">0.0001</span>
+      </div>
+      <div class="tp-row">
+        <span class="tp-lab">预热步数<small>开头先慢慢把学习率升上去，避免一上来就把权重带飞</small></span>
+        <span class="tp-ctl"><input type="number" id="tpWarm" min="0" max="2000" step="10" value="100" inputmode="numeric"></span>
+        <span class="tp-val" id="tpWarmV">100 步</span>
+      </div>
+      <div class="tp-row">
+        <span class="tp-lab">最低学习率<small>余弦退火最后降到这个值，别降到 0</small></span>
+        <span class="tp-ctl"><input type="number" id="tpMinLr" min="0" max="0.01" step="0.000001" value="0.00001" inputmode="decimal"></span>
+        <span class="tp-val" id="tpMinLrV">0.00001</span>
+      </div>
+      <div class="tp-row">
+        <span class="tp-lab">每次累积几条<small>一次前向塞几条是「显存」，这里是「累积几条再更新一次权重」。4 表示等效 batch=4</small></span>
+        <span class="tp-ctl"><select id="tpAccum"><option value="1">1</option><option value="2">2</option><option value="4" selected>4（生产默认）</option><option value="8">8</option><option value="16">16</option></select></span>
+        <span class="tp-val" id="tpAccumV">4 条</span>
+      </div>
+      <div class="tp-row">
+        <span class="tp-lab">EMA 衰减<small>权重滑动平均，评估/存快照用更稳的权重；0.999 是生产默认</small></span>
+        <span class="tp-ctl"><input type="number" id="tpEma" min="0.9" max="0.999999" step="0.0001" value="0.999" inputmode="decimal"></span>
+        <span class="tp-val" id="tpEmaV">0.999</span>
+      </div>
+      <div class="tp-row">
+        <span class="tp-lab">验证集条数<small>从 held-out 里抽多少条做 teacher 诊断；越多越慢，200 是生产默认</small></span>
+        <span class="tp-ctl"><input type="number" id="tpVal" min="10" max="2000" step="10" value="200" inputmode="numeric"></span>
+        <span class="tp-val" id="tpValV">200 条</span>
       </div>
 
       <div class="tp-row">
@@ -604,7 +637,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
 
       <div class="tp-row">
-        <span class="tp-lab">多久存一次快照<small>练到第 N 步存一份。调成和方案不一样时，会用一份临时方案（原文件不动）</small></span>
+        <span class="tp-lab">多久存一次快照<small>练到第 N 个优化步存一份。生产配方会把这个数写进 plan；调成和方案不一样时，用临时 recipe 生成新 plan，原方案不动</small></span>
         <span class="tp-ctl"><input type="number" id="tpCk" min="50" max="2400" step="50" value="300" inputmode="numeric"><input type="range" id="tpCkR" min="50" max="2400" step="50" value="300"></span>
         <span class="tp-val" id="tpCkV">300</span>
       </div>
@@ -638,7 +671,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="chk"><input type="checkbox" data-k="t3"><span class="t">看进度：日志里 loss 有数字就说明在练<small>数字上下跳很正常；后端连着时，下面「训练输出」框里直接看，不用手动 tail。</small></span></div>
     <div class="cmd"><div class="h"><span>LINUX</span><button type="button">COPY</button></div><pre>tail -f train.log</pre></div>
 
-    <div class="flag"><span class="k">它自己会存</span>默认每 300 步存一份快照（上面的「多久存一次快照」可以改），只留最近几份。断电重启，勾上「接着上次继续」就接着跑。</div>
+    <div class="flag"><span class="k">它自己会存</span>生产配方默认每 500 个优化步存一份快照（上面的「多久存一次快照」可以改），只留最近几份。断电重启，勾上「接着上次继续」就接着跑。</div>
 
     <h3 style="font-size:15px;margin:22px 0 4px">跑的时候别做这几件事</h3>
     <div class="chk"><input type="checkbox" data-k="t4"><span class="t">别删文件夹<small>中间产物删了要重跑。</small></span></div>
@@ -1337,6 +1370,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var tpCk=document.getElementById('tpCk'), tpCkR=document.getElementById('tpCkR'), tpCkV=document.getElementById('tpCkV');
   var tpHr=document.getElementById('tpHr'), tpHrV=document.getElementById('tpHrV');
   var tpMb=document.getElementById('tpMb'), tpMbV=document.getElementById('tpMbV');
+  var tpLr=document.getElementById('tpLr'), tpLrV=document.getElementById('tpLrV');
+  var tpWarm=document.getElementById('tpWarm'), tpWarmV=document.getElementById('tpWarmV');
+  var tpMinLr=document.getElementById('tpMinLr'), tpMinLrV=document.getElementById('tpMinLrV');
+  var tpAccum=document.getElementById('tpAccum'), tpAccumV=document.getElementById('tpAccumV');
+  var tpEma=document.getElementById('tpEma'), tpEmaV=document.getElementById('tpEmaV');
+  var tpVal=document.getElementById('tpVal'), tpValV=document.getElementById('tpValV');
   var tpResume=document.getElementById('tpResume'), tpSaveOpt=document.getElementById('tpSaveOpt'),
       tpNoComp=document.getElementById('tpNoComp'), tpDev=document.getElementById('tpDev');
   var tpCmd=document.getElementById('tpCmd'), tpStart=document.getElementById('tpStart'),
@@ -1352,6 +1391,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(isNaN(n)) return fb;
     return Math.min(hi,Math.max(lo,n));
   }
+  function tpFloatClamp(el,lo,hi,fb){
+    var n=parseFloat(el.value);
+    if(isNaN(n)) return fb;
+    return Math.min(hi,Math.max(lo,n));
+  }
+  function tpLrVal(){ return tpFloatClamp(tpLr,0.0000001,0.01,0.0001); }
+  function tpWarmVal(){ return tpClamp(tpWarm,0,2000,100); }
+  function tpMinLrVal(){ return tpFloatClamp(tpMinLr,0,0.01,0.00001); }
+  function tpEmaVal(){ return tpFloatClamp(tpEma,0.9,0.999999,0.999); }
+  function tpValVal(){ return tpClamp(tpVal,10,2000,200); }
+  function tpAccumVal(){ return parseInt(tpAccum.value,10)||4; }
   function tpUpdVal(){ return tpClamp(tpUpd,100,parseInt(tpUpd.max,10)||2400,300); }
   function tpCkVal(){ return tpClamp(tpCk,50,parseInt(tpCk.max,10)||2400,300); }
   function tpHrVal(){ return tpClamp(tpHr,1,168,48); }
@@ -1402,10 +1452,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     }
     var bits=[];
     if(p.model) bits.push(p.model+(p.model_params!=null?(' · '+p.model_params+'M'):''));
-    if(p.horizon_updates!=null) bits.push('最多 '+p.horizon_updates+' 步');
-    if(p.learning_rate!=null) bits.push('学习率 '+tpFmtNum(p.learning_rate));
-    if(p.light_checkpoint_every!=null) bits.push('每 '+p.light_checkpoint_every+' 步存一次');
-    if(p.light_checkpoint_keep!=null) bits.push('留 '+p.light_checkpoint_keep+' 份');
+    if(p.kind==='production'){
+      if(p.optimizer_updates!=null) bits.push('生产配方 · 最多 '+p.optimizer_updates+' 个优化步');
+      if(p.accum_steps!=null) bits.push('累积 '+p.accum_steps+' 条/更新');
+      if(p.learning_rate!=null) bits.push('学习率 '+tpFmtNum(p.learning_rate));
+      if(p.ema_decay!=null) bits.push('EMA '+p.ema_decay);
+    }else{
+      if(p.horizon_updates!=null) bits.push('最多 '+p.horizon_updates+' 步');
+      if(p.learning_rate!=null) bits.push('学习率 '+tpFmtNum(p.learning_rate));
+      if(p.light_checkpoint_every!=null) bits.push('每 '+p.light_checkpoint_every+' 步存一次');
+      if(p.light_checkpoint_keep!=null) bits.push('留 '+p.light_checkpoint_keep+' 份');
+    }
     tpPlanInfo.textContent=bits.join(' · ')||'（这份方案里没写这些）';
 
     var rows=[
@@ -1414,16 +1471,27 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       ['模型说明','model_note',p.model_note],
       ['省显存','grad_checkpointing',p.grad_checkpointing==null?null:(p.grad_checkpointing?'开（梯度检查点）':'关')],
       ['默认一次塞几条','default_microbatch',p.default_microbatch==null?null:p.default_microbatch+' 条'],
-      ['最多多少步','schedule.horizon_updates',p.horizon_updates==null?null:p.horizon_updates+' 步'],
+      ['最多多少步','schedule.horizon_updates',(p.kind==='production'?p.optimizer_updates:p.horizon_updates)==null?null:((p.kind==='production'?p.optimizer_updates:p.horizon_updates)+' 个优化步')],
       ['学习率','learning_rate',p.learning_rate==null?null:tpFmtNum(p.learning_rate)],
-      ['存快照间隔','light_checkpoint_every',p.light_checkpoint_every==null?null:'每 '+p.light_checkpoint_every+' 步'],
-      ['保留几份','light_checkpoint_keep',p.light_checkpoint_keep==null?null:p.light_checkpoint_keep+' 份'],
-      ['快照输出目录','out_dir',p.out_dir],
-      ['起始权重','init',p.init],
+      ['存快照间隔','light_checkpoint_every',(p.kind==='production'?p.checkpoint_every_updates:p.light_checkpoint_every)==null?null:'每 '+(p.kind==='production'?p.checkpoint_every_updates:p.light_checkpoint_every)+' 个优化步'],
+      ['保留几份','checkpoint_keep',(p.kind==='production'?p.checkpoint_keep:p.light_checkpoint_keep)==null?null:((p.kind==='production'?p.checkpoint_keep:p.light_checkpoint_keep)+' 份')],
+      ['快照输出目录','out_dir',p.kind==='production'?p.checkpoint_dir:p.out_dir],
+      ['起始权重','init',p.kind==='production'?'从0随机初始化（不读 init）':p.init],
       ['随机种子','seed',p.seed],
       ['默认加载进程','loader_workers',p.loader_workers]
     ];
-    if(p.kind==='scratch'){
+    if(p.kind==='production'){
+      rows.push(['生产结构模板','base_plan',p.base_plan]);
+      rows.push(['累积条数','accum_steps',p.accum_steps==null?null:p.accum_steps+' 条/更新']);
+      rows.push(['warmup','warmup_updates',p.warmup_updates==null?null:p.warmup_updates+' 步']);
+      rows.push(['最低学习率','minimum_lr',p.minimum_lr==null?null:tpFmtNum(p.minimum_lr)]);
+      rows.push(['EMA 衰减','ema_decay',p.ema_decay==null?null:String(p.ema_decay)]);
+      rows.push(['验证集条数','validation_count',p.validation_count==null?null:p.validation_count+' 条']);
+      rows.push(['输入 tape','tape',p.tape]);
+      rows.push(['MERT 特征','mert_features',p.mert_features]);
+      rows.push(['生成 plan','plan_output',p.plan_output]);
+      rows.push(['生成 exposure','exposure_path',p.exposure_path]);
+    }else if(p.kind==='scratch'){
       rows.splice(10,1,['输入 tape','tape',p.tape],['特征目录','features',p.features]);
     }
     tpKv.innerHTML=rows.map(function(r){
@@ -1431,28 +1499,50 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       return '<span class="k">'+r[0]+'</span><span class="v">'+esc(v)+'<em>'+r[1]+'</em></span>';
     }).join('');
 
-    var keep=(p.light_checkpoint_keep==null)?'（方案没写留几份）':('最近 '+p.light_checkpoint_keep+' 份');
-    tpSnap.innerHTML='快照存在 '+(p.out_dir?('<b>'+esc(p.out_dir)+'</b>'):'（方案里没写，跑起来才确定）')+
-      '，文件名长这样 <b>step-000300.pt</b>，只留'+keep+'。下次勾上「接着上次继续」，会从这个目录读最新的那份，不用手填路径。'+
+    var keepN=(p.kind==='production')?p.checkpoint_keep:p.light_checkpoint_keep;
+    var keep=(keepN==null)?'（方案没写留几份）':('最近 '+keepN+' 份');
+    var snapDir=(p.kind==='production')?(p.checkpoint_dir||p.out_dir):p.out_dir;
+    tpSnap.innerHTML='快照存在 '+(snapDir?('<b>'+esc(snapDir)+'</b>'):'（方案里没写，跑起来才确定）')+
+      '，文件名长这样 <b>step-000500.pt</b>，只留'+keep+'。下次勾上「接着上次继续」，会从这个目录读最新的那份，不用手填路径。'+
       '<br>一般不用动这里：随系统装好、数据就在 <b>/data</b> 的，run_server.sh 里的 <b>DATA_ROOT</b> 留空即可。只有数据没放进系统、直接从挂载的硬盘读（比如 <b>/mnt/e/data</b>）时，才需要在那行填实际路径——填了以后开训练会按新路径找，原方案文件不动。';
 
-    var hi=(p.horizon_updates||2400);                 /* 上限就是方案自己的 horizon，不是写死的 2400 */
+    var hi=(p.kind==='production'?(p.optimizer_updates||2400):(p.horizon_updates||2400)); /* 上限就是方案自己的 horizon */
     var ckHi=Math.min(2400,hi);                       /* 存点间隔也不能超过总步数，否则中途一个快照都不会有 */
     tpUpd.max=String(hi); tpUpdR.max=String(hi);
     tpCk.max=String(ckHi); tpCkR.max=String(ckHi);
-    document.getElementById('tpUpdMax').textContent=String(p.horizon_updates||2400);
+    document.getElementById('tpUpdMax').textContent=String(hi);
     if(parseInt(tpUpd.value,10)>hi){ tpUpd.value=String(hi); tpUpdR.value=String(hi); }
-    if(p.light_checkpoint_every!=null){          /* 换方案时把存点间隔带成该方案的默认值 */
-      var ckDef=Math.min(p.light_checkpoint_every,ckHi);
+    var ckDefault=(p.kind==='production'?p.checkpoint_every_updates:p.light_checkpoint_every);
+    if(ckDefault!=null){          /* 换方案时把存点间隔带成该方案的默认值 */
+      var ckDef=Math.min(ckDefault,ckHi);
       tpCk.value=String(ckDef);
       tpCkR.value=String(ckDef);
     }else if(parseInt(tpCk.value,10)>ckHi){
       tpCk.value=String(ckHi); tpCkR.value=String(ckHi);
     }
+    /* 生产配方的参数：有值就带到控件上；切回别的方案不强行改，只按方案默认重设 */
+    if(p.kind==='production'){
+      if(p.learning_rate!=null) tpLr.value=String(p.learning_rate);
+      if(p.warmup_updates!=null) tpWarm.value=String(p.warmup_updates);
+      if(p.minimum_lr!=null) tpMinLr.value=String(p.minimum_lr);
+      if(p.accum_steps!=null) tpAccum.value=String(p.accum_steps);
+      if(p.ema_decay!=null) tpEma.value=String(p.ema_decay);
+      if(p.validation_count!=null) tpVal.value=String(p.validation_count);
+      if(p.loader_workers!=null) tpWk.value=String(p.loader_workers);
+      if(p.physical_microbatch!=null) tpMb.value=String(p.physical_microbatch);
+    }
   }
   function tpShowVals(){               /* 纯读数：有没有方案都要立刻跟上，否则拖了像死机 */
     var wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
     var p=tpPlanObj(), pw=(p&&p.loader_workers!=null)?p.loader_workers:8;
+    var isProd=!!(p&&p.kind==='production');
+    [tpLr,tpWarm,tpMinLr,tpAccum,tpEma,tpVal].forEach(function(el){ el.disabled=!isProd; });
+    tpLrV.textContent=tpFmtNum(tpLrVal());
+    tpWarmV.textContent=tpWarmVal()+' 步';
+    tpMinLrV.textContent=tpFmtNum(tpMinLrVal());
+    tpAccumV.textContent=tpAccumVal()+' 条';
+    tpEmaV.textContent=String(tpEmaVal());
+    tpValV.textContent=tpValVal()+' 条';
     if(p&&p.kind==='tiny'){            /* tiny 只吃方案里的 steps/lr/out，这些控件不参与 */
       tpUpdV.textContent='不生效（方案 '+(p.steps!=null?p.steps:100)+' 步）';
       tpWkV.textContent='不生效（tiny 不用多进程）';
@@ -1474,9 +1564,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(window.DEMO){                   /* 演示模式：只展示方案，不拿 tiny 假训练冒充 322M */
       tpStart.disabled=true; tpStart.textContent='演示机不能起322M';
       tpCmd.innerHTML=hlCmd('# 演示模式：这台机器没有 4090 和数据\n'
-        +'# 页面只展示 322M 从0方案，不会跑 tiny 假训练\n'
+        +'# 页面只展示 322M 生产配方，不会跑 tiny 假训练\n'
         +'# 去有 4090 和 /data 数据的机器上点「开始训练」\n'
-        +'# 真训练入口：python -m scripts.train_phira_scratch --plan plans/evolve/l322m-scratch.json');
+        +'# 真训练入口：python -m scripts.build_l322m_production --recipe plans/evolve/l322m-production.json\n'
+        +'# 然后：python -m scripts.run_local_song_baseline --plan <recipe 里的 plan_output>');
       tpStartNote.textContent='演示机不训练；tiny 自检已移除。';
       return;
     }
@@ -1492,9 +1583,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     }
     if(!tpBusy){ tpStart.disabled=false; tpStart.textContent='开始训练'; }
     var upd=tpUpdVal(), wk=parseInt(tpWk.value,10), ck=tpCkVal(), hr=tpHrVal();
-    var p=tpPlanObj(), diff=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck);
+    var p=tpPlanObj();
+    var planCk=(p&&p.kind==='production')?p.checkpoint_every_updates:(p?p.light_checkpoint_every:null);
+    var diff=(planCk!=null&&planCk!==ck);
     var isTiny=!!(p&&p.kind==='tiny');
     var isScratch=!!(p&&p.kind==='scratch');
+    var isProd=!!(p&&p.kind==='production');
     [tpUpd,tpUpdR,tpWk,tpCk,tpCkR,tpHr,tpMb,tpDev,tpResume,tpSaveOpt,tpNoComp]
       .forEach(function(el){ el.disabled=isTiny; });
     if(isScratch){ tpMb.value='1'; tpMb.disabled=true; }
@@ -1508,6 +1602,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         +" --steps "+tsteps+" --lr "+tlr+" --out "+(p.out||'/tmp/train-tiny')
         +" 2>&1 | tee -a train.log'";
       tpCmd.innerHTML=hlCmd(txt);
+      return;
+    }
+    if(isProd){
+      var prodNote='# 生产配方：点「开始训练」后，后端会把上面的参数写成临时 recipe，\n'
+        +'# 先生成冻结 exposure/plan（build_l322m_production），再启动生产 baseline。\n'
+        +'# 学习率 '+tpFmtNum(tpLrVal())+' / warmup '+tpWarmVal()+' / 最低 '+tpFmtNum(tpMinLrVal())
+        +' / 累积 '+tpAccumVal()+' 条 / EMA '+tpEmaVal()+' / 验证 '+tpValVal()+' 条\n'
+        +'python -m scripts.build_l322m_production --recipe plans/evolve/'+(p.name||'l322m-production.json')+'\n'
+        +'python -m scripts.run_local_song_baseline --plan '+(p.plan_output||'<recipe 里的 plan_output>')
+        +(tpResume.checked?' --resume':'');
+      tpCmd.innerHTML=hlCmd(prodNote);
       return;
     }
     var pw=(p&&p.loader_workers!=null)?p.loader_workers:8;     /* 方案里写死的那几个进程，超过它=白拖 */
@@ -1547,6 +1652,11 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   tpHr.addEventListener('input',tpPaint);
   tpHr.addEventListener('change',function(){ tpHr.value=String(tpHrVal()); tpPaint(); });
   tpMb.addEventListener('change',function(){ tpMbV.textContent=tpMb.value+' 条/次'; tpPaint(); });
+  [tpLr,tpWarm,tpMinLr,tpEma,tpVal].forEach(function(el){
+    el.addEventListener('input',tpPaint);
+    el.addEventListener('change',tpPaint);
+  });
+  tpAccum.addEventListener('change',tpPaint);
   [tpResume,tpSaveOpt,tpNoComp,tpDev].forEach(function(el){ el.addEventListener('change',tpPaint); });
   tpPlan.addEventListener('change',function(){ tpPlanInfoPaint(); tpPaint(); });
   tpDetailBtn.addEventListener('click',function(){
@@ -1569,12 +1679,18 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       }else{
         if(j.repo) tpRepo=j.repo;
         tpPlan.innerHTML=tpPlans.map(function(p){
-          var label=p.kind==='scratch'?'322M 从0训练':(p.model&&/l322m/.test(p.model)?'322M 继续训练':(p.kind==='tiny'?'tiny 1.59M（冒烟自检）':p.name));
+          var label=p.kind==='production'?'322M 生产配方（从0）':
+                    (p.kind==='scratch'?'322M 从0（简化备用）':
+                    (p.model&&/l322m/.test(p.model)?'322M 继续训练':(p.kind==='tiny'?'tiny 1.59M（冒烟自检）':p.name)));
           return '<option value="'+esc(p.name)+'">'+esc(label)+'</option>';
         }).join('');
         var def=null;
         for(var i=0;i<tpPlans.length;i++){ if(tpPlans[i].default) def=tpPlans[i]; }
         if(def){ tpPlan.value=def.name; if(def.default_microbatch!=null) tpMb.value=String(def.default_microbatch); }
+        if(def&&def.kind==='production'&&def.optimizer_updates!=null){
+          tpUpd.value=String(def.optimizer_updates); tpUpdR.value=String(def.optimizer_updates);
+          tpCk.value=String(def.checkpoint_every_updates||500); tpCkR.value=tpCk.value;
+        }
       }
       tpPlanInfoPaint(); tpPaint();
     },8000);
@@ -1588,14 +1704,17 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     }
     if(!tpPlan.value){ tpStartNote.textContent='先选方案（后端连上才有列表）'; return; }
     var p=tpPlanObj(), ck=tpCkVal();
-    var extra=(p&&p.light_checkpoint_every!=null&&p.light_checkpoint_every!==ck)
-      ? '\n\n注意：存点间隔会从方案里的 '+p.light_checkpoint_every+' 步改成每 '+ck+' 步（用临时方案，原文件不动）。' : '';
+    var planCk=(p&&p.kind==='production')?p.checkpoint_every_updates:(p?p.light_checkpoint_every:null);
+    var extra=(planCk!=null&&planCk!==ck)
+      ? '\n\n注意：存点间隔会从方案里的 '+planCk+' 改成每 '+ck+'（生产配方会重新生成 plan，原方案文件不动）。' : '';
     if(!confirm('按这些参数开跑？'+extra)) return;
     var payload={id:'train-start',plan:tpPlan.value,updates:tpUpdVal(),workers:parseInt(tpWk.value,10),
       checkpoint_every:ck,
       deadline_hours:tpHrVal(),resume:tpResume.checked,save_optimizer:tpSaveOpt.checked,
       microbatch:parseInt(tpMb.value,10)||4,
-      no_compile:tpNoComp.checked,device:tpDev.value};
+      no_compile:tpNoComp.checked,device:tpDev.value,
+      learning_rate:tpLrVal(),warmup_updates:tpWarmVal(),minimum_lr:tpMinLrVal(),
+      accum_steps:tpAccumVal(),ema_decay:tpEmaVal(),validation_count:tpValVal()};
     tpBusy=true; tpStart.disabled=true; tpStart.textContent='启动中…'; tpStartNote.textContent='';
     var ctrl=new AbortController(), bootTo=setTimeout(function(){ctrl.abort();},8000);
     var url=apiBase+'/api/action'+(apiToken?'?token='+encodeURIComponent(apiToken):'');
@@ -1607,6 +1726,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         var note=(j&&j.note)?String(j.note):'后端没回 note';
         if(j&&j.ok){
           tpStartNote.textContent=note;
+          tpRunning=true;
+          tpStart.style.display='none'; tpStop.style.display='';
           outLine('ok','CMD '+j.command);
           pollTrain();                 /* 立刻抓一次，别等 5 秒轮询 */
         }else{

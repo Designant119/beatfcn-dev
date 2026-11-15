@@ -3,7 +3,7 @@
  "model": "BeatFCN l322m（从0）",
  "model_params": 327.9,
  "model_note": "从0随机初始化，不读旧 checkpoint；16 层 decoder，FFN 4096，mel 128，intensity 3。MERT 632M 冻结，不算在这 322M 里。",
- "default": true,
+ "default": false,
  "default_microbatch": 1,
  "tape": "/data/tape",
  "features": "/data/features/features",

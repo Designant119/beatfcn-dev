@@ -230,6 +230,7 @@ def data_items():
     plans_dir = os.path.join(REPO, 'plans', 'evolve')
     inits, exposures, total, ready = {}, {}, 0, 0
     scratch_notes = []
+    production_notes = []
     try:
         names = sorted(os.listdir(plans_dir))
     except OSError:
@@ -272,6 +273,58 @@ def data_items():
                 ready += 1
             scratch_notes.append((name, tape_dir, ok_tape, feat_dir, ok_feat))
             continue
+        if kind == 'production':
+            base = cfg.get('base_plan')
+            tape = cfg.get('tape')
+            mert = cfg.get('mert_features') or cfg.get('features')
+            mel = cfg.get('mel_stats')
+            base_path = _repoint(base, root) if isinstance(base, str) else ''
+            tape_dir = _repoint(tape, root) if isinstance(tape, str) else ''
+            mert_dir = _repoint(mert, root) if isinstance(mert, str) else ''
+            mel_path = _repoint(mel, root) if isinstance(mel, str) and mel else ''
+            ok_base = bool(base_path) and os.path.isfile(base_path)
+            if not mel_path and ok_base:
+                try:
+                    with open(base_path, encoding='utf-8') as f:
+                        base_cfg = json.load(f)
+                    norm = base_cfg.get('mel_normalization')
+                    mel_path = _repoint(norm.get('path'), root) if isinstance(norm, dict) else ''
+                except Exception:
+                    pass
+            try:
+                ok_tape = False
+                if bool(tape_dir):
+                    if os.path.isfile(tape_dir):
+                        ok_tape = True
+                    elif os.path.isdir(tape_dir):
+                        ok_tape = any(n.endswith('-chart.json') for n in os.listdir(tape_dir))
+            except OSError:
+                ok_tape = False
+            try:
+                ok_mert = False
+                if bool(mert_dir) and os.path.isdir(mert_dir):
+                    for sha in os.listdir(mert_dir)[:80]:
+                        sub = os.path.join(mert_dir, sha)
+                        if os.path.isdir(sub) and os.path.isfile(os.path.join(sub, 'L12.npy')):
+                            ok_mert = True
+                            break
+            except OSError:
+                ok_mert = False
+            ok_mel = bool(mel_path) and os.path.isfile(mel_path)
+            ok = ok_base and ok_tape and ok_mert and ok_mel
+            if ok:
+                ready += 1
+            missing = []
+            if not ok_base:
+                missing.append('base_plan ' + (base_path or '(空)'))
+            if not ok_tape:
+                missing.append('tape ' + (tape_dir or '(空)'))
+            if not ok_mert:
+                missing.append('MERT 特征 ' + (mert_dir or '(空)'))
+            if not ok_mel:
+                missing.append('mel 统计 ' + (mel_path or '(空)'))
+            production_notes.append((name, ok, '；'.join(missing)))
+            continue
         init = cfg.get('init')
         exp = (cfg.get('exposure') or {}).get('path') if isinstance(cfg.get('exposure'), dict) else None
         ok_init = isinstance(init, str) and os.path.isfile(_repoint(init, root))
@@ -288,6 +341,9 @@ def data_items():
                            '' if ok_tape else '不在：%s 里没有 *-chart.json' % tape_dir, 'data'))
         items.append(_item('FEAT ' + name, '特征目录', name, 'pass' if ok_feat else 'bad',
                            '' if ok_feat else '不在：%s 里没有特征文件' % feat_dir, 'data'))
+    for name, ok, missing in production_notes:
+        items.append(_item('PROD ' + name, '生产配方', name, 'pass' if ok else 'bad',
+                           '' if ok else '缺：' + missing, 'data'))
     for base, good in sorted(exposures.items()):
         items.append(_item('EXP ' + base, '数据集', base, 'pass' if good else 'bad',
                            '' if good else '不在：%s 里没有这个文件' % root, 'data'))
@@ -500,7 +556,16 @@ def train_plans():
                'light_checkpoint_keep': None, 'out_dir': None, 'horizon_updates': None,
                'init': None, 'seed': None, 'loader_workers': None,
                'default': False, 'default_microbatch': None, 'model': None,
-               'model_params': None, 'model_note': None, 'grad_checkpointing': None}
+               'model_params': None, 'model_note': None, 'grad_checkpointing': None,
+               'kind': None, 'tape': None, 'features': None, 'out': None,
+               'optimizer_updates': None, 'accum_steps': None, 'physical_microbatch': None,
+               'warmup_updates': None, 'minimum_lr': None, 'ema_decay': None,
+               'validation_count': None, 'max_train_wall_s': None,
+               'checkpoint_every_updates': None, 'light_checkpoint_every_updates': None,
+               'checkpoint_every': None, 'checkpoint_keep': None, 'base_plan': None, 'mert_features': None,
+               'mel_stats': None, 'plan_output': None, 'exposure_path': None,
+               'output': None, 'checkpoint_dir': None, 'generation_output': None,
+               'generation_dir': None}
         try:
             with open(os.path.join(d, name), encoding='utf-8') as f:
                 cfg = json.load(f)
@@ -508,14 +573,27 @@ def train_plans():
                 lr = cfg.get('learning_rate')
                 if isinstance(lr, (int, float)) and not isinstance(lr, bool):
                     rec['learning_rate'] = lr
-                for key in ('light_checkpoint_every', 'light_checkpoint_keep', 'seed', 'loader_workers'):
+                for key in ('light_checkpoint_every', 'light_checkpoint_keep', 'seed', 'loader_workers',
+                            'optimizer_updates', 'accum_steps', 'physical_microbatch',
+                            'warmup_updates', 'validation_count', 'max_train_wall_s',
+                            'checkpoint_every_updates', 'light_checkpoint_every_updates',
+                            'checkpoint_every', 'checkpoint_keep'):
                     v = cfg.get(key)
                     if isinstance(v, int) and not isinstance(v, bool):
                         rec[key] = v
-                for key in ('out_dir', 'init', 'kind', 'tape', 'features', 'out', 'model', 'model_note'):
+                for key in ('minimum_lr', 'ema_decay'):
+                    v = cfg.get(key)
+                    if isinstance(v, (int, float)) and not isinstance(v, bool):
+                        rec[key] = v
+                for key in ('out_dir', 'init', 'kind', 'tape', 'features', 'out', 'model', 'model_note',
+                            'base_plan', 'mert_features', 'mel_stats', 'plan_output', 'output',
+                            'checkpoint_dir', 'generation_output', 'generation_dir'):
                     v = cfg.get(key)
                     if isinstance(v, str) and v:
-                        rec[key] = _repoint(v, root) if key in ('out_dir', 'init', 'tape', 'features', 'out') else v
+                        rec[key] = _repoint(v, root) if key in (
+                            'out_dir', 'init', 'tape', 'features', 'out', 'base_plan',
+                            'mert_features', 'mel_stats', 'plan_output', 'output',
+                            'checkpoint_dir', 'generation_output', 'generation_dir') else v
                 for key in ('steps', 'lr', 'model_params'):
                     v = cfg.get(key)
                     if isinstance(v, (int, float)) and not isinstance(v, bool):
@@ -527,11 +605,24 @@ def train_plans():
                 v = cfg.get('default_microbatch')
                 if isinstance(v, int) and not isinstance(v, bool):
                     rec['default_microbatch'] = v
+                v = cfg.get('exposure')
+                if isinstance(v, str) and v:
+                    rec['exposure_path'] = _repoint(v, root)
+                elif isinstance(v, dict):
+                    p = v.get('path')
+                    if isinstance(p, str) and p:
+                        rec['exposure_path'] = _repoint(p, root)
                 sched = cfg.get('schedule')
                 if isinstance(sched, dict):
                     h = sched.get('horizon_updates')
                     if isinstance(h, int) and not isinstance(h, bool):
                         rec['horizon_updates'] = h
+                if rec['horizon_updates'] is None:
+                    h = cfg.get('horizon_updates')
+                    if isinstance(h, int) and not isinstance(h, bool):
+                        rec['horizon_updates'] = h
+                if rec['horizon_updates'] is None and isinstance(rec['optimizer_updates'], int):
+                    rec['horizon_updates'] = rec['optimizer_updates']
         except Exception:
             pass          # 单个 json 坏了不影响整张清单：名字照列，字段留空
         plans.append(rec)
@@ -607,6 +698,13 @@ def _train_start(body):
             return None
         return v
 
+    def want_float(key, lo, hi):
+        v = body.get(key)
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return None
+        v = float(v)
+        return v if lo <= v <= hi else None
+
     workers = want_int('workers', 1, 16)
     hours = want_int('deadline_hours', 1, 168)
     plan = body.get('plan')
@@ -645,8 +743,32 @@ def _train_start(body):
     if plan not in known:
         return bad('plan 不在 plans/evolve 里：%r' % plan)
 
+    kind = known[plan].get('kind')
+    prod = kind == 'production'
+    prod_lr = prod_warm = prod_min_lr = prod_accum = prod_ema = prod_val = None
+    if prod:
+        prod_lr = want_float('learning_rate', 1e-7, 1e-2)
+        prod_warm = want_int('warmup_updates', 0, 2000)
+        prod_min_lr = want_float('minimum_lr', 0.0, 1e-2)
+        prod_accum = want_int('accum_steps', 1, 32)
+        prod_ema = want_float('ema_decay', 0.9, 0.999999)
+        prod_val = want_int('validation_count', 10, 2000)
+        if prod_lr is None:
+            return bad('learning_rate 要是 1e-7–1e-2 的数（收到 %r）' % (body.get('learning_rate'),))
+        if prod_warm is None:
+            return bad('warmup_updates 要是 0–2000 的整数（收到 %r）' % (body.get('warmup_updates'),))
+        if prod_min_lr is None:
+            return bad('minimum_lr 要是 0–1e-2 的数（收到 %r）' % (body.get('minimum_lr'),))
+        if prod_accum is None:
+            return bad('accum_steps 要是 1–32 的整数（收到 %r）' % (body.get('accum_steps'),))
+        if prod_ema is None:
+            return bad('ema_decay 要是 0.9–0.999999 的数（收到 %r）' % (body.get('ema_decay'),))
+        if prod_val is None:
+            return bad('validation_count 要是 10–2000 的整数（收到 %r）' % (body.get('validation_count'),))
+
     # 步数上限就是这个方案自己写的 horizon（exposure 序列按这个长度造好，超了训练脚本会 ValueError）
-    base_every = known[plan].get('light_checkpoint_every')
+    base_every = (known[plan].get('checkpoint_every_updates') if prod
+                  else known[plan].get('light_checkpoint_every'))
     horizon = known[plan].get('horizon_updates')
     up_hi = horizon if isinstance(horizon, int) and horizon > 0 else 2400
     updates = want_int('updates', 100, up_hi)
@@ -662,7 +784,7 @@ def _train_start(body):
                    % (ck_hi, up_hi, body.get('checkpoint_every'),))
     # 一次前向塞几条（显存）：1/2/4 是单条流，8/16 走分组打包，等效 batch 不变。
     # 只认这几个值，训练脚本和 checkpoint 校验也是这一套。默认 4 = 不写进方案。
-    micro = body.get('microbatch', 4)
+    micro = body.get('microbatch', (known[plan].get('physical_microbatch') if prod else 4))
     if isinstance(micro, bool) or not isinstance(micro, int) or micro not in (1, 2, 4, 8, 16):
         return bad('microbatch 只能是 1 / 2 / 4 / 8 / 16（收到 %r）' % (micro,))
     plan_path = os.path.join(REPO, 'plans', 'evolve', plan)
@@ -670,7 +792,9 @@ def _train_start(body):
     root = (DATA_ROOT or '/data').rstrip('/') or '/data'
     every_changed = isinstance(ck_every, int) and ck_every != base_every
     mb_changed = micro != 4
-    if every_changed or mb_changed or root != '/data':
+    if prod:
+        ck_note = '（生产配方：页面参数会写进临时 recipe，start 时先生成冻结 plan/exposure）'
+    elif every_changed or mb_changed or root != '/data':
         try:
             plan_path = _plan_copy_with_checkpoint(
                 plan, ck_every if every_changed else None, micro if mb_changed else None)
@@ -699,6 +823,38 @@ def _train_start(body):
             steps=int(t.get('steps') or 100), lr=float(t.get('lr') or 1e-3),
             out=q(t.get('out') or '/tmp/train-tiny'), py=q(sys.executable),
             site=q(_USER_SITE))
+    elif kind == 'production':
+        if device != 'cuda':
+            return bad('322M 生产配方只能跑 cuda；CPU 跑不动，别选 cpu')
+        recipe_src = os.path.join(REPO, 'plans', 'evolve', plan)
+        with open(recipe_src, encoding='utf-8') as f:
+            recipe = json.load(f)
+        recipe.update(optimizer_updates=updates, accum_steps=prod_accum,
+                      physical_microbatch=micro, loader_workers=workers,
+                      learning_rate=prod_lr, warmup_updates=prod_warm,
+                      minimum_lr=prod_min_lr, ema_decay=prod_ema,
+                      validation_count=prod_val, checkpoint_every_updates=ck_every,
+                      max_train_wall_s=hours * 3600)
+        recipe['warmup_updates'] = min(prod_warm, updates - 1)
+        if root != '/data':
+            recipe = _repoint(recipe, root)
+        recipe_dir = os.path.join(tempfile.gettempdir(), 'beatfcn-production')
+        os.makedirs(recipe_dir, exist_ok=True)
+        recipe_path = os.path.join(recipe_dir, plan.replace('.json', '-run-%d.json' % int(time.time())))
+        with open(recipe_path, 'w', encoding='utf-8') as f:
+            json.dump(recipe, f, ensure_ascii=False, indent=2)
+        out_plan = recipe.get('plan_output') or '/data/evolve/l322m-production-plan.json'
+        log = q(os.path.join(REPO, 'train.log'))
+        build = ('cd {repo} && HOME={home} PYTHONPATH={site} {py} -m scripts.build_l322m_production'
+                 ' --recipe {recipe} 2>&1 | tee -a {log}').format(
+            repo=q(REPO), home=q(home), site=q(_USER_SITE), py=q(sys.executable),
+            recipe=q(recipe_path), log=log)
+        run = ('cd {repo} && HOME={home} PYTHONPATH={site} BEATFCN_MAX_LOADER_WORKERS={workers}'
+               ' {py} -m scripts.run_local_song_baseline --plan {plan}{resume} 2>&1 | tee -a {log}').format(
+            repo=q(REPO), home=q(home), site=q(_USER_SITE), workers=workers, py=q(sys.executable),
+            plan=q(out_plan), resume=' --resume' if flags['resume'] else '', log=log)
+        cmd = run if flags['resume'] else build + ' && ' + run
+        ck_note += '；生产 plan：%s' % out_plan
     elif kind == 'scratch':
         cmd = ('cd {repo} && HOME={home} PYTHONPATH={site} {py} -m scripts.train_phira_scratch '
                '--plan {plan} --updates {updates} --deadline-unix {deadline}').format(
@@ -710,14 +866,14 @@ def _train_start(body):
            .format(repo=q(REPO), home=q(home), site=q(_USER_SITE), workers=workers, py=q(sys.executable),
                    plan=q(plan_path),
                    updates=updates, deadline=deadline_ts))
-    if kind != 'tiny':  # tiny 脚本的 argparse 不认这三个旗标
+    if kind not in ('tiny', 'production'):  # tiny/生产配方各自有自己的参数
         if flags['resume']:
             cmd += ' --resume'
         if flags['save_optimizer']:
             cmd += ' --save-optimizer'
         if flags['no_compile']:
             cmd += ' --no-compile'
-    cmd += ' --device {dev} 2>&1 | tee -a {log}'.format(py=q(sys.executable), dev=device, log=q(os.path.join(REPO, 'train.log')))
+        cmd += ' --device {dev} 2>&1 | tee -a {log}'.format(py=q(sys.executable), dev=device, log=q(os.path.join(REPO, 'train.log')))
 
     if dry_run:
         return 200, {'ok': True, 'command': cmd,
@@ -750,7 +906,7 @@ def _train_start(body):
         rcmd = ('cd {repo} && python3 -m scripts.report_progress --plan {plan} --out-dir {out} '
                 '--webhook {hook} --interval 120').format(
             repo=q(REPO), plan=q(os.path.join(REPO, 'plans', 'evolve', plan)),
-            out=q(known[plan].get('out_dir') or ''), hook=q(feishu))
+            out=q(known[plan].get('checkpoint_dir') or known[plan].get('out_dir') or ''), hook=q(feishu))
         try:
             subprocess.run(['tmux', 'kill-session', '-t', 'report'], capture_output=True, timeout=8)
         except Exception:
