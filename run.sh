@@ -15,6 +15,7 @@ if [ -x "$ROOT/runtime/python/bin/python3" ] && "$ROOT/runtime/python/bin/python
   USE_RUNTIME=1
   export PYTHONNOUSERSITE=1     # 别借同学 ~/.local 里的包，版本会打架
   unset PYTHONPATH
+  export PATH="$ROOT/runtime/bin:$PATH"   # 盘里的 ffmpeg
 fi
 
 # 没自带解释器时，再用 .venv 里的包（PYTHONPATH 带，换挂载点也不怕）

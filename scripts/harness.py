@@ -261,7 +261,7 @@ def start(step, args, *, dry_run=False):
     # tmux 会丢当前 shell 的部分环境：torch 装在 ~/.local 时，
     # 不把 PYTHONUSERBASE 带进去，一进会话就 ModuleNotFoundError
     pre = ''
-    for key in ('PYTHONUSERBASE', 'PYTHONPATH', 'VIRTUAL_ENV'):
+    for key in ('PYTHONUSERBASE', 'PYTHONPATH', 'VIRTUAL_ENV', 'PATH', 'HF_HOME', 'TORCH_HOME', 'BEATFCN_DATA_ROOT', 'BEATFCN_TRAIN_LOG'):
         value = os.environ.get(key)
         if value:
             pre += f'export {key}={shlex.quote(value)}; '
@@ -421,7 +421,7 @@ def start_auto(from_step=None, to_step='train'):
         cmd += f' --from {from_step}'
     inner = f'cd {shlex.quote(str(ROOT))} && {cmd} 2>&1 | tee {shlex.quote(str(log_path))}'
     env_pre = ''
-    for key in ('PYTHONUSERBASE', 'PYTHONPATH', 'VIRTUAL_ENV'):
+    for key in ('PYTHONUSERBASE', 'PYTHONPATH', 'VIRTUAL_ENV', 'PATH', 'HF_HOME', 'TORCH_HOME', 'BEATFCN_DATA_ROOT', 'BEATFCN_TRAIN_LOG'):
         value = os.environ.get(key)
         if value:
             env_pre += f'export {key}={shlex.quote(value)}; '

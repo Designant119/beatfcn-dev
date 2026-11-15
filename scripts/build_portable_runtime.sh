@@ -25,6 +25,17 @@ PY="$DEST/python/bin/python3"
 echo "装 torch / torchaudio…"
 "$PY" -m pip install torch torchaudio --index-url "${TORCH_INDEX:-https://download.pytorch.org/whl/cpu}"
 
+echo "装 ffmpeg（音频那步要用）…"
+if [ ! -x "$DEST/bin/ffmpeg" ]; then
+  TMP_FF="$(mktemp -d)"
+  curl -fL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz" | tar -xJ -C "$TMP_FF"
+  mkdir -p "$DEST/bin"
+  cp "$(find "$TMP_FF" -type f -name ffmpeg | head -1)" "$DEST/bin/ffmpeg"
+  cp "$(find "$TMP_FF" -type f -name ffprobe | head -1)" "$DEST/bin/ffprobe"
+  chmod +x "$DEST/bin/ffmpeg" "$DEST/bin/ffprobe"
+  rm -rf "$TMP_FF"
+fi
+
 echo "装其余依赖…"
 "$PY" -m pip install -r "$ROOT/requirements.txt"
 
