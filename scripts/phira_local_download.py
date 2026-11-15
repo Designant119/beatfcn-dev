@@ -132,7 +132,33 @@ def valid_zip(path):
         return False
 
 
-def download(r, dest, tries=5):
+def index_existing(dest):
+    """按谱面 id 建索引。文件名前缀是评分，评分一变名字就变，但尾部 _<id>.zip 不变。"""
+    idx = {}
+    try:
+        for entry in os.scandir(dest):
+            if not entry.is_file() or not entry.name.endswith('.zip'):
+                continue
+            tail = entry.name[:-4].rsplit('_', 1)[-1]
+            if tail.isdigit():
+                idx.setdefault(int(tail), entry.path)
+    except FileNotFoundError:
+        pass
+    except Exception:                                  # noqa: BLE001
+        pass
+    return idx
+
+
+def download(r, dest, existing=None, tries=5):
+    # 先按 id 找：下过就跳过，哪怕这次评分变了、文件名前缀不一样
+    hit = (existing or {}).get(r["id"])
+    if hit and os.path.exists(hit) and os.path.getsize(hit) > 0:
+        if valid_zip(hit):
+            return r["id"], "cached", os.path.getsize(hit), None
+        try:
+            os.remove(hit)
+        except Exception:                              # noqa: BLE001
+            pass
     path = os.path.join(dest, fname(r))
     if os.path.exists(path) and os.path.getsize(path) > 0:
         if valid_zip(path):
@@ -490,11 +516,14 @@ def main():
         print(f"元数据 {len(rows)} 条 | 符合条件 {len(sel)} 个 | 输出到 {args.dest}")
         print(f"并发 {args.workers}，Ctrl+C 可随时中断，重跑会接着下\n", flush=True)
 
+        existing = index_existing(args.dest)
+        if existing:
+            print(f"目录里已有 {len(existing)} 个包，按谱面 id 认，不按顺序也没关系")
         failed, ok, cached, total_bytes = [], 0, 0, 0
         started = time.time()
         try:
             with ThreadPoolExecutor(max_workers=args.workers) as ex:
-                futs = {ex.submit(download, r, args.dest): r for r in sel}
+                futs = {ex.submit(download, r, args.dest, existing): r for r in sel}
                 for n, fut in enumerate(as_completed(futs), 1):
                     rid, status, size, err = fut.result()
                     if status == "ok":
