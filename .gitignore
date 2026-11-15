@@ -16,3 +16,6 @@ ckpt_*.json
 reval_v22_result*.json
 *.log
 demo_cpu/
+runtime/
+data/
+.venv/

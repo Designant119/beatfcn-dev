@@ -8,7 +8,12 @@ PORT="${PORT:-7777}"
 PY="${PYTHON:-python3}"
 mkdir -p "$ROOT/.harness/logs" "$ROOT/data"
 
-# .venv 里的包用 PYTHONPATH 带进来：硬盘换挂载点、venv 的 shebang 失效时也能用
+# 自带的 Python 优先：整盘带走时连解释器都不用装
+if [ -x "$ROOT/runtime/python/bin/python3" ] && "$ROOT/runtime/python/bin/python3" -c "import sys" >/dev/null 2>&1; then
+  PY="$ROOT/runtime/python/bin/python3"
+fi
+
+# 没自带解释器时，再用 .venv 里的包（PYTHONPATH 带，换挂载点也不怕）
 SITE="$(ls -d "$ROOT"/.venv/lib/python3.*/site-packages 2>/dev/null | head -1 || true)"
 if [ -n "$SITE" ]; then
   export PYTHONPATH="$SITE${PYTHONPATH:+:$PYTHONPATH}"
@@ -19,6 +24,8 @@ fi
 
 export BEATFCN_DATA_ROOT="${BEATFCN_DATA_ROOT:-$ROOT/data}"
 export BEATFCN_TRAIN_LOG="$ROOT/.harness/logs/phira-train.log"
+export HF_HOME="${HF_HOME:-$ROOT/data/cache/hf}"          # 模型权重也留在盘上，不写同学 ~/.cache
+export TORCH_HOME="${TORCH_HOME:-$ROOT/data/cache/torch}"
 export PYTHONUNBUFFERED=1
 
 echo "仓库：$ROOT"

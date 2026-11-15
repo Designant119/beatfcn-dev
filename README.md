@@ -12,11 +12,14 @@
 代码、数据、Python 环境都放在同一块硬盘上，换台机器插上就能起，不依赖本机的 `/data` 或 `~/.local`：
 
 ```bash
-bash scripts/portable_env.sh      # 只跑一次：在硬盘上建 .venv 并装依赖
+bash scripts/build_portable_runtime.sh   # 只跑一次：把 Python + torch + transformers 全塞进盘里的 runtime/
+# 4090 想要 CUDA 版：TORCH_INDEX=https://download.pytorch.org/whl/cu121 bash scripts/build_portable_runtime.sh
 bash run.sh                       # 起控制台，默认 http://127.0.0.1:7777/
 ```
 
+- 解释器在 `<仓库>/runtime/python`，包在它自己的 site-packages；同学机器不用装 Python
 - 所有数据默认落在 `<仓库>/data`；想换位置设 `BEATFCN_DATA_ROOT`
+- 模型缓存也留在盘上：`data/cache/hf`、`data/cache/torch`
 - 路径记忆存的是**相对仓库**的路径，硬盘挂载点从 `/mnt/e` 变成 `/media/usb` 也不会指丢
 - Windows 下双击 `run.bat`（走 WSL）
 - 硬件的 `/data` 存在时仍优先用它（4090 那台习惯）
