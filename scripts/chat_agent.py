@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.harness import (ORDER, STEPS, demo_train, inspect_charts, log, pipeline_next,
+from scripts.harness import (ORDER, STEPS, demo_train, inspect_charts, load_paths, log, pipeline_next,
                              running, start, status, stop as hstop, train_progress)
 
 # 给同学看的人话名称；内部还是那八个英文步骤
@@ -64,6 +64,10 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - “训练 / 开训 / 跑一下” → {"step": "train", "args": {}}
 - “下一步干啥 / 看看进度” → {"action": "status"}
 - “停掉训练 / 停下来 / 别跑了 / 暂停” → {"action": "stop"}（step 可省略，省略就停正在跑的那一步；这是真去停，不许只回“好的”）
+- “文件在哪 / 下到哪了 / 存哪去了 / 下了多少” → {"action": "where"}（可带 args.dir；不带就看当前的谱面目录）
+- “还剩多少空间 / 磁盘满没满 / 放得下吗” → {"action": "disk"}
+- “日志呢 / 现在在输出什么 / 它跑到哪了” → {"action": "logs", "step": "对应步骤"}（真读日志尾巴，不许编）
+- “把坏包清掉 / 删掉坏的 / 清理一下” → {"action": "clean"}（只把打不开的挪进隔离文件夹，不真删；可带 args.dir）
 - “去看看 / 检验一下 / 查查有没有坏包 / 验一下” → {"action": "inspect"}（真去数包、逐个验，不许只嘴上说“下好了”）
   他要是说了某个目录，就 {"action": "inspect", "args": {"dir": "那个目录"}}
 - “接着跑 / 继续 / 一键跑 / 往下走” → {"action": "run"}（不填 step，后端自动挑下一步）
@@ -86,14 +90,14 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - 启动返回 errors 非空 或 alive 为 false：照抄日志里那句人话报失败，
   绝对不能回“已启动”“开跑了”。
 - alive 为 false 且没有 errors：说明跑完了（短任务）或自己退了，说“已经跑完/已退出”。
-- 不能用 shell、不能删文件、不能写白名单之外的目录。
+- 不能用 shell；删文件只允许“清坏包”这一种，而且是挪进隔离目录、不是真删。
 - 只是闲聊、吐槽、情绪、测试、问问题：action 一律用 "answer"，绝不 run。
   就算状态里写着“建议下一步”，也不许自己开跑——用户没让你动手，就别动手。
 - 只有用户明确让你干活时才 run：下载/建库/提特征/造数据/训练/继续/接着跑/一键跑。
 
 只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
 {"reply": "给同学看的中文回复（一两句，不要长篇）",
- "action": "run|status|inspect|stop|answer", "step": "步骤名（action=run/stop 时）",
+ "action": "run|status|inspect|stop|where|disk|logs|clean|answer", "step": "步骤名（action=run/stop 时）",
  "args": {参数对象，可省略，内部参数不要念出来}}
 
 """
@@ -271,6 +275,80 @@ def _digest(older):
     return ('早前聊过这些（压缩过，细节可能丢，别当成当前指令）：\n' + '\n'.join(lines))[:2200]
 
 
+def _look_tool(action, decision, reply):
+    """只读的几只手：看目录、看磁盘、看日志；外加可逆的“清坏包”。"""
+    import shutil
+    args = decision.get('args') or {}
+    if action == 'where':
+        d = args.get('dir') or args.get('path') or load_paths().get('charts') or '/data/phira_charts'
+        p = Path(str(d))
+        if not p.is_dir():
+            return dict(ok=False, action=action, reply=f'这个目录不在：{d}，可能还没下或者名字不对。')
+        files = [x for x in p.iterdir() if x.is_file()]
+        zips = [x for x in files if x.suffix.lower() == '.zip']
+        total = 0
+        for x in zips:
+            try:
+                total += x.stat().st_size
+            except OSError:
+                pass
+        size = (f'{total / 1024 ** 3:.1f} GB' if total >= 1024 ** 3 else f'{total / 1024 ** 2:.0f} MB')
+        return dict(ok=True, action=action, info=dict(dir=str(p), count=len(zips), bytes=total),
+                    reply=f'谱面就在 {p}，现在 {len(zips)} 个包、{size}。下一步会自己从这儿读，你不用搬。')
+    if action == 'disk':
+        rows = []
+        for label, path in (('根目录', '/'), ('数据盘 /data', '/data'), ('仓库', str(Path(__file__).resolve().parent.parent))):
+            try:
+                u = shutil.disk_usage(path)
+                rows.append(f'{label}剩 {u.free / 1024 ** 3:.0f} GB（总共 {u.total / 1024 ** 3:.0f} GB）')
+            except Exception:                 # noqa: BLE001
+                continue
+        if not rows:
+            return dict(ok=False, action=action, reply='磁盘信息没读到，可能路径不在。')
+        return dict(ok=True, action=action, reply='；'.join(rows) + '。')
+    if action == 'logs':
+        step = decision.get('step') if decision.get('step') in STEPS else 'train'
+        text = log(step, 24)
+        if not text:
+            return dict(ok=False, action=action, step=step, reply=f'「{_label(step)}」还没有日志，可能还没跑过。')
+        lines = []
+        for raw in text.splitlines()[-8:]:
+            try:
+                obj = json.loads(raw)
+                if 'step' in obj:
+                    lines.append(f'第 {obj["step"]} 步' + (f'，loss {obj["loss"]}' if 'loss' in obj else ''))
+                    continue
+            except Exception:                 # noqa: BLE001
+                pass
+            if 'ckpt ->' in raw:
+                m = re.search(r'（(.+?)）', raw)
+                lines.append('模型存好了' + (f'（{m.group(1)}）' if m else ''))
+                continue
+            if raw.strip():
+                lines.append(raw.strip()[-60:])
+        return dict(ok=True, action=action, step=step,
+                    reply=f'「{_label(step)}」最近的输出：' + '；'.join(lines[-3:]))
+    if action == 'clean':                 # 清坏包：只挪进隔离目录，绝不删
+        d = args.get('dir') or load_paths().get('charts') or '/data/phira_charts'
+        info = inspect_charts(d, sample=10 ** 9)
+        bad = info.get('bad') or []
+        if not bad:
+            return dict(ok=True, action=action, reply='验过了，没有打不开的包，不用清。')
+        src = Path(info['dest'])
+        q = src / '_quarantine'
+        q.mkdir(exist_ok=True)
+        moved = 0
+        for name in bad:
+            try:
+                shutil.move(str(src / name), str(q / name))
+                moved += 1
+            except Exception:                 # noqa: BLE001
+                pass
+        return dict(ok=True, action=action, moved=moved,
+                    reply=f'把 {moved} 个打不开的包挪进了隔离文件夹（没真删），重下这些就行。')
+    return dict(ok=False, action=action, reply=reply or '没太明白')
+
+
 def _build_messages(message, history=None):
     messages = [dict(role='system', content=TOOL_DOC + '\n\n当前状态：' + _state_brief())]
     turns = [t for t in (history or []) if t.get('role') in ('user', 'assistant')]
@@ -349,6 +427,8 @@ def _execute(decision):
         if prog and '步' not in text:
             text = text.rstrip('。') + '。' + prog + '。'
         return dict(ok=True, action='status', reply=text, state=status())
+    if action in ('where', 'disk', 'logs', 'clean'):
+        return _look_tool(action, decision, reply)
     if action == 'stop':
         step = decision.get('step')
         if step not in STEPS:
@@ -593,6 +673,14 @@ def stream(message, history=None, model=None, thinking=None):
         yield dict(type='status', text='正在数包、验包…')
     elif decision.get('action') == 'stop':
         yield dict(type='status', text='正在停…')
+    elif decision.get('action') == 'where':
+        yield dict(type='status', text='正在数目录…')
+    elif decision.get('action') == 'disk':
+        yield dict(type='status', text='正在看磁盘…')
+    elif decision.get('action') == 'logs':
+        yield dict(type='status', text='正在翻日志…')
+    elif decision.get('action') == 'clean':
+        yield dict(type='status', text='正在挑坏包…')
     result = _execute(decision)
 
     out_tokens = (usage or {}).get('completion_tokens')
