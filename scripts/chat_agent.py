@@ -16,6 +16,7 @@
   PHIRA_CHAT_CONFIG 可选，改用户配置文件的路径
 """
 import base64
+import codecs
 import json
 import os
 import re
@@ -148,6 +149,8 @@ MODELS = ('glm-5.3', 'glm-5.3-flash')      # 同学可选的模型，别的名�
 INTENT_WORDS = ('下载', '谱面', '建库', '入库', '数据集', '数据', '音轨', '特征',
                 '训练', '开训', '跑', '开始', '继续', '接着', '清单', '下一步',
                 '一键', '往下', '搞', '弄')
+# 会真正动手的动作：run（跑单步）与 auto（自动连跑）都必须先过意图门。
+MUTATING_ACTIONS = ('run', 'auto')
 
 
 def _thinking_extra(thinking):
@@ -367,7 +370,7 @@ def _build_messages(message, history=None):
 
 def _gate(message, decision):
     """模型说要动手，但用户那句话里没有动手的意思 → 压回聊天，别自作主张。"""
-    if decision.get('action') == 'run' and not any(w in message for w in INTENT_WORDS):
+    if decision.get('action') in MUTATING_ACTIONS and not any(w in message for w in INTENT_WORDS):
         return dict(action='answer',
                     reply=decision.get('reply') or '想让我跑哪一步？说一声就开始。')
     return decision
@@ -676,12 +679,15 @@ def stream(message, history=None, model=None, thinking=None, allow_shell=False):
     tap = _ReplyTap()
     t_first = t_last = None
     buf = ''
+    # 增量解码：4096 字节的块可能正好切在多字节 UTF-8 字符中间，
+    # 逐块 decode 会把半个汉字变成 �；增量解码器会把余量带到下一块。
+    decoder = codecs.getincrementaldecoder('utf-8')('replace')
     with resp:
         while True:
             chunk = resp.read(4096)
             if not chunk:
                 break
-            buf += chunk.decode('utf-8', 'replace')
+            buf += decoder.decode(chunk)
             while '\n' in buf:
                 line, buf = buf.split('\n', 1)
                 line = line.strip()
@@ -713,6 +719,7 @@ def stream(message, history=None, model=None, thinking=None, allow_shell=False):
                     out = tap.feed(piece)
                     if out:
                         yield dict(type='delta', text=out)
+        buf += decoder.decode(b'', final=True)   # 把最后一块的余量吐出来
 
     text = ''.join(full)
     yield dict(type='status', text='正在解析指令…')

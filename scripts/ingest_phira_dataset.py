@@ -44,14 +44,23 @@ def split_for(audio_sha256):
     return 'val' if h % 5 == 0 else 'train'
 
 
-def zip_id(path):
-    """文件名形如 {rating}_{name}_{level}_{id}.zip 或 {id}_{name}_{level}.zip，取最后一串数字。"""
+def zip_id(path, known=None):
+    """从 zip 名里取 Phira 谱面 id。
+
+    真实语料长这样：`10057_Endless Summer (LUM!X Remix)_14.zip`、`1000_アイドル_AT Lv.15.zip`，
+    id 在开头、难度 level 在尾巴。旧版「取最后一串数字」会把末尾的 level（1~20）当成 id，
+    于是整包被记成 `no_meta` 丢掉。现在两头候选都留着，有 meta 就按 meta 认，
+    没有 meta 才按头段优先的顺序退。
+    """
     stem = Path(path).stem
-    tail = stem.rsplit('_', 1)[-1]
-    if tail.isdigit():
-        return tail
     head = stem.split('_', 1)[0]
-    return head if head.isdigit() else None
+    tail = stem.rsplit('_', 1)[-1]
+    cands = [c for c in (head, tail) if c.isdigit()]
+    if known is not None:
+        for c in cands:
+            if str(c) in known:
+                return c
+    return cands[0] if cands else None
 
 
 def main():
@@ -81,7 +90,7 @@ def main():
     started = time.time()
     tmpdir = tempfile.mkdtemp(prefix='ingest-')
     for i, zpath in enumerate(files, 1):
-        pid = zip_id(zpath)
+        pid = zip_id(zpath, meta)
         cand = meta.get(str(pid))
         if cand is None:
             counts['no_meta'] += 1

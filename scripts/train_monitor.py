@@ -1483,7 +1483,18 @@ def main():
     lock.write(str(os.getpid()))
     lock.flush()
     mon, offsets, pending = Monitor(), {}, {}
-    emitted = {json.loads(l)['key'] for l in ALERTS.read_text().splitlines()} if ALERTS.exists() else set()
+    # 续跑去重用的「已发过」key 集合。文件里可能有半行（进程被 kill 时写了一半）、
+    # 空行或手抖改坏的行；一条脏数据不该把整个监控搞挂，跳过就是。
+    emitted = set()
+    if ALERTS.exists():
+        for line in ALERTS.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                emitted.add(json.loads(line)['key'])
+            except (json.JSONDecodeError, KeyError, TypeError):
+                continue
     started, next_cloud, cloud_error, last_print = time.time(), 0., None, None
     while True:
         now = time.time()

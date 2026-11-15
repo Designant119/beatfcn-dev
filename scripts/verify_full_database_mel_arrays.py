@@ -75,13 +75,20 @@ async def main(args):
         raise ValueError(f'{len(missing_metadata)} parsed audio lack mel metadata')
     volume = modal.Volume.from_name('beatfcn-data', create_if_missing=False)
     partial = DEST.with_suffix('.jsonl.partial')
+    # 续跑去重：.partial 里可能有半行（上次进程被 kill 时写了一半），
+    # 一条坏行不该让整轮续跑崩在开头，跳过即可；verified=False 的仍重跑（那是待复核的）。
     done = set()
     if partial.exists():
         for line in partial.read_text().splitlines():
-            if line.strip():
+            line = line.strip()
+            if not line:
+                continue
+            try:
                 value = json.loads(line)
-                if value.get('verified'):
-                    done.add(value['audio_sha256'])
+            except json.JSONDecodeError:
+                continue
+            if value.get('verified'):
+                done.add(value['audio_sha256'])
     jobs = sorted(parsed - done)
     semaphore = asyncio.Semaphore(args.concurrency)
     started = time.monotonic()
@@ -106,8 +113,14 @@ async def main(args):
     lines = []
     if partial.exists():
         for line in partial.read_text().splitlines():
-            if line.strip():
-                lines.append(line)
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                json.loads(line)              # 解析不了的（半行）不并进最终文件
+            except json.JSONDecodeError:
+                continue
+            lines.append(line)
     DEST.write_text('\n'.join(lines) + ('\n' if lines else ''))
     partial.unlink()
     values = [json.loads(line) for line in lines]

@@ -643,7 +643,10 @@ class Floor:
         return r.solver([r.names.index(k) for k in names])
 
     def auc_null(self, mode):
-        return float(self.data['H'][mode]['auc_null'])
+        value = self.data['H'][mode].get('auc_null')
+        if value is None:
+            raise ValueError(f'{mode}: baseline 里还没有 auc_null（这是只写到一半的基准文件），重跑 --floor 全流程')
+        return float(value)
 
 
 # ------------------------------------------------------------------ scoring one song
@@ -1581,7 +1584,10 @@ def build_floor(args):
     with open(out_path.parent/'admit_charts.json', 'w') as f:
         json.dump({m: [dict(chart_id=r['chart_id'], target=r['target'], duration_us=r['duration_us'], mode=m, song_group=r['song_group']) for r in v] for m, v in admit.items()}, f)
     for mode in admit:
-        out['H'][mode]['auc_null'] = 1.
+        # 这里只是先把键占住，好让 human_reference 落盘后形成一个可读的中间态；
+        # 真正的 null AUC 在下面算完才覆盖。别写 1.0 —— 那样进程半路挂掉时硬盘上会留
+        # 一个「看着像真指标」的假值，下游 h_from_auc 会拿它算出瞎结果。
+        out['H'][mode]['auc_null'] = None
     with open(out_path, 'w') as f:
         json.dump(out, f, indent=1)
     # H null: needs the reference saved above

@@ -107,6 +107,10 @@ def main():
     a.add_argument('--max-wall-s', type=float, default=3000.)
     args = a.parse_args()
     started = time.monotonic()
+    # 固定全局随机源：head 的权重初始化吃的是 torch 全局 RNG，
+    # 不设种子的话同参数每次跑出来的网格都不一样，复现不了。
+    import torch
+    torch.manual_seed(args.seed)
     from scripts.run_continuation_benchmark import checkpoint_setup
     from beatfcn.train.charter_timing import ChartTimingTable, normalize_charter_timing
     model, panel, identity, _, _ = checkpoint_setup(args)

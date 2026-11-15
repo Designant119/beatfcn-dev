@@ -2,6 +2,7 @@
 import argparse
 import gc
 import json
+import math
 from pathlib import Path
 import time
 
@@ -32,6 +33,16 @@ def metrics(samples, reference, band):
     return scored
 
 
+def _mean(values):
+    """空列表返回 nan，而不是让 np.mean 抛 RuntimeWarning。
+
+    nan 参与 >/< 比较恒为 False，所以调用方拿到结果后必须显式判 finite，
+    否则「没样本」会被当成「没触发任何门禁」= 静默通过。
+    """
+    values = [v for v in values if v is not None]
+    return float(np.mean(values)) if values else float('nan')
+
+
 def compare(baseline, candidate, references, criteria):
     """Paired same-song screen. This is not an independent quality gate."""
     rows=[]
@@ -40,7 +51,7 @@ def compare(baseline, candidate, references, criteria):
         for label,band in [('native_unspecified',None),('native_low_hold',[.02,.05]),('native_high_hold',[.3,.4]),('zero_audio_high_hold',[.3,.4])]:
             b=metrics(baseline[cid,label]['samples'],reference,band)
             c=metrics(candidate[cid,label]['samples'],reference,band)
-            avg=lambda a,k:float(np.mean([s[k] for s in a]))
+            avg=lambda a,k:_mean([s[k] for s in a])
             arms[label]=dict(baseline=b,candidate=c,baseline_distance=-avg(b,'request_fit'),candidate_distance=-avg(c,'request_fit'),
                 onset_delta=avg(c,'onset_agreement')-avg(b,'onset_agreement'),typed_delta=avg(c,'typed_agreement')-avg(b,'typed_agreement'),
                 count_ratio=avg(c,'count')/max(avg(b,'count'),1.))
@@ -48,9 +59,16 @@ def compare(baseline, candidate, references, criteria):
     failures=[];mode_results={}
     for mode in sorted({r['mode'] for r in rows}):
         selected=[r for r in rows if r['mode']==mode]
-        avg=lambda label,key:float(np.mean([r['arms'][label][key] for r in selected]))
+        avg=lambda label,key:_mean([r['arms'][label][key] for r in selected])
         base=avg('native_high_hold','baseline_distance');cand=avg('native_high_hold','candidate_distance')
         mode_results[mode]=dict(high_baseline_distance=base,high_candidate_distance=cand)
+        # 空样本 / 空 mode 会算出 nan，而 nan 参与下面每一条 >/< 比较都恒为 False——
+        # 不显式拦，门禁就「全过」了，等于静默放行。没测到就是没测到，直接记失败。
+        probe=[base,cand]+[avg(label,key) for label in ('native_unspecified','native_low_hold','native_high_hold')
+                           for key in ('candidate_distance','baseline_distance','onset_delta','typed_delta')]
+        if not all(math.isfinite(v) for v in probe):
+            failures.append(mode+':no_finite_samples')
+            continue
         if cand>base*(1-criteria['minimum_high_distance_reduction_fraction'])+1e-12:failures.append(mode+':high_request_gain')
         for label in ('native_unspecified','native_low_hold','native_high_hold'):
             if avg(label,'onset_delta') < -criteria['maximum_onset_agreement_drop']:failures.append(mode+':'+label+':onset_drop')
