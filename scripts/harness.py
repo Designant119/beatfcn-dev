@@ -302,6 +302,15 @@ def status():
         # 只拉了清单不算“下载完成”，否则下一步会以为谱面已经在盘上
         if step == 'download' and args.get('list_only'):
             present, why = False, '只拉了清单'
+        elif step == 'download' and not _resolve_output(step, args, 'dest/_download_report.json').exists():
+            # 别人从浏览器/别的工具下的，没有报告；只要目录里有 zip 就认
+            dest = Path(str(args.get('dest') or ''))
+            try:
+                has_zip = dest.is_dir() and any(dest.glob('*.zip'))
+            except Exception:                 # noqa: BLE001
+                has_zip = False
+            present = bool(has_zip)
+            why = '目录里已有 zip（没跑过下载器）' if present else '还没生成'
         else:
             checks = [_artifact_ok(_resolve_output(step, args, o)) for o in spec['outputs']]
             present = all(ok for ok, _ in checks)
@@ -400,6 +409,19 @@ def remember_paths(step, args):
             _paths_file().write_text(json.dumps(known, ensure_ascii=False, indent=1), encoding='utf-8')
         except Exception:                    # noqa: BLE001
             pass
+        # 谱面目录换了，就把下载那步的记忆也对齐，不然页面还按老目录判“只拉了清单”
+        want = known.get('charts')
+        if want:
+            try:
+                st_file = _state_dir() / 'state' / 'download.json'
+                if st_file.is_file():
+                    data = json.loads(st_file.read_text(encoding='utf-8'))
+                    if data.get('dest') != want:
+                        data['dest'] = want
+                        data.pop('list_only', None)
+                        st_file.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding='utf-8')
+            except Exception:                # noqa: BLE001
+                pass
 
 
 def apply_aliases(step, args, explicit=()):
