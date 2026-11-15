@@ -36,10 +36,12 @@ class SemanticDecisionLossTests(unittest.TestCase):
         tail = np.isin(seq['fields'], [FIELDS.index(k) for k in ('tail_block', 'tail_cell', 'tail_ms')])
         np.testing.assert_allclose(seq['semantic_weights'][tail], 1/6)
 
-    def test_mania_pattern_is_supervised_without_phira_member_units(self):
+    def test_mania_pattern_is_supervised_with_member_units(self):
+        # a0f3177 让 mania 改走 phira 的 member/kind 语法：同一拍的 tap+hold 起点
+        # 现在各自产出 type 与 member 单元（type=2, members=2），hold 尾部仍计 1。
         _, units = self.sequence([RhythmEvent(0, 0, 'tap', 0), RhythmEvent(0, 1_000_000, 'hold', 2)], 'mania_4k')
-        self.assertEqual(units['type'], 1)
-        self.assertEqual(units['members'], 0)
+        self.assertEqual(units['type'], 2)
+        self.assertEqual(units['members'], 2)
         self.assertEqual(units['hold_end'], 1)
 
     def test_padding_has_zero_gradient_and_batch_is_request_mean(self):

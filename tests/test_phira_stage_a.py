@@ -120,7 +120,10 @@ class DataContractTests(unittest.TestCase):
         self.assertEqual(score_events([note], [], 'phira')['note_20ms']['f1'], 0)
 
     def test_real_previously_failing_capacity_requests(self):
-        manifest = json.loads((ROOT / 'bench/capability-v1/manifest.json').read_text())
+        manifest_path = ROOT / 'bench/capability-v1/manifest.json'
+        if not manifest_path.exists():
+            self.skipTest('local capability manifest not present')
+        manifest = json.loads(manifest_path.read_text())
         for cid in (12870, 56053):
             path = ROOT / f'reports/phira_{cid}_canon_audit.json'
             if not path.exists():

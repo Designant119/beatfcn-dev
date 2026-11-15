@@ -167,6 +167,17 @@ def _entropy(counter, normalizer=None):
     return h / normalizer if normalizer else h
 
 
+def _lanes_known(events, mode):
+    """轨道信息是否真的存在于数据里。
+
+    a0f3177 删掉 mania 轨道输出后事件恒 lane=-1，所有 lane 指标随之失去意义；
+    这里看数据本身而不是只看 mode，避免把「空算」当成「算出来了」。
+    """
+    if mode != 'mania_4k':
+        return False
+    return any(getattr(getattr(e, 'location', None), 'lane', -1) >= 0 for e in events)
+
+
 def _sequences(events, runs, mode):
     """Simultaneous mania notes form one lane bitmask; no arbitrary within-chord order."""
     sequences, iois = [], []
@@ -178,7 +189,11 @@ def _sequences(events, runs, mode):
         times = sorted(groups)
         iois.extend(np.diff(times).tolist())
         if mode == 'mania_4k':
-            sequences.append([sum(1 << lane for lane in {e.location.lane for e in groups[t]}) for t in times])
+            # lane 必须非负才可参与 bitmask：a0f3177 后事件恒 lane=-1，
+            # 不过滤的话 1 << -1 会直接抛 ValueError。
+            sequences.append([sum(1 << lane for lane in
+                                 (x for x in {e.location.lane for e in groups[t]} if x >= 0))
+                              for t in times])
     return sequences, iois
 
 
@@ -199,9 +214,10 @@ def product_metrics(events, runs, mode, observed=()):
            'same_lane_min_gap_ms': None, 'release_to_repress_min_ms': None,
            'rapid_same_lane_fraction': None, 'hand_onset_imbalance': None,
            'lane_bigram_entropy': None, 'lane_trigram_entropy': None}
+    lane_known = _lanes_known([*notes, *observed], mode)
     counts = {'notes': len(notes), 'onset_groups': len(groups), 'iois': len(iois), 'same_lane_pairs': 0,
-              'rapid_threshold_ms': 100, 'lane_applicable': mode == 'mania_4k'}
-    if mode == 'mania_4k':
+              'rapid_threshold_ms': 100, 'lane_applicable': lane_known}
+    if lane_known:
         gaps, releases = [], []
         target_ids = {id(e) for e in notes}
         for lane in range(4):
@@ -236,12 +252,13 @@ def _js(a, b):
 def compare_vocabulary(pred, truth, runs, mode):
     ps, pi = _sequences(pred, runs, mode)
     ts, ti = _sequences(truth, runs, mode)
+    lane_known = _lanes_known([*pred, *truth], mode)
     # Include <10ms and >4000ms tails; no discarded out-of-range IOIs.
     edges = np.geomspace(10_000, 4_000_000, 25)
     hist = lambda x: Counter(np.searchsorted(edges, x, side='right').tolist())
     return {'ioi_js_bits': _js(hist(pi), hist(ti)),
-            'lane_bigram_js_bits': _js(_ngrams(ps, 2), _ngrams(ts, 2)) if mode == 'mania_4k' else None,
-            'lane_trigram_js_bits': _js(_ngrams(ps, 3), _ngrams(ts, 3)) if mode == 'mania_4k' else None}
+            'lane_bigram_js_bits': _js(_ngrams(ps, 2), _ngrams(ts, 2)) if lane_known else None,
+            'lane_trigram_js_bits': _js(_ngrams(ps, 3), _ngrams(ts, 3)) if lane_known else None}
 
 
 def capability_metrics(pred, truth, request, audio=None, *, audio_error=None):

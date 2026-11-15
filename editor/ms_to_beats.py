@@ -13,6 +13,7 @@
 纯标准库,无 torch;自测:python editor/ms_to_beats.py
 """
 from bisect import bisect_right
+import math
 from math import gcd
 
 MAX_D = 64
@@ -68,6 +69,8 @@ def parse_bpm_list(bpm_list):
     segs = sorted((beat_value(*e['startTime']), float(e['bpm'])) for e in bpm_list)
     out = []
     for b, bpm in segs:
+        if not math.isfinite(bpm) or bpm <= 0:  # 畸形 BPM：按 60 兜底，别让候选整页崩
+            bpm = 60.0
         if out and abs(b - out[-1][0]) < 1e-9:
             out[-1] = (out[-1][0], bpm)
         else:
@@ -122,7 +125,7 @@ def beat_fraction(x, beat_ms, max_d=MAX_D, top=8, allowed_dens=None):
                 num, d = num // g, d // g
             else:
                 num, d = 0, 1
-            # 罚分随(约分前的)分母线性增长:大分母的数值巧合(误差小但没音乐意义)排不到前面去;
+            # 罚分随约分后的分母线性增长:大分母的数值巧合(误差小但没音乐意义)排不到前面去;
             # 同一约分结果(如 1/14 = 2/28 = 3/42)只留分母最小的那条,否则重复候选淹没列表
             score = err_ms + beat_ms * d * 4.35e-4
             key = (whole, num, d)
