@@ -1,0 +1,47 @@
+{
+ "base_plan": "/data/round5-level/plan.json",
+ "base_plan_sha256": "a38198c389193f26cccb445365ef3ca28b26b6a0fcc3fa34138436aaccc50b7f",
+ "learning_rate": 3e-05,
+ "schedule": {
+  "horizon_updates": 2400,
+  "warmup_updates": 100,
+  "minimum_lr": 5e-06
+ },
+ "ema": {
+  "decay": 0.999
+ },
+ "light_checkpoint_every": 300,
+ "light_checkpoint_keep": 2,
+ "seed": 20261115,
+ "loader_workers": 4,
+ "loader_prefetch": 2,
+ "physical_microbatch_requests": 1,
+ "exposure": {
+  "path": "/data/evolve/exposure-20261108-2400u.json",
+  "seed": 20261108,
+  "subdivision_tags": "/data/evolve/subdivision-tags.json",
+  "unconditional_native": true
+ },
+ "surgery": {
+  "source": "/data/beatfcn-r5-l322m.pt",
+  "depth": 16,
+  "pattern": "even"
+ },
+ "kd": null,
+ "layerdrop": 0.0,
+ "field_weights": {},
+ "kind_class_weights": {},
+ "freeze_encoders": false,
+ "default": true,
+ "default_microbatch": 1,
+ "model": "BeatFCN l322m",
+ "model_params": 327.9,
+ "model_note": "322M 主线；16 层 decoder，FFN 4096，mel 128，intensity 3。MERT 632M 冻结，不算在这 322M 里。",
+ "id": "l322m-mainline",
+ "init": "/data/beatfcn-r5-l322m.pt",
+ "out_dir": "/data/evolve/l322m-mainline",
+ "note_lr": "Peak 3e-5, warmup 100, floor 5e-6；2400 步固定 horizon，续跑是同一段轨迹。",
+ "note_ema": "0.999 是主线默认；4090 24G 冒烟时可先把 EMA 关掉省 1.3G。",
+ "note": "322M 主线继续训练方案。需要 /data/beatfcn-r5-l322m.pt 和 exposure；4090 24G 必须 microbatch=1，建议开梯度检查点，别用 4/8/16。",
+ "grad_checkpointing": true
+}

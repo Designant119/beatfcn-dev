@@ -93,6 +93,8 @@ def load_recipe(spec, init_config):
                 'physical_microbatch_requests'):
         if key in spec:
             recipe[key] = spec[key]
+    if 'grad_checkpointing' in spec:
+        recipe['config']['grad_checkpointing'] = bool(spec['grad_checkpointing'])
     return recipe
 
 

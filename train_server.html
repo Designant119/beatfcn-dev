@@ -221,6 +221,10 @@
   .tpanel{border:1px solid var(--line);background:var(--panel);margin:8px 0 12px;max-width:920px}
   .tpanel .tp-h{font-family:var(--ui);font-size:10px;letter-spacing:.1em;color:var(--phdim);
     border-bottom:1px solid var(--line);padding:5px 9px}
+  .tpanel .tp-model{padding:9px 11px;border-bottom:1px solid var(--line);background:#0b0f0d;
+    font-size:12.5px;line-height:1.75}
+  .tpanel .tp-model small{display:block;color:var(--dim);font-size:11.5px;line-height:1.65;margin-top:4px;
+    overflow-wrap:anywhere}
   .tp-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;
     padding:10px 11px;border-bottom:1px dotted var(--line)}
   .tp-lab{grid-column:1/-1;font-size:13px;min-width:0}
@@ -564,6 +568,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="tpanel">
       <div class="tp-h">TRAIN PARAMS / 训练设置（照着中文选就行，括号里是原参数名）</div>
 
+      <div class="tp-model">
+        <b>当前模型：BeatFCN l322m · 约 322M 可训练参数</b>
+        <small>16 层 decoder 约 277M（FFN 201M + self/cross attention 76M），3 个 encoder 约 45M，embedding/适配约 6M。<b>MERT-v2 632M 是冻结前端，单独算，不在 322M 里。</b></small>
+        <small>4090 24G：一次塞 <b>1 条</b> + 开梯度检查点；4 条以上容易爆显存。tiny 1.59M 只是链路自检，13.9M 是备选小模型。</small>
+      </div>
+
       <div class="tp-row tp-planrow">
         <span class="tp-lab">训练方案<small>这次练什么、多快学、多久存一次，都写在这份方案里。不用看懂内容，选一个就对了</small></span>
         <span class="tp-ctl"><select id="tpPlan"></select></span>
@@ -587,8 +597,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       </div>
 
       <div class="tp-row">
-        <span class="tp-lab">一次塞几条<small><b>吃显存的就是这一项</b>。4 是默认；显存富余就改 8 或 16，一次前向算得更多、跑得更快；报显存不足就改回 4。<b>只影响速度和显存，不改每步看到的总数据量</b></small></span>
-        <span class="tp-ctl"><select id="tpMb"><option value="4">4（默认）</option><option value="8">8（吃满一点）</option><option value="16">16（最快，显存得够）</option></select></span>
+        <span class="tp-lab">一次塞几条<small><b>吃显存的就是这一项</b>。322M 在 4090 24G 上选 <b>1</b>，再开梯度检查点；2 可以试，4 以上大概率爆显存。小模型才用 4/8/16。<b>只影响速度和显存，不改每步看到的总数据量</b></small></span>
+        <span class="tp-ctl"><select id="tpMb"><option value="1">1（322M / 24G 首选）</option><option value="2">2（显存够可试）</option><option value="4">4（小模型默认）</option><option value="8">8（吃满一点）</option><option value="16">16（最快，显存得够）</option></select></span>
         <span class="tp-val" id="tpMbV">4 条/次</span>
       </div>
 
@@ -1390,6 +1400,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       return;
     }
     var bits=[];
+    if(p.model) bits.push(p.model+(p.model_params!=null?(' · '+p.model_params+'M'):''));
     if(p.horizon_updates!=null) bits.push('最多 '+p.horizon_updates+' 步');
     if(p.learning_rate!=null) bits.push('学习率 '+tpFmtNum(p.learning_rate));
     if(p.light_checkpoint_every!=null) bits.push('每 '+p.light_checkpoint_every+' 步存一次');
@@ -1397,6 +1408,11 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     tpPlanInfo.textContent=bits.join(' · ')||'（这份方案里没写这些）';
 
     var rows=[
+      ['模型','model',p.model],
+      ['参数量','model_params',p.model_params==null?null:p.model_params+'M（对外叫 322M）'],
+      ['模型说明','model_note',p.model_note],
+      ['省显存','grad_checkpointing',p.grad_checkpointing==null?null:(p.grad_checkpointing?'开（梯度检查点）':'关')],
+      ['默认一次塞几条','default_microbatch',p.default_microbatch==null?null:p.default_microbatch+' 条'],
       ['最多多少步','schedule.horizon_updates',p.horizon_updates==null?null:p.horizon_updates+' 步'],
       ['学习率','learning_rate',p.learning_rate==null?null:tpFmtNum(p.learning_rate)],
       ['存快照间隔','light_checkpoint_every',p.light_checkpoint_every==null?null:'每 '+p.light_checkpoint_every+' 步'],
@@ -1454,9 +1470,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     if(window.DEMO){                   /* 演示模式：别拿 r5 的 evolve 命令糊弄人，预览必须对得上真实动作 */
       if(!tpBusy){ tpStart.disabled=false; tpStart.textContent='开始训练'; }
       tpCmd.innerHTML=hlCmd('# 演示模式：这台机器没有真实谱面/显卡\n'
-        +'# 点「开始训练」会用假数据跑 600 步冒烟训练，只验证流程能不能跑通\n'
-        +'# 想切回真流水线：删掉 .harness/demo_train.json，刷新这一页');
-      tpStartNote.textContent='演示环境：跑的是假数据，不代表真实精度。';
+        +'# 上面选的是 322M 主线方案，但演示按钮仍用假数据跑 tiny 600 步\n'
+        +'# 只验证流程能不能跑通，不代表 322M 的真实速度和精度\n'
+        +'# 想跑真 322M：把权重/数据放好，删掉 .harness/demo_train.json，刷新这一页');
+      tpStartNote.textContent='演示环境：跑的是 tiny 假数据，不是 322M 真训练。';
       return;
     }
     if(!tpPlan.value){                 /* 没方案就别装成能跑：一条占位命令 + 亮着的按钮最容易骗人 */
@@ -1535,8 +1552,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       }else{
         if(j.repo) tpRepo=j.repo;
         tpPlan.innerHTML=tpPlans.map(function(p){
-          return '<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>';
+          var label=p.default?'322M 主线（继续训练）':(p.kind==='tiny'?'tiny 1.59M（冒烟自检）':p.name);
+          return '<option value="'+esc(p.name)+'">'+esc(label)+'</option>';
         }).join('');
+        var def=null;
+        for(var i=0;i<tpPlans.length;i++){ if(tpPlans[i].default) def=tpPlans[i]; }
+        if(def){ tpPlan.value=def.name; if(def.default_microbatch!=null) tpMb.value=String(def.default_microbatch); }
       }
       tpPlanInfoPaint(); tpPaint();
     },8000);

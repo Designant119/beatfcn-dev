@@ -465,7 +465,9 @@ def train_plans():
             continue
         rec = {'name': name, 'learning_rate': None, 'light_checkpoint_every': None,
                'light_checkpoint_keep': None, 'out_dir': None, 'horizon_updates': None,
-               'init': None, 'seed': None, 'loader_workers': None}
+               'init': None, 'seed': None, 'loader_workers': None,
+               'default': False, 'default_microbatch': None, 'model': None,
+               'model_params': None, 'model_note': None, 'grad_checkpointing': None}
         try:
             with open(os.path.join(d, name), encoding='utf-8') as f:
                 cfg = json.load(f)
@@ -477,14 +479,21 @@ def train_plans():
                     v = cfg.get(key)
                     if isinstance(v, int) and not isinstance(v, bool):
                         rec[key] = v
-                for key in ('out_dir', 'init', 'kind', 'tape', 'features', 'out'):
+                for key in ('out_dir', 'init', 'kind', 'tape', 'features', 'out', 'model', 'model_note'):
                     v = cfg.get(key)
                     if isinstance(v, str) and v:
                         rec[key] = _repoint(v, root) if key in ('out_dir', 'init', 'tape', 'features', 'out') else v
-                for key in ('steps', 'lr'):
+                for key in ('steps', 'lr', 'model_params'):
                     v = cfg.get(key)
                     if isinstance(v, (int, float)) and not isinstance(v, bool):
                         rec[key] = v
+                for key in ('default', 'grad_checkpointing'):
+                    v = cfg.get(key)
+                    if isinstance(v, bool):
+                        rec[key] = v
+                v = cfg.get('default_microbatch')
+                if isinstance(v, int) and not isinstance(v, bool):
+                    rec['default_microbatch'] = v
                 sched = cfg.get('schedule')
                 if isinstance(sched, dict):
                     h = sched.get('horizon_updates')
