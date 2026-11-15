@@ -355,6 +355,40 @@ def demo_train():
     return data
 
 
+def train_progress():
+    """训练跑到第几步、loss 多少。读日志最后一条 json，不猜。"""
+    log_path = _state_dir() / 'logs' / 'phira-train.log'
+    if not log_path.is_file():
+        return None
+    try:
+        lines = log_path.read_text(encoding='utf-8', errors='ignore').splitlines()[-200:]
+        age = time.time() - log_path.stat().st_mtime
+    except OSError:
+        return None
+    last = None
+    for line in lines:
+        line = line.strip()
+        if not line.startswith('{'):
+            continue
+        try:
+            row = json.loads(line)
+        except Exception:                     # noqa: BLE001
+            continue
+        if isinstance(row, dict) and row.get('step') is not None:
+            last = row
+    total = None
+    try:
+        total = validate('train', {})[0].get('steps')
+    except Exception:                         # noqa: BLE001
+        pass
+    if last is None:
+        return dict(step=None, total=total, loss=None, running=running('train'),
+                    age=round(age, 1))
+    return dict(step=int(last['step']), total=total,
+                loss=(round(float(last['loss']), 4) if last.get('loss') is not None else None),
+                running=running('train'), age=round(age, 1))
+
+
 def inspect_charts(dest=None, sample=None):
     """真去目录里点数、验包：多少个、多大、有没有打不开的。
 

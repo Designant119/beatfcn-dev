@@ -30,7 +30,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.harness import (ORDER, STEPS, demo_train, inspect_charts, log, pipeline_next,
-                             running, start, status)
+                             running, start, status, train_progress)
 
 # 给同学看的人话名称；内部还是那八个英文步骤
 STEP_LABEL = {
@@ -225,6 +225,22 @@ def _extract_json(text):
     return None
 
 
+def _progress_line():
+    """训练进度一句话；没有训练日志就不说。"""
+    p = train_progress()
+    if not p or p.get('step') is None:
+        return ''
+    total = p.get('total')
+    bits = [f'第 {p["step"]}/{total} 步' if total else f'第 {p["step"]} 步']
+    if p.get('loss') is not None:
+        bits.append(f'loss {p["loss"]}')
+    if p.get('running'):
+        bits.append('还在跑')
+    elif p.get('age') is not None:
+        bits.append('已经跑完了')
+    return '训练进度：' + '，'.join(bits)
+
+
 def _state_brief():
     st = status()
     done = [k for k in ORDER if st[k]['done']]
@@ -233,6 +249,9 @@ def _state_brief():
     tail = (f'建议下一步：{_label(pipeline_next()) if pipeline_next() else "全部完成"}')
     if demo:
         tail += f'；（这台机器有演示训练环境：说“开始训练”能直接用假数据跑起来，不用等他下数据）'
+    prog = _progress_line()
+    if prog:
+        tail += '；' + prog
     return (f'已完成的步骤：{"、".join(_label(k) for k in done) or "无"}；'
             f'正在跑：{"、".join(_label(k) for k in run) or "无"}；' + tail)
 
@@ -306,7 +325,11 @@ def _execute(decision):
     action = decision.get('action') or 'answer'
     reply = decision.get('reply') or ''
     if action == 'status':
-        return dict(ok=True, action='status', reply=reply or _state_brief(), state=status())
+        text = reply or _state_brief()
+        prog = _progress_line()
+        if prog and '步' not in text:
+            text = text.rstrip('。') + '。' + prog + '。'
+        return dict(ok=True, action='status', reply=text, state=status())
     if action == 'inspect':
         d = (decision.get('args') or {}).get('dir')
         info = inspect_charts(d)
