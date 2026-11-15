@@ -138,11 +138,26 @@ INTENT_WORDS = ('下载', '谱面', '建库', '入库', '数据集', '数据', '
                 '一键', '往下', '搞', '弄')
 
 
-def _thinking_obj(thinking):
-    """True/False/'auto' → 接口要的 thinking 对象；'auto' 就不传。"""
+def _thinking_extra(thinking):
+    """思考设置 → 请求体里要加的字段。
+
+    'auto'        不传，让模型自己决定
+    'off'/False   明确关掉
+    'low'/'high'/'max'  开启并按强度
+    True          开启（默认强度）
+    """
     if thinking is None or thinking == 'auto':
-        return None
-    return {'type': 'enabled' if thinking else 'disabled'}
+        return {}
+    if isinstance(thinking, bool):
+        return {'thinking': {'type': 'enabled' if thinking else 'disabled'}}
+    level = str(thinking).strip().lower()
+    if level in ('off', 'none', 'false', '0', '关'):
+        return {'thinking': {'type': 'disabled'}}
+    if level in ('low', 'high', 'max'):
+        return {'thinking': {'type': 'enabled'}, 'reasoning': {'effort': level}}
+    if level in ('on', 'true', '1', '开'):
+        return {'thinking': {'type': 'enabled'}}
+    return {}
 
 
 def _call(messages, model=None, thinking=None):
@@ -154,9 +169,7 @@ def _call(messages, model=None, thinking=None):
     base = cfg.get('base') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
     model = model if model in MODELS else (cfg.get('model') or 'glm-5.3')
     payload = {'model': model, 'messages': messages, 'temperature': 0.2}
-    th = _thinking_obj(thinking)
-    if th:
-        payload['thinking'] = th
+    payload.update(_thinking_extra(thinking))
     body = json.dumps(payload, ensure_ascii=False)
     req = urllib.request.Request(base, data=body.encode(), method='POST',
                                  headers={'Content-Type': 'application/json',
@@ -408,9 +421,7 @@ def stream(message, history=None, model=None, thinking=None):
     payload = {'model': model, 'messages': _build_messages(message, history),
                'temperature': 0.2, 'stream': True,
                'stream_options': {'include_usage': True}}
-    th = _thinking_obj(thinking)
-    if th:
-        payload['thinking'] = th
+    payload.update(_thinking_extra(thinking))
     req = urllib.request.Request(base, data=json.dumps(payload, ensure_ascii=False).encode(),
                                  method='POST',
                                  headers={'Content-Type': 'application/json',

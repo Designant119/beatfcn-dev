@@ -1848,7 +1848,13 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         <option value="glm-5.3">GLM-5.3</option>
         <option value="glm-5.3-flash">GLM-5.3 Flash（省额度）</option>
       </select>
-      <label id="aithinkbox" title="关掉就不显示思考过程"><input type="checkbox" id="aithink"> 思考</label>
+      <select id="aithink" title="思考强度">
+        <option value="auto">思考：自动</option>
+        <option value="off">思考：关</option>
+        <option value="low">思考：低</option>
+        <option value="high">思考：高</option>
+        <option value="max">思考：最高</option>
+      </select>
       <button id="aiclose" type="button">×</button></div>
     <div id="ailog"><div class="aimsg bot">不知道点哪个按钮、看不懂报错，都可以直接问。比如“帮我下载 IN/AT 的谱面”“现在跑到哪一步了”。</div></div>
     <div id="airow">
@@ -1858,8 +1864,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   </div>
 </div>
 <style>
-#aimodel{background:#0f1613;color:#9fe;border:1px solid #1f3b34;font:11px var(--mono);padding:2px 4px;margin-left:auto}
-#aithinkbox{font:11px var(--mono);color:#8a8477;display:flex;align-items:center;gap:4px}
+#aimodel{background:#0f1613;color:#9fe;border:1px solid #1f3b34;font:11px var(--mono);padding:2px 4px;margin-left:auto;flex:none}
+#aithink{background:#0f1613;color:#9fe;border:1px solid #1f3b34;font:11px var(--mono);padding:2px 4px;flex:none;min-width:86px}
 #aidock{position:fixed;right:18px;bottom:18px;z-index:9999;font-family:inherit;touch-action:none}
 #aifab{width:52px;height:52px;border-radius:50%;border:1px solid #2fe6a0;background:#0b1412;color:#2fe6a0;font-weight:700;letter-spacing:1px;cursor:grab;box-shadow:0 0 18px rgba(47,230,160,.25);user-select:none}
 #aifab:active{cursor:grabbing}
@@ -1918,10 +1924,15 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var m=document.getElementById('aimodel'), t=document.getElementById('aithink');
     var sm=localStorage.getItem('phira-ai-model'), st=localStorage.getItem('phira-ai-think');
     if(m&&sm) m.value=sm;
-    if(t&&st!==null) t.checked = st==='1';
-    if(t) t.checked = st===null ? true : st==='1';
+    if(t){
+      // 旧版是勾选框，存的是 '1'/'0'，这里做个换算，别让下拉框空着
+      var map={'1':'auto','0':'off','true':'auto','false':'off','':'auto'};
+      var v = (st===null ? 'auto' : (map[String(st).toLowerCase()] || String(st)));
+      var ok = Array.prototype.some.call(t.options, function(o){ return o.value===v; });
+      t.value = ok ? v : 'auto';
+    }
     if(m) m.onchange=function(){ localStorage.setItem('phira-ai-model', m.value); };
-    if(t) t.onchange=function(){ localStorage.setItem('phira-ai-think', t.checked?'1':'0'); };
+    if(t) t.onchange=function(){ localStorage.setItem('phira-ai-think', t.value); };
   })();
 
   function ask(){
@@ -1953,7 +1964,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       method:'POST', headers:Object.assign({'Content-Type':'application/json'}, TOKEN?{'X-Token':TOKEN}:{}),
       body:JSON.stringify({id:'chat-stream',message:msg,history:hist.slice(-8),
                            model:(document.getElementById('aimodel')||{}).value,
-                           thinking:(document.getElementById('aithink')||{}).checked})
+                           thinking:(document.getElementById('aithink')||{}).value})
     }).then(function(r){
       if(!r.ok || !r.body) throw new Error('HTTP '+r.status);
       if(r.headers.get('content-type') && r.headers.get('content-type').indexOf('event-stream')<0){
