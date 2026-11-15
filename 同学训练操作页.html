@@ -1934,9 +1934,16 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     logEl.scrollTop=logEl.scrollHeight;
     if(!silent && role==='me'){ chatStore.push({role:'me',text:text}); saveChat(); }
   }
-  // 它到底动了什么：默认收起，点开看命令 / 目录 / 结果
+  // 它到底动了什么：命令行直接露在标题上，点开还有完整内容和结果
+  function shellShort(c){
+    // 把“cd 到仓库 && 解释器绝对路径”这些噪音砍掉，只留真正跑的那句
+    var t=String(c).replace(/\s+/g,' ').trim();
+    t=t.replace(/^cd \S+ && /,'').replace(/^\S*\/python3(\.\d+)? /,'python3 ');
+    t=t.replace(/^\S*\/python3(\.\d+)? /,'python3 ');
+    return t.slice(0,120) + (t.length>120?'…':'');
+  }
   function addTrace(wrap, pl){
-    var action=(pl&&pl.action)||'answer', title='', body='', d;
+    var action=(pl&&pl.action)||'answer', title='', body='', cmd='', d;
     if(action==='run'){
       var st=(pl.result&&pl.result.step)||pl.step, cmd=(pl.result&&pl.result.command)||'',
           sess=(pl.result&&pl.result.session)||'', errs=(pl.result&&pl.result.errors)||[];
@@ -1946,15 +1953,19 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     } else if(action==='inspect'){
       var info=(pl&&pl.info)||{};
       title='执行：去目录里验包';
+      cmd='inspect_charts("'+(info.dest||'')+'")';
       body='目录 '+(info.dest||'')+'\nzip '+(info.count||0)+' 个，验了 '+(info.checked||0)+' 个，坏 '+(info.bad_count||0)+' 个';
     } else if(action==='status'){
       title='执行：读了一遍流水线状态（没动文件）';
     } else { return null; }
+    var sum='⚙ '+title+(cmd?(' · '+shellShort(cmd)):'');
     d=document.createElement('details'); d.className='aitrace';
-    var sm=document.createElement('summary'); sm.textContent='⚙ '+title; d.appendChild(sm);
+    var sm=document.createElement('summary'); sm.textContent=sum;
+    sm.style.whiteSpace='pre-wrap'; d.appendChild(sm);
     if(body){ var pre=document.createElement('pre'); pre.textContent=body; d.appendChild(pre); }
     wrap.appendChild(d);
-    return {title:title, body:body};
+    logEl.scrollTop=logEl.scrollHeight;
+    return {summary:sum, body:body, cmd:cmd, title:title};
   }
   function botFromItem(it){
     var wrap=document.createElement('div'); wrap.className='aimsg bot';
@@ -1967,7 +1978,11 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var tx=document.createElement('div'); tx.className='aitext'; tx.innerHTML=fmt(it.text||'…'); wrap.appendChild(tx);
     if(it.trace){
       var d=document.createElement('details'); d.className='aitrace';
-      var sm=document.createElement('summary'); sm.textContent='⚙ '+it.trace.title; d.appendChild(sm);
+      var sm=document.createElement('summary');
+      sm.textContent = (it.trace.cmd && it.trace.title)
+        ? ('⚙ '+it.trace.title+' · '+shellShort(it.trace.cmd))
+        : (it.trace.summary||('⚙ '+it.trace.title));
+      sm.style.whiteSpace='pre-wrap'; d.appendChild(sm);
       if(it.trace.body){ var pre=document.createElement('pre'); pre.textContent=it.trace.body; d.appendChild(pre); }
       wrap.appendChild(d);
     }
