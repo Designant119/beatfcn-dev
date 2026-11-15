@@ -18,6 +18,7 @@ bash run.sh                       # 起控制台，默认 http://127.0.0.1:7777/
 ```
 
 - 解释器在 `<仓库>/runtime/python`，包在它自己的 site-packages；同学机器不用装 Python
+- 音频那步要的 ffmpeg 也在 `runtime/bin`，启动脚本自动加进 PATH
 - 所有数据默认落在 `<仓库>/data`；想换位置设 `BEATFCN_DATA_ROOT`
 - 模型缓存也留在盘上：`data/cache/hf`、`data/cache/torch`
 - 路径记忆存的是**相对仓库**的路径，硬盘挂载点从 `/mnt/e` 变成 `/media/usb` 也不会指丢
