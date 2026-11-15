@@ -1589,6 +1589,8 @@ class Handler(BaseHTTPRequestHandler):
             if not msg:
                 return self._send(400, {'ok': False, 'note': 'message 为空'})
             hist = body.get('history') if isinstance(body.get('history'), list) else []
+            model = body.get('model') if isinstance(body.get('model'), str) else None
+            thinking = body.get('thinking', 'auto')
             # 流式：没有 Content-Length，一条条 data: JSON 写出去再 flush
             self.send_response(200)
             self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
@@ -1597,7 +1599,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             try:
-                for ev in stream(msg, hist):
+                for ev in stream(msg, hist, model=model, thinking=thinking):
                     self.wfile.write(('data: ' + json.dumps(ev, ensure_ascii=False) + '\n\n').encode('utf-8'))
                     self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
@@ -1617,6 +1619,8 @@ class Handler(BaseHTTPRequestHandler):
             if not msg:
                 return self._send(400, {'ok': False, 'note': 'message 为空'})
             hist = body.get('history') if isinstance(body.get('history'), list) else []
+            model = body.get('model') if isinstance(body.get('model'), str) else None
+            thinking = body.get('thinking', 'auto')
             return self._send(200, respond(msg, hist))
         # 阶段动作：只允许 stages.json 里声明过的 start/stop，且命令逐字来自声明
         path_cfg = os.path.join(HERE, 'stages.json')

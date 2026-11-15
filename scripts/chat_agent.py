@@ -128,15 +128,29 @@ def _config():
     return cfg
 
 
-def _call(messages):
+MODELS = ('glm-5.3', 'glm-5.3-flash')      # 同学可选的模型，别的名字一律不认
+
+
+def _thinking_obj(thinking):
+    """True/False/'auto' → 接口要的 thinking 对象；'auto' 就不传。"""
+    if thinking is None or thinking == 'auto':
+        return None
+    return {'type': 'enabled' if thinking else 'disabled'}
+
+
+def _call(messages, model=None, thinking=None):
     cfg = _config()
     key = cfg.get('key')
     if not key:
         return None, ('后端没有配置 PHIRA_CHAT_KEY，AI 助手不可用。'
                       '把 key 写进后端环境变量，或放到 ~/.config/phira/chat.json 再试。')
     base = cfg.get('base') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
-    model = cfg.get('model') or 'glm-4-flash'
-    body = json.dumps({'model': model, 'messages': messages, 'temperature': 0.2}, ensure_ascii=False)
+    model = model if model in MODELS else (cfg.get('model') or 'glm-5.3')
+    payload = {'model': model, 'messages': messages, 'temperature': 0.2}
+    th = _thinking_obj(thinking)
+    if th:
+        payload['thinking'] = th
+    body = json.dumps(payload, ensure_ascii=False)
     req = urllib.request.Request(base, data=body.encode(), method='POST',
                                  headers={'Content-Type': 'application/json',
                                           'Authorization': 'Bearer ' + key})
@@ -360,7 +374,7 @@ class _ReplyTap:
         return ''.join(out)
 
 
-def stream(message, history=None):
+def stream(message, history=None, model=None, thinking=None):
     """流式版 respond。yield 事件 dict：
 
     think  —— 模型的思考内容（reasoning_content）
@@ -375,10 +389,13 @@ def stream(message, history=None):
         yield dict(type='error', text='后端没有配置 PHIRA_CHAT_KEY，AI 助手不可用。')
         return
     base = cfg.get('base') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
-    model = cfg.get('model') or 'glm-4-flash'
+    model = model if model in MODELS else (cfg.get('model') or 'glm-5.3')
     payload = {'model': model, 'messages': _build_messages(message, history),
                'temperature': 0.2, 'stream': True,
                'stream_options': {'include_usage': True}}
+    th = _thinking_obj(thinking)
+    if th:
+        payload['thinking'] = th
     req = urllib.request.Request(base, data=json.dumps(payload, ensure_ascii=False).encode(),
                                  method='POST',
                                  headers={'Content-Type': 'application/json',
