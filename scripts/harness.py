@@ -226,7 +226,11 @@ def start(step, args, *, dry_run=False):
         value = os.environ.get(key)
         if value:
             pre += f'export {key}={shlex.quote(value)}; '
-    wrapped = pre + f'{cmd} 2>&1 | tee {log_path}'
+    marker = _state_dir() / 'state' / f'{step}_done.json'
+    inner = (f"set -o pipefail; rm -f {shlex.quote(str(marker))}; "
+             f"{cmd} 2>&1 | tee {shlex.quote(str(log_path))}; rc=$?; "
+             f"if [ $rc -eq 0 ]; then printf '%s' \"$(date -Iseconds)\" > {shlex.quote(str(marker))}; fi; exit $rc")
+    wrapped = pre + 'bash -lc ' + shlex.quote(inner)
     try:
         started = subprocess.run(['tmux', 'new-session', '-d', '-s', session, wrapped],
                                  capture_output=True, text=True, timeout=10)
@@ -319,22 +323,61 @@ def status():
         if step == 'download' and args.get('list_only'):
             present, why = False, '只拉了清单'
         elif step == 'download' and not _resolve_output(step, args, 'dest/_download_report.json').exists():
-            # 别人从浏览器/别的工具下的，没有报告；只要目录里有 zip 就认
+            # 别人从浏览器/别的工具下的，没有报告；目录里有 zip 就算“有货”，
+            # 但不等于“下全”：条数、缺号都得自己再说清楚，不能替它拍胸脯。
             dest = Path(str(args.get('dest') or ''))
             try:
-                has_zip = dest.is_dir() and any(dest.glob('*.zip'))
+                zips = sorted(dest.glob('*.zip')) if dest.is_dir() else []
             except Exception:                 # noqa: BLE001
-                has_zip = False
-            present = bool(has_zip)
-            why = '目录里已有 zip（没跑过下载器）' if present else '还没生成'
+                zips = []
+            present = bool(zips)
+            why = (f'目录里有 {len(zips)} 个包，但没下载清单，没法确认下全' if present else '还没生成')
         else:
             checks = [_artifact_ok(_resolve_output(step, args, o)) for o in spec['outputs']]
             present = all(ok for ok, _ in checks)
             why = next((msg for ok, msg in checks if not ok), None)
+            if step == 'download' and present:
+                bad = _download_failed(step, args)
+                if bad:
+                    present = False
+                    why = f'{bad} 个没下成功（清单里有失败记录）'
+        marker = _state_dir() / 'state' / f'{step}_done.json'
         report[step] = dict(done=present, running=running(step),
                             session=spec['session'], why=why,
+                            verified=marker.is_file(),
                             failed=_download_failed(step, args) if present else 0)
     return report
+
+
+def start_auto(from_step=None, to_step='train'):
+    """一条龙：起一个后台会话，按顺序把各步跑完，哪步失败就停。"""
+    session = 'phira-auto'
+    try:
+        if subprocess.run(['tmux', 'has-session', '-t', session],
+                          capture_output=True, timeout=8).returncode == 0:
+            return dict(ok=False, note='自动流水线已经在跑（tmux phira-auto）')
+    except FileNotFoundError:
+        return dict(ok=False, note='机器上没有 tmux')
+    log_path = _state_dir() / 'logs' / f'{session}.log'
+    cmd = f'python3 -m scripts.auto_pipeline --to {to_step}'
+    if from_step:
+        cmd += f' --from {from_step}'
+    inner = f'cd {shlex.quote(str(ROOT))} && {cmd} 2>&1 | tee {shlex.quote(str(log_path))}'
+    env_pre = ''
+    for key in ('PYTHONUSERBASE', 'PYTHONPATH', 'VIRTUAL_ENV'):
+        value = os.environ.get(key)
+        if value:
+            env_pre += f'export {key}={shlex.quote(value)}; '
+    proc = subprocess.run(['tmux', 'new-session', '-d', '-s', session, env_pre + inner],
+                          capture_output=True, text=True, timeout=10)
+    if proc.returncode != 0:
+        return dict(ok=False, note=('tmux 启动失败：' + (proc.stderr or '无输出'))[:160])
+    time.sleep(0.6)
+    if not subprocess.run(['tmux', 'has-session', '-t', session],
+                          capture_output=True, timeout=8).returncode == 0:
+        return dict(ok=False, note='自动流水线刚起就退了：' + (log(session, 6) or '无输出'))
+    return dict(ok=True, session=session, command=cmd,
+                note='从 ' + (from_step or '当前缺的那步') + ' 开始一路跑到 ' + to_step)
 
 
 def stop(step):

@@ -334,6 +334,7 @@
       <div class="plhead"><span class="k">PIPELINE / 八步流水线</span><span id="plnext" class="plnext">—</span></div>
       <div class="plchips" id="plchips"></div>
       <div class="plwhere" id="plwhere"></div>
+      <div class="plwhere" id="plwarn" style="color:var(--warn)"></div>
     </div>
 
     <table>
@@ -988,6 +989,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpRunState('train', true);
     }
     if(window.DEMO){
+      if(typeof tpPaint==='function') tpPaint();   // 状态一到就重画，别让 r5 的假预览留在屏上
       var dn=document.getElementById('tpStartNote');
       if(dn && !dn.textContent) dn.textContent='演示环境：这台机器没有真实数据/显卡，点「开始训练」会用假数据跑一遍，只验证流程能跑通。';
     }
@@ -1018,6 +1020,13 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       if(tag.textContent!==txt) tag.textContent=txt;
     });
     drawWhere(j);
+    var wn=document.getElementById('plwarn');
+    if(wn){
+      var dl=j.steps.download||{}, msg='';
+      if(dl.done && !dl.verified && dl.why) msg='⚠ '+dl.why;
+      else if(!dl.done && dl.why && dl.why!=='还没生成') msg='⚠ 下载：'+dl.why;
+      if(wn.textContent!==msg) wn.textContent=msg;
+    }
     var nx=document.getElementById('plnext');
     if(nx){ var t=j.next?('下一步：'+PIPE_LABEL[j.next]):'八步都跑完了';
             if(nx.textContent!==t) nx.textContent=t; }
@@ -1323,6 +1332,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   var tpDetailBtn=document.getElementById('tpDetailBtn'), tpKv=document.getElementById('tpKv'),
       tpSnap=document.getElementById('tpSnap');
   var tpPlans=[], tpRepo='~/beatfcn-dev', tpGotPlans=false, tpKvOpen=false, tpBusy=false, tpRunning=false;
+  window.DEMO=window.DEMO||false;
 
   function tpClamp(el,lo,hi,fb){        /* 数字框读值：越界钳回范围；输入中清空了先按回退值生成命令 */
     var n=parseInt(el.value,10);
@@ -1439,6 +1449,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
     tpShowVals();
+    if(window.DEMO){                   /* 演示模式：别拿 r5 的 evolve 命令糊弄人，预览必须对得上真实动作 */
+      if(!tpBusy){ tpStart.disabled=false; tpStart.textContent='开始训练'; }
+      tpCmd.innerHTML=hlCmd('# 演示模式：这台机器没有真实谱面/显卡\n'
+        +'# 点「开始训练」会用假数据跑 600 步冒烟训练，只验证流程能不能跑通\n'
+        +'# 想切回真流水线：删掉 .harness/demo_train.json，刷新这一页');
+      tpStartNote.textContent='演示环境：跑的是假数据，不代表真实精度。';
+      return;
+    }
     if(!tpPlan.value){                 /* 没方案就别装成能跑：一条占位命令 + 亮着的按钮最容易骗人 */
       if(!tpBusy){
         tpCmd.innerHTML=hlCmd('# 现在没有可跑的方案\n# 仓库里 plans/evolve 下没找到 *.json'
@@ -1989,6 +2007,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       title='执行：去目录里验包';
       cmd='inspect_charts("'+(info.dest||'')+'")';
       body='目录 '+(info.dest||'')+'\nzip '+(info.count||0)+' 个，验了 '+(info.checked||0)+' 个，坏 '+(info.bad_count||0)+' 个';
+    } else if(action==='auto'){
+      title='执行：自动流水线';
+      body=(pl.result&&pl.result.note)||'已排好，按顺序往下跑';
     } else if(action==='sh'){
       var cmd=(pl.result&&pl.result.cmd)||((pl.args||{}).cmd)||'';
       title='执行：跑了一条命令';

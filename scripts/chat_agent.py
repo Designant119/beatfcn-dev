@@ -30,7 +30,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.harness import (ORDER, STEPS, demo_train, inspect_charts, load_paths, log, pipeline_next,
-                             running, start, status, stop as hstop, train_progress)
+                             running, start, start_auto, status, stop as hstop, train_progress)
 
 # 给同学看的人话名称；内部还是那八个英文步骤
 STEP_LABEL = {
@@ -73,6 +73,7 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 - “去看看 / 检验一下 / 查查有没有坏包 / 验一下” → {"action": "inspect"}（真去数包、逐个验，不许只嘴上说“下好了”）
   他要是说了某个目录，就 {"action": "inspect", "args": {"dir": "那个目录"}}
 - “接着跑 / 继续 / 一键跑 / 往下走” → {"action": "run"}（不填 step，后端自动挑下一步）
+- “一条龙 / 全部跑完 / 自动往下 / 别一步步问了” → {"action": "auto"}（可带 step 指定从哪步起；失败会自己停）
 
 用户点名要跑某一步时（“下载 / 建库 / 提特征 / 训练 / 开训”）：
 - 就按他点的那一步填 step，不许自作主张换成“下一步”。前置没齐后端会拦下来并说明还差什么。
@@ -99,7 +100,7 @@ TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参
 
 只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
 {"reply": "给同学看的中文回复（一两句，不要长篇）",
- "action": "run|status|inspect|stop|where|disk|logs|clean|sh|answer", "step": "步骤名（action=run/stop 时）",
+ "action": "run|auto|status|inspect|stop|where|disk|logs|clean|sh|answer", "step": "步骤名（action=run/stop 时）",
  "args": {参数对象，可省略，内部参数不要念出来}}
 
 """
@@ -444,6 +445,15 @@ def _execute(decision, allow_shell=False):
         if prog and '步' not in text:
             text = text.rstrip('。') + '。' + prog + '。'
         return dict(ok=True, action='status', reply=text, state=status())
+    if action == 'auto':
+        step = decision.get('step') if decision.get('step') in ORDER else None
+        res = start_auto(step, 'train')
+        if res.get('ok'):
+            tail = '这台是演示环境，只会跑冒烟训练。' if demo_train() else '哪步失败它会自己停。'
+            return dict(ok=True, action='auto', result=res,
+                        reply='安排好了：' + res.get('note', '') + '。' + tail)
+        return dict(ok=False, action='auto', result=res,
+                    reply='没安排成：' + (res.get('note') or '原因不明'))
     if action == 'sh':
         if os.environ.get('PHIRA_ALLOW_SHELL') != '1':
             return dict(ok=False, action='sh',
@@ -727,6 +737,8 @@ def stream(message, history=None, model=None, thinking=None, allow_shell=False):
         yield dict(type='status', text='正在挑坏包…')
     elif decision.get('action') == 'sh':
         yield dict(type='status', text='正在跑命令…')
+    elif decision.get('action') == 'auto':
+        yield dict(type='status', text='正在安排自动流水线…')
     result = _execute(decision, allow_shell=allow_shell)
 
     out_tokens = (usage or {}).get('completion_tokens')

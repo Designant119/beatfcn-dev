@@ -2,7 +2,7 @@
 """训练机操作台后端 —— 零依赖，一条命令跑起来。
 
 用法（WSL / Linux 里）:
-    python3 console_server.py                      # 默认 0.0.0.0:7777
+    python3 console_server.py                      # 默认只在 127.0.0.1:7777（本机访问）
     python3 console_server.py 8080                 # 自定义端口
     python3 console_server.py 7777 --token 口令     # 设访问码（公网暴露时必开）
 
@@ -1723,7 +1723,8 @@ def main():
         if i + 1 < len(args):
             TOKEN = args[i + 1]
     try:
-        srv = ThreadingHTTPServer(('0.0.0.0', port), Handler)
+        host = os.environ.get('PHIRA_BIND') or '127.0.0.1'   # 默认只开本机；要局域网访问显式给 0.0.0.0
+        srv = ThreadingHTTPServer((host, port), Handler)
     except OSError as exc:
         in_use = exc.errno in {errno.EADDRINUSE, getattr(errno, 'WSAEADDRINUSE', -1)} \
             or getattr(exc, 'winerror', None) == 10048
