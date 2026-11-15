@@ -10,7 +10,7 @@
 import json, os, re, subprocess, tempfile, zipfile
 import numpy as np
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 ZIPS = os.path.join(WORK, "zips")
 AUDIO_EXT = (".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus")
 SR = 8000
@@ -129,13 +129,13 @@ def main():
         groups = groups[:limit]
 
     results = []
+    probe = json.load(open(os.path.join(WORK, "probe_durations.json")))
     for gi, g in enumerate(groups):
         ids = g["members"]
         key = str(g["members"][0])
         if key in done:
             continue
         # 选代表：时长最长
-        probe = json.load(open(os.path.join(WORK, "probe_durations.json")))
         keeper = max(ids, key=lambda i: (probe.get(str(i), {}).get("seconds") or 0))
         fk = getfp(keeper)
         sims = []

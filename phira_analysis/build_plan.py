@@ -13,7 +13,7 @@
 """
 import csv, json, os, zipfile, collections, time
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 PLAN = os.path.join(WORK, "plan")
 AUDIO_EXT = (".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus")
 
@@ -89,8 +89,11 @@ def main():
             if a:
                 big = max(a, key=lambda x: x[2])
                 sigs.add((big[1], big[2]))
-        durs = [probe[i]["seconds"] for i in ids]
-        spread = (max(durs) - min(durs)) / min(durs) if min(durs) > 0 else 1.0
+        dur_map = {i: probe[i].get("seconds") for i in ids
+                   if i in probe and isinstance(probe[i].get("seconds"), (int, float))}
+        durs = [dur_map[i] for i in ids if i in dur_map]
+        spread = ((max(durs) - min(durs)) / min(durs)
+                  if len(durs) == len(ids) and durs and min(durs) > 0 else 1.0)
         tier = "L1" if len(sigs) == 1 else ("L2" if spread < 0.01 else "L3")
 
         kept, stripped = keeper_of(ids)
@@ -105,8 +108,7 @@ def main():
             verdict_tally[verdict or "missing"] += 1
             verdict_pkgs[verdict or "missing"] += len(ids)
 
-        dur_map = {i: probe[i]["seconds"] for i in ids}
-        dur_str = ";".join(f"{i}:{dur_map[i]:.3f}" for i in ids)
+        dur_str = ";".join(f"{i}:{dur_map[i]:.3f}" if i in dur_map else f"{i}:?" for i in ids)
         crc_map = {}
         for i in ids:
             a = base[str(i)]["audio"]
@@ -116,11 +118,14 @@ def main():
         crc_str = ";".join(f"{i}:{crc_map.get(i,'')}" for i in ids)
 
         def delta_str(kept_id):
-            if kept_id is None:
+            if not kept_id or kept_id not in dur_map:
                 return ""
             kd = dur_map[kept_id]
             out = []
             for i in ids:
+                if i not in dur_map:
+                    out.append(f"{i}:?")
+                    continue
                 ms = round((dur_map[i] - kd) * 1000)
                 out.append(f"{i}:{ms:+d}")
             return ";".join(out)
@@ -157,7 +162,7 @@ def main():
             keeper_id = kept["id"] if kept else ""
             ok_rows.append({
                 **common, "tier": tier, "keeper_id": keeper_id,
-                "keeper_duration": f"{dur_map[keeper_id]:.3f}" if keeper_id else "",
+                "keeper_duration": f"{dur_map[keeper_id]:.3f}" if keeper_id and keeper_id in dur_map else "",
                 "saved_bytes": grp_csz,
                 "duration_delta_ms": delta_str(keeper_id),
             })

@@ -9,7 +9,7 @@
 import json, os, re, subprocess, tempfile, zipfile, time
 import numpy as np
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 ZIPS = os.path.join(WORK, "zips")
 AUDIO_EXT = (".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus")
 SR = 16000
@@ -130,7 +130,7 @@ def main():
         rows = [(f"zips/{'a' if True else 'b'}", n) for n in (20626, 32167, 51050, 11745)]
         env = {}
         for _, cid in rows:
-            g = __import__("glob").glob(f"zips/*/{cid}_*.zip")
+            g = __import__("glob").glob(os.path.join(ZIPS, "*", f"{cid}_*.zip"))
             if g:
                 env[cid] = logmel(g[0], c)
         def show(x, y, label):

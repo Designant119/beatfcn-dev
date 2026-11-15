@@ -9,7 +9,7 @@ unclear / diff / 未核验 → 一律不映射。
 """
 import json, os, collections
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 
 
 def L(n):

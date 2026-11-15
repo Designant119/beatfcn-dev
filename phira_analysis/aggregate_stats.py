@@ -1,7 +1,7 @@
 """汇总统计：读下载分片统计 + 元数据 + 去重统计，产出 summary.json / buckets.csv。"""
 import collections, json, os, statistics, zipfile, re
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 ZIPS = os.path.join(WORK, "zips")
 
 

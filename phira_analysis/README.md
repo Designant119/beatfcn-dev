@@ -2,6 +2,18 @@
 
 9760 个谱面 zip（60.60 GiB）的抓取、去重与统计过程留档。**zip 本身不入库**（61 GB），这里只留结论数据和可复现的分析脚本。
 
+## 运行脚本前：设置语料路径
+
+脚本里不再写死任何绝对路径，统一由 `paths.py` 解析。WSL2 按 `SETUP.md` 的约定走 **Linux 侧**（默认 `/data`，别放 `/mnt/e`、`/mnt/d`，NTFS 翻译层读写慢）：
+
+```bash
+export BEATFCN_DATA_ROOT=/data                        # 一个变量管全部数据（默认就是 /data）
+export PHIRA_WORK=$BEATFCN_DATA_ROOT/phira_full       # 可选：只单独指定 phira 语料根
+export PHIRA_OLD=$BEATFCN_DATA_ROOT/charts_by_rating  # 可选：旧分档目录，只有 dl_full.py 用到
+```
+
+解析顺序：`PHIRA_WORK` → `BEATFCN_DATA_ROOT/phira_full` → 仓库下 `phira_full`。换盘换机器只改环境变量，脚本一行不用动。
+
 ## 结论速览
 
 | 项目 | 数值 |

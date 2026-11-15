@@ -10,7 +10,7 @@
 """
 import json, os, re, unicodedata, collections, zipfile
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 META = os.path.join(WORK, "charts_meta.json")
 ZIPS = os.path.join(WORK, "zips")
 DUR_TOL = 0.06

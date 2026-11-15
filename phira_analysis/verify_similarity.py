@@ -9,7 +9,7 @@
 import json, os, re, subprocess, sys, tempfile, zipfile, time
 import numpy as np
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 ZIPS = os.path.join(WORK, "zips")
 AUDIO_EXT = (".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus")
 SR, HOP_MS = 8000, 100
@@ -116,7 +116,6 @@ def main():
                 tags.add((big[1], big[2]))
         if len(tags) == 1:
             continue
-        durs = [probe.get(str(i), {}).get("seconds") for i in ids]
         # 核所有 CRC 不一致的组；已完成的组由 done 缓存自动跳过
         targets.append(g)
 

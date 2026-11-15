@@ -14,9 +14,8 @@ import concurrent.futures as cf
 _o = socket.getaddrinfo
 socket.getaddrinfo = lambda h, p, f=0, t=0, pr=0, fl=0: _o(h, p, socket.AF_INET, t, pr, fl)
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK, OLD  # 语料根/旧分档目录由 paths.py 统一解析（PHIRA_WORK / PHIRA_OLD 优先）
 META = os.path.join(WORK, "charts_meta.json")
-OLD = "/home/user/Doubao/chats/38452677371084290/charts_by_rating"
 HDR = {"User-Agent": "Mozilla/5.0", "Accept": "*/*", "Connection": "keep-alive"}
 TL = threading.local()
 

@@ -4,7 +4,7 @@ import json, os, socket, threading, time, http.client, concurrent.futures as cf
 _o = socket.getaddrinfo
 socket.getaddrinfo = lambda h, p, f=0, t=0, pr=0, fl=0: _o(h, p, socket.AF_INET, t, pr, fl)
 
-WORK = "/home/user/Doubao/chats/38453554213740802/phira_full"
+from paths import WORK  # 语料根目录由 paths.py 统一解析（PHIRA_WORK 优先）
 OUT = os.path.join(WORK, "pages"); os.makedirs(OUT, exist_ok=True)
 TL = threading.local()
 
