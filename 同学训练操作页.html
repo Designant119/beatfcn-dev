@@ -1844,6 +1844,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   <button id="aifab" type="button" title="问 AI">AI</button>
   <div id="aipanel" hidden>
     <div id="aihead"><span>问 AI</span>
+      <button id="ainew" type="button" title="开新对话">＋</button>
       <select id="aimodel" title="换模型">
         <option value="glm-5.3">GLM-5.3</option>
         <option value="glm-5.3-flash">GLM-5.3 Flash（省额度）</option>
@@ -1866,6 +1867,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 <style>
 #aimodel{background:#0f1613;color:#9fe;border:1px solid #1f3b34;font:11px var(--mono);padding:2px 4px;margin-left:auto;flex:none}
 #aithink{background:#0f1613;color:#9fe;border:1px solid #1f3b34;font:11px var(--mono);padding:2px 4px;flex:none;min-width:86px}
+#ainew{background:none;border:1px solid #1f3b34;color:#7ea;font:12px var(--mono);border-radius:6px;padding:1px 6px;cursor:pointer;flex:none}
+.aitrace{border-left:2px solid #244;margin-top:6px;padding-left:7px;font-size:11px;color:#8a8477}
+.aitrace summary{cursor:pointer;color:#7fb;opacity:.9;outline:none}
+.aitrace pre{margin:4px 0 0;white-space:pre-wrap;font-size:10.5px;color:#6a9;line-height:1.45}
 #aidock{position:fixed;right:18px;bottom:18px;z-index:9999;font-family:inherit;touch-action:none}
 #aifab{width:52px;height:52px;border-radius:50%;border:1px solid #2fe6a0;background:#0b1412;color:#2fe6a0;font-weight:700;letter-spacing:1px;cursor:grab;box-shadow:0 0 18px rgba(47,230,160,.25);user-select:none}
 #aifab:active{cursor:grabbing}
@@ -1904,6 +1909,15 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 (function(){
   var TOKEN=''; try{ TOKEN=(location.search.match(/[?&]token=([^&]+)/)||[])[1]||localStorage.getItem('r5runbook:v4:token')||''; }catch(e){}
   var hist=[];
+  var chatStore=[], K_CHAT='phira-ai-chat';
+  try{ chatStore=JSON.parse(localStorage.getItem(K_CHAT)||'[]')||[]; }catch(e){ chatStore=[]; }
+  function saveChat(){
+    try{ while(chatStore.length>40) chatStore.shift();
+         localStorage.setItem(K_CHAT, JSON.stringify(chatStore)); }catch(e){}
+  }
+  var STEPCN={'download':'下载谱面','ingest':'建数据集','audio':'摊平音轨','tape':'造提特征清单',
+              'features':'提特征','full_tape':'造训练数据','exposure':'冻结采样','train':'冒烟训练'};
+  function stepCn(n){ return STEPCN[n]||n||'这一步'; }
   var fab=document.getElementById('aifab'), panel=document.getElementById('aipanel'),
       logEl=document.getElementById('ailog'), input=document.getElementById('aiinput'),
       btn=document.getElementById('aisend'), close=document.getElementById('aiclose');
@@ -1915,8 +1929,58 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     s=s.replace(/^[-*] (.+)$/gm,'• $1');
     return s;
   }
-  function show(role,text){
+  function show(role,text,silent){
     var d=document.createElement('div'); d.className='aimsg '+role; d.innerHTML=fmt(text); logEl.appendChild(d);
+    logEl.scrollTop=logEl.scrollHeight;
+    if(!silent && role==='me'){ chatStore.push({role:'me',text:text}); saveChat(); }
+  }
+  // 它到底动了什么：默认收起，点开看命令 / 目录 / 结果
+  function addTrace(wrap, pl){
+    var action=(pl&&pl.action)||'answer', title='', body='', d;
+    if(action==='run'){
+      var st=(pl.result&&pl.result.step)||pl.step, cmd=(pl.result&&pl.result.command)||'',
+          sess=(pl.result&&pl.result.session)||'', errs=(pl.result&&pl.result.errors)||[];
+      title='执行：'+stepCn(st)+(sess?(' · tmux '+sess):'');
+      body=(cmd?('$ '+cmd+'\n'):'')+(errs.length?('报错：'+errs.join('；'))
+            :(pl.result&&pl.result.ok===false?'没启动成功':'已启动 / 已跑完'));
+    } else if(action==='inspect'){
+      var info=(pl&&pl.info)||{};
+      title='执行：去目录里验包';
+      body='目录 '+(info.dest||'')+'\nzip '+(info.count||0)+' 个，验了 '+(info.checked||0)+' 个，坏 '+(info.bad_count||0)+' 个';
+    } else if(action==='status'){
+      title='执行：读了一遍流水线状态（没动文件）';
+    } else { return null; }
+    d=document.createElement('details'); d.className='aitrace';
+    var sm=document.createElement('summary'); sm.textContent='⚙ '+title; d.appendChild(sm);
+    if(body){ var pre=document.createElement('pre'); pre.textContent=body; d.appendChild(pre); }
+    wrap.appendChild(d);
+    return {title:title, body:body};
+  }
+  function botFromItem(it){
+    var wrap=document.createElement('div'); wrap.className='aimsg bot';
+    if(it.think){
+      var th=document.createElement('details'); th.className='aithink';
+      var su=document.createElement('summary'); su.textContent='思考过程（点击展开，'+it.think.length+' 字）';
+      var tb=document.createElement('div'); tb.className='aithinkbody'; tb.textContent=it.think;
+      th.appendChild(su); th.appendChild(tb); wrap.appendChild(th);
+    }
+    var tx=document.createElement('div'); tx.className='aitext'; tx.innerHTML=fmt(it.text||'…'); wrap.appendChild(tx);
+    if(it.trace){
+      var d=document.createElement('details'); d.className='aitrace';
+      var sm=document.createElement('summary'); sm.textContent='⚙ '+it.trace.title; d.appendChild(sm);
+      if(it.trace.body){ var pre=document.createElement('pre'); pre.textContent=it.trace.body; d.appendChild(pre); }
+      wrap.appendChild(d);
+    }
+    if(it.meta){ var me=document.createElement('div'); me.className='aimeta'; me.textContent=it.meta; wrap.appendChild(me); }
+    logEl.appendChild(wrap);
+  }
+  function restoreChat(){
+    if(!chatStore.length) return;
+    logEl.innerHTML='';
+    chatStore.forEach(function(it){
+      if(it.role==='me'){ hist.push({role:'user',content:it.text}); logEl.appendChild((function(){var d=document.createElement('div');d.className='aimsg me';d.innerHTML=fmt(it.text);return d;})()); }
+      else { hist.push({role:'assistant',content:it.text||''}); botFromItem(it); }
+    });
     logEl.scrollTop=logEl.scrollHeight;
   }
   // 模型 / 思考开关：记住上次选择
@@ -1952,6 +2016,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var tx=document.createElement('div'); tx.className='aitext';
     var meta=document.createElement('div'); meta.className='aimeta'; meta.hidden=true;
     wrap.appendChild(think); wrap.appendChild(st); wrap.appendChild(tx); wrap.appendChild(meta);
+    wrap._meta=meta;
     logEl.appendChild(wrap); logEl.scrollTop=logEl.scrollHeight;
 
     var raw='', finalText='', closed=false;
@@ -1997,10 +2062,10 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       unlock();
     });
 
-    var gotReply=false;
+    var gotReply=false, curSaved=false, curItem={role:'assistant',text:'',think:'',meta:'',trace:null};
     function handle(ev){
       if(ev.type==='think'){
-        think.hidden=false; tbody.textContent += ev.text;
+        think.hidden=false; tbody.textContent += ev.text; curItem.think=tbody.textContent;
         sum.textContent='思考中…（'+tbody.textContent.length+' 字）';
       } else if(ev.type==='delta'){
         raw += ev.text; paint();
@@ -2009,9 +2074,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       } else if(ev.type==='reply'){
         var pl=ev.payload||{};
         raw = pl.reply || raw || '（没有回复）'; paint();
+        curItem.text=raw; curItem.trace=addTrace(wrap, pl);
         if(pl.action==='error') wrap.className='aimsg err';
         if(tbody.textContent) sum.textContent='思考过程（点击展开，'+tbody.textContent.length+' 字）';
         setStatus(''); hist.push({role:'assistant',content:raw}); gotReply=true;
+        if(!curSaved){ chatStore.push(curItem); curSaved=true; }
+        saveChat();
         if(pl.action==='run'){
           var st=(pl.result&&pl.result.step)||pl.step;
           if(pl.result && pl.result.ok===false) markJustEnded(st,false);
@@ -2026,6 +2094,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         if(ev.seconds) bits.push(ev.seconds+'s');
         if(ev.model) bits.push(ev.model);
         meta.hidden = !bits.length; meta.textContent = bits.join(' · ');
+        curItem.meta=meta.textContent; saveChat();
       } else if(ev.type==='error'){
         wrap.className='aimsg err'; setStatus(''); raw += (raw?'\n':'')+ev.text; paint();
       }
@@ -2034,6 +2103,12 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   // 开合统一交给下面的 up()：点一下=开合，拖一下=挪位置。
   // 这里再绑 click 就会一次点击 toggle 两遍，看起来像关不掉。
   close.addEventListener('click',function(e){ e.stopPropagation(); panel.hidden=true; });
+  var newBtn=document.getElementById('ainew');
+  if(newBtn) newBtn.addEventListener('click',function(){
+    chatStore=[]; hist=[]; saveChat();
+    logEl.innerHTML='<div class="aimsg bot">新对话，说吧。想问什么、想让它干什么，直接说。</div>';
+  });
+  restoreChat();
   btn.addEventListener('click',ask);
   input.addEventListener('keydown',function(e){ if(e.key==='Enter') ask(); });
 
