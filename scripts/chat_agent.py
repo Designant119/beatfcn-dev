@@ -31,139 +31,46 @@ if str(ROOT) not in sys.path:
 
 from scripts.harness import ORDER, STEPS, log, pipeline_next, running, start, status
 
-TOOL_DOC = """你可以调用八个步骤，每个步骤对应流水线的一段：
+TOOL_DOC = """你在帮同学操作一条谱面数据流水线。同学不懂参数，只看懂人话。
 
-""" + '\n'.join(
-    f'- {name}：{STEPS[name]["module"]}；可用参数 '
-    + '、'.join(f'{k}' + ('（必填）' if req else f'（默认 {d}）')
-                for k, (d, req, _t) in STEPS[name]['args'].items())
-    for name in ORDER
-) + """
+八个步骤（每步都有默认参数，默认值就是对的，不要追问）：
+- download：下载谱面。默认 /data/phira_charts，全量 9760 包约 60GB；只要高难加 levels ["IN","AT"]（约 49GB）；只想看清单加 list_only true
+- ingest：把下载好的谱面建成数据集（断了能续跑）
+- audio：把音轨摊平出来（一个音频只存一份）
+- tape：造一份提特征用的小清单
+- features：提特征，最慢的一步，吃显卡
+- full_tape：造真正训练用的 tape
+- exposure：冻结一份采样清单，保证实验可复现
+- train：冒烟训练，几步就出一个能用的 ckpt
 
-规则：
-- 用户没说清楚的参数用默认值，不要瞎编路径。
-- 同一步已经在跑就不要重复启动，告诉用户在跑。
-- 启动动作返回 errors 非空、或 alive 为 false，就如实说失败原因（照抄日志里那句），
+同学的常见说法 → 直接照这样办（args 用默认，不要反问）：
+- “下载谱面 / 搞点数据 / 下载歌” → {"step": "download", "args": {"levels": ["IN", "AT"]}}
+- “全都要 / 全量下载” → {"step": "download", "args": {}}
+- “先看看有多少 / 列个清单” → {"step": "download", "args": {"list_only": true}}
+- “建库 / 入库 / 整理数据” → {"step": "ingest", "args": {}}
+- “提特征 / 跑特征” → {"step": "features", "args": {}}
+- “训练 / 开训 / 跑一下” → {"step": "train", "args": {}}
+- “下一步干啥 / 继续” → {"action": "status"}
+- 只说“跑一遍 / 一键跑” → 用 status 给出的下一步
+
+说话规矩（很重要，违反就是事故）：
+- reply 里不要出现参数名、文件路径、脚本名、tmux、sha256、npy 这些词；
+  说“下载谱面”“提特征”“数据放在哪”就行。
+- 用户没给目录就别问目录，默认值直接用；只有他主动说“我要放 D 盘”这种才照他说的填。
+- 拿不准就问一句人话，比如“要全量还是只要高难（IN/AT）？”，别问参数。
+- 同一步已经在跑就别重复启动，告诉他“正在跑，等它完”。
+- 启动返回 errors 非空 或 alive 为 false：照抄日志里那句人话报失败，
   绝对不能回“已启动”“开跑了”。
-- alive 为 false 且 errors 为空：说明它已经跑完了（短任务）或自己退了，
-  说“已经跑完/已退出，日志末尾是……”，别说“正在跑”。
-- 不能用 shell，不能删文件，不能写到白名单之外。
-- 用户只是想聊天或问问题时，action 用 "answer"，不要硬套一个动作。
-- 用户问状态时，action 用 "status"。
+- alive 为 false 且没有 errors：说明跑完了（短任务）或自己退了，说“已经跑完/已退出”。
+- 不能用 shell、不能删文件、不能写白名单之外的目录。
+- 只是闲聊或提问：action 用 "answer"，别硬套动作。
 
 只输出一个 JSON 对象，不要任何多余文字，reply 放第一个键：
-{"reply": "给用户看的中文回复（一两句，不要长篇）",
+{"reply": "给同学看的中文回复（一两句，不要长篇）",
  "action": "run|status|answer", "step": "步骤名（action=run 时）",
- "args": {参数对象，可省略}}
+ "args": {参数对象，可省略，内部参数不要念出来}}
+
 """
-
-
-def _read_config(path):
-    """读一个 json 配置；key 可以用 key_b64 存，读出来还原成 key。"""
-    try:
-        data = json.loads(Path(path).read_text(encoding='utf-8'))
-    except Exception:                         # noqa: BLE001
-        return {}                             # 文件坏了就当没配，别把服务带崩
-    if not isinstance(data, dict):
-        return {}
-    if data.get('key_b64') and not data.get('key'):
-        try:
-            data['key'] = base64.b64decode(data['key_b64']).decode().strip()
-        except Exception:                     # noqa: BLE001
-            pass
-    return {k: v for k, v in data.items() if v and k != 'key_b64'}
-
-
-def _config():
-    """凭据与端点：仓库自带 > 用户配置 > 环境变量，后者盖前者。
-
-    仓库根的 phira_chat.json 是团队默认值，私密仓库里带着 key，
-    同学 clone 下来就能用，不用各自配。key 用 base64 存（躲 secret scanning，
-    不是加密，拿到仓库照样解得开）。个人想换 key 写 ~/.config/phira/chat.json，
-    临时换用环境变量——越靠后优先级越高。
-    """
-    cfg = {}
-    cfg.update(_read_config(ROOT / 'phira_chat.json'))
-    cfg.update(_read_config(
-        Path(os.environ.get('PHIRA_CHAT_CONFIG')
-             or Path.home() / '.config' / 'phira' / 'chat.json')))
-    for env_name, name in (('PHIRA_CHAT_KEY', 'key'),
-                           ('PHIRA_CHAT_BASE', 'base'),
-                           ('PHIRA_CHAT_MODEL', 'model')):
-        value = os.environ.get(env_name)
-        if value:
-            cfg[name] = value
-    return cfg
-
-
-def _call(messages):
-    cfg = _config()
-    key = cfg.get('key')
-    if not key:
-        return None, ('后端没有配置 PHIRA_CHAT_KEY，AI 助手不可用。'
-                      '把 key 写进后端环境变量，或放到 ~/.config/phira/chat.json 再试。')
-    base = cfg.get('base') or 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
-    model = cfg.get('model') or 'glm-4-flash'
-    body = json.dumps({'model': model, 'messages': messages, 'temperature': 0.2}, ensure_ascii=False)
-    req = urllib.request.Request(base, data=body.encode(), method='POST',
-                                 headers={'Content-Type': 'application/json',
-                                          'Authorization': 'Bearer ' + key})
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            payload = json.loads(resp.read().decode())
-    except Exception as exc:                      # noqa: BLE001
-        return None, f'调用模型失败：{type(exc).__name__}: {exc}'
-    try:
-        return payload['choices'][0]['message']['content'], None
-    except (KeyError, IndexError):
-        return None, '模型返回结构不认识：' + json.dumps(payload, ensure_ascii=False)[:200]
-
-
-def _extract_json(text):
-    """从模型输出里挖出那个 JSON 对象，容忍 Markdown 包裹和前后解释文字。
-
-    模型很爱干两件事：把 JSON 包进 ```json 代码块，或者在 JSON 前后唠一句
-    “好的，我来帮你……”。这两种都不能当成失败——挖出那个对象就行。
-    """
-    if not text:
-        return None
-    m = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.S)
-    if m:
-        return m.group(1)
-    start = text.find('{')
-    while start >= 0:
-        depth, in_str, esc = 0, False, False
-        for i in range(start, len(text)):
-            ch = text[i]
-            if in_str:
-                if esc:
-                    esc = False
-                elif ch == '\\':
-                    esc = True
-                elif ch == '"':
-                    in_str = False
-                continue
-            if ch == '"':
-                in_str = True
-            elif ch == '{':
-                depth += 1
-            elif ch == '}':
-                depth -= 1
-                if depth == 0:
-                    return text[start:i + 1]
-        start = text.find('{', start + 1)
-    return None
-
-
-def _state_brief():
-    st = status()
-    done = [k for k in ORDER if st[k]['done']]
-    run = [k for k in ORDER if st[k]['running']]
-    return (f'已完成的步骤：{", ".join(done) or "无"}；'
-            f'正在跑：{", ".join(run) or "无"}；'
-            f'建议下一步：{pipeline_next() or "全部完成"}')
-
-
 def _build_messages(message, history=None):
     messages = [dict(role='system', content=TOOL_DOC + '\n\n当前状态：' + _state_brief())]
     for turn in (history or [])[-6:]:

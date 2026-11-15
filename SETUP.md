@@ -227,3 +227,19 @@ chmod 600 ~/.config/phira/chat.json
 - 优先级：仓库 `phira_chat.json` < `~/.config/phira/chat.json` < 环境变量（`PHIRA_CHAT_KEY` / `PHIRA_CHAT_BASE` / `PHIRA_CHAT_MODEL`）。
 - 普通 paas 端点是 `https://open.bigmodel.cn/api/paas/v4/chat/completions`。**Coding Plan 套餐的 key 必须走 coding 端点**（上面那条），走错会报"套餐已到期"，看着像 key 废了其实没废。
 - 模型能做的只有这八步，不能拼 shell、不能删文件；认不出意图时会反问，不硬塞动作。
+
+### 同学照着说就行
+
+| 想做 | 跟 AI 说 |
+|---|---|
+| 下谱面（只要高难，省 11 GB） | 帮我下载谱面 |
+| 全量下载 | 全量下载 |
+| 先看有多少、多大 | 先列个清单 |
+| 建数据集 | 帮我把数据建库 |
+| 提特征（最慢，吃显卡） | 跑特征 |
+| 造训练用数据 | 造训练数据 |
+| 开训 | 开始训练 |
+| 看现在到哪了 | 现在到哪一步了 |
+
+不用报参数、不用报路径——默认值就是对的。真要换目录，直接说“放到 /mnt/d/phira”就行。
+
