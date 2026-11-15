@@ -27,21 +27,23 @@ class PhiraStrata(unittest.TestCase):
         for changes, key in cases:
             self.assertEqual(phira_stratum(self.row(**changes))['key'], key)
 
-    def test_explicitly_unreviewed_and_boolean_scores_do_not_pass(self):
-        self.assertFalse(selected_for_training(self.row(reviewed=False)))
-        self.assertFalse(selected_for_training(self.row(rating=True)))
+    def test_full_corpus_admits_unreviewed_and_dirty_scores(self):
+        # 全量口径（2026-11-15）：reviewed 标记、评分票数的脏值都不再充当准入条件。
+        self.assertTrue(selected_for_training(self.row(reviewed=False)))
+        self.assertTrue(selected_for_training(self.row(rating=True)))
 
-    def test_explicit_performance_or_simulation_is_excluded(self):
+    def test_explicit_performance_or_simulation_is_excluded_from_screen_but_admitted(self):
+        # 筛查证据仍照记（excluded 会写进 manifest），但全量口径下不再拦训练准入。
         for tags in [['visual'], ['troll'], ['4K'], ['转谱'], ['表演谱']]:
             row = self.row(tags=tags)
             self.assertEqual(screen_metadata(row)['status'], 'excluded')
-            self.assertFalse(selected_for_training(row))
+            self.assertTrue(selected_for_training(row))
 
-    def test_standard_label_does_not_bypass_ambiguous_source_review(self):
+    def test_ambiguous_source_still_flagged_but_not_gated(self):
         for description in ['这是4K模拟玩法', '本人转谱作品', '仅供观赏的演出谱']:
             row = self.row(description=description)
             self.assertEqual(screen_metadata(row)['status'], 'review_required')
-            self.assertFalse(selected_for_training(row))
+            self.assertTrue(selected_for_training(row))
 
     def test_normal_animation_and_artistic_drags_are_not_auto_rejected(self):
         for description in ['包含演出效果；drag铺满这一段是音乐表现',
@@ -61,12 +63,12 @@ class PhiraStrata(unittest.TestCase):
         review = dict(screen_version=SCREEN_VERSION, metadata_identity=metadata_identity(row),
                       decision='eligible_metadata_only', reason='The reference names the illustration source.')
         row['phira_metadata_review'] = review
-        self.assertTrue(selected_for_training(row))
+        self.assertEqual(screen_metadata(row)['status'], 'eligible_metadata_only')
         row['description'] = 'ADOFAI转谱'
-        self.assertFalse(selected_for_training(row))
+        self.assertEqual(screen_metadata(row)['status'], 'review_required')  # 旧复核失效，不能靠它洗白
         row['tags'] = ['visual']
         review['metadata_identity'] = metadata_identity(row)
-        self.assertFalse(selected_for_training(row))
+        self.assertEqual(screen_metadata(row)['status'], 'excluded')  # 非标准标签无法被 prose 复核清除
 
     def test_ingestion_preserves_screening_evidence_even_on_parse_failure(self):
         from tempfile import TemporaryDirectory
@@ -78,7 +80,7 @@ class PhiraStrata(unittest.TestCase):
         self.assertEqual(parsed['tags'], row['tags'])
         self.assertEqual(parsed['description'], row['description'])
         self.assertEqual(metadata_identity(parsed), metadata_identity(row))
-        self.assertFalse(selected_for_training(parsed))
+        self.assertEqual(screen_metadata(parsed)['status'], 'review_required')  # 证据照记，准入不再依赖它
 
 
 if __name__ == '__main__':

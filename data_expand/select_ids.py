@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Pick a quality-filtered expansion set from phira_all_charts.jsonl.
-Rules: reviewed only; drop troll/visual divisions; ranked/stable first, then rating*log(1+count);
-require ratingCount>=20 and rating>=0.8 for unranked; at most 2 charts per song (normalized name),
-preferring higher difficulty among the qualified. Existing ids count toward the per-song cap.
+"""Pick an expansion set from phira_all_charts.jsonl.
+Rules: 只要谱面有文件就收（全量口径，不再按评分/票数/reviewed 过滤）；
+同一首歌最多 2 张、优先难度高的；已有 id 计入每首歌上限。
 Usage: select_ids.py <jsonl> <existing_ids.txt> <target_total> <out_ids.txt>"""
+import os
 import sys, json, math, re, collections
 
 
@@ -36,13 +36,14 @@ def main():
     bysong = collections.defaultdict(list)
     for r in C: bysong[key(r)].append(r)
     pick = []
+    existing = len(set(open(ex).read().split())) if os.path.exists(ex) else 0
     for r in C:
+        if len(pick) >= target - existing: break
         k = key(r)
         if per[k] >= 2 or r['file'] in seen_file or not k: continue
         cands = [c for c in bysong[k] if str(c['id']) not in have and c['file'] not in seen_file]
         top = sorted(cands[:4], key=lambda c: c.get('difficulty') or 0, reverse=True)[0]
         pick.append(top); per[k] += 1; seen_file.add(top['file']); have.add(str(top['id']))
-        if len(pick) + 0 >= target - len(set(open(ex).read().split())): break
     open(out, 'w').write('\n'.join(str(r['id']) for r in pick) + '\n')
     print('candidates', len(C), 'songs', len(bysong), 'picked', len(pick))
     print(collections.Counter((bool(r.get('ranked') or r.get('stable')), div(r)) for r in pick))

@@ -16,7 +16,8 @@ from ..events.canonical import Chart, Event
 from ..model.batch import SongCache
 from ..ingest.phira_policy import screen_metadata
 
-DATA = '/data'
+# 数据根：搬家/换盘只改环境变量，代码不写死（与 console_server 的 BEATFCN_DATA_ROOT 同名同义）。
+DATA = os.environ.get('BEATFCN_DATA_ROOT') or '/data'
 
 
 DUP_REASONS = {'duplicate_object', 'duplicate_object_in_source'}
@@ -47,12 +48,15 @@ def load_manifest(root=DATA, split=None, kept_only=True, select=True, dup_collap
     return rows
 
 
+# 全量口径（2026-11-15 用户决定）：评分与票数不再作为训练准入条件。
+# 下面两个阈值只作为历史基线保留，供 audit_* 脚本做「若按旧门槛会筛掉多少」的对照；
+# phira_rating_eligible 也仅为这些对照保留，训练准入不再调用它。
 PHIRA_MIN_RATING = 0.75
 PHIRA_MIN_RATING_COUNT = 50
-PHIRA_SELECTION_VERSION = 'phira-rating-075-votes50-native-screen-v3'
+PHIRA_MIN_RATING_ENFORCED = False
+PHIRA_SELECTION_VERSION = 'phira-full-corpus-no-metadata-gate-v5'
 OSU_APPROVED = (1, 2)  # ranked, approved; loved (4) excluded (DATA_RULES §1)
-# Phira difficulty whitelist (DATA_RULES v4, user decision): only the standard EZ/HD/IN/AT tags. SP charts
-# (notes for performance/drawing), 4K/5K/6K mania imitation, ADOFAI and every custom tag are excluded.
+# 历史难度白名单：全量口径（2026-11-15）后不再参与准入，保留常量供分层统计/报告对照。
 PHIRA_TAGS = frozenset({'EZ', 'HD', 'IN', 'AT'})
 
 
@@ -85,6 +89,11 @@ def phira_rating_metadata(row):
 
 
 def phira_rating_eligible(row):
+    """「按旧的 075/50 门槛是否达标」的事实判断，仅供审计对照。
+
+    全量口径（2026-11-15）后训练准入不再调用它；保留原语义，
+    这样 audit_phira_rating_change / audit_data_scale 的对照数才不会失真。
+    """
     rating, count = phira_rating_metadata(row)
     return (rating is not None and rating >= PHIRA_MIN_RATING
             and count is not None and count >= PHIRA_MIN_RATING_COUNT)
@@ -93,10 +102,15 @@ def phira_rating_eligible(row):
 def selected_for_training(r) -> bool:
     """Metadata eligibility; technical, clock, split and quota checks remain separate."""
     if r.get('source') == 'phira':
-        return (phira_rating_eligible(r)
-                and phira_tag(r) in PHIRA_TAGS
-                and ('reviewed' not in r or bool(r['reviewed']))
-                and screen_metadata(r)['status'] == 'eligible_metadata_only')
+        # 全量口径（2026-11-15 用户决定，v5）：采音等价性已验证——SP/4K/ADOFAI 这些
+        # 「表演很 special」的谱，其采音与常规谱没有区别，差别只在 note 的排布表演，
+        # 因此难度标签、评分票数、reviewed 标记、元数据筛查都不再参与准入。
+        # 「有谱面文件 + 技术合格 + 切分」仍由 load_manifest 的 kept_only/技术检查把关；
+        # screen_metadata 退化为证据记录（仍写进 manifest），不再充当门禁。
+        return True
+    if r.get('source') == 'osu':
+        return int(r.get('approved') or 0) in OSU_APPROVED
+    return False
     if r.get('source') == 'osu':
         return int(r.get('approved') or 0) in OSU_APPROVED
     return False
