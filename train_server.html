@@ -573,7 +573,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         <small>默认方案是 <b>322M 生产配方（从0随机初始化）</b>，不读旧 checkpoint；旧权重丢了就用它重起一条 322M。</small>
         <small>训练不是简化脚本：用的是生产 baseline 的 native counterfactual exposure、own-target 条件、EMA、held-out teacher 诊断、checkpoint/light checkpoint。下面的学习率、warmup、EMA、累积条数都能在网页上改。</small>
         <small>16 层 decoder 约 277M（FFN 201M + self/cross attention 76M），3 个 encoder 约 45M，embedding/适配约 6M。<b>MERT-v2 632M 是冻结前端，单独算，不在 322M 里。</b></small>
-        <small>4090 24G：一次塞 <b>1 条</b> + 开梯度检查点；4 条以上容易爆显存。页面不再提供 tiny 自检，直接按 322M 走。</small>
+        <small>4090 24G：一次塞 <b>1 条</b> + 开梯度检查点；4 条以上容易爆显存。页面只按 322M 走。</small>
       </div>
 
       <div class="tp-row tp-planrow">
@@ -1292,8 +1292,8 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   function tpRunState(phase, session){
     /* 同一个按钮位：跑着显示「■ 停止训练」，闲着显示「开始训练」。
        判据优先看后端 tmux 会话是否真的存在（true/false）；只有本机没装 tmux、
-       探测失败（null/undefined）才退回 progress.phase。tiny 不写 progress.json，
-       旧逻辑只看 phase=train/boot，导致 tiny 跑到一半页面也没有「停止」按钮。 */
+       探测失败（null/undefined）才退回 progress.phase。旧版冒烟训练不写 progress.json，
+       旧逻辑只看 phase=train/boot，导致跑到一半页面也没有「停止」按钮。 */
     var ACTIVE={'start':1,'load_checkpoint':1,'build_panel':1,'build_exposure':1,'start_loader':1,
                 'load_model':1,'load_teacher':1,'compile':1,'warmup':1,'boot':1,'train':1,'checkpoint':1};
     var running = (session===true) || (session==null && !!ACTIVE[phase]);
@@ -1429,27 +1429,6 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
       tpSnap.textContent='快照存哪、留几份——连上后端后显示。';
       return;
     }
-    if(p.kind==='tiny'){               /* tiny 的参数名和 evolve 不同，别套 evolve 的详情表 */
-      var tb=[];
-      if(p.steps!=null) tb.push(p.steps+' 步');
-      if(p.lr!=null) tb.push('学习率 '+tpFmtNum(p.lr));
-      if(p.out) tb.push('输出 '+p.out);
-      tpPlanInfo.textContent='tiny · '+(tb.join(' · ')||'（方案里没写关键参数）');
-      var trows=[
-        ['训练步数','steps',p.steps==null?null:p.steps+' 步'],
-        ['学习率','lr',p.lr==null?null:tpFmtNum(p.lr)],
-        ['输入 tape','tape',p.tape],
-        ['特征目录','features',p.features],
-        ['输出目录','out',p.out],
-        ['随机种子','seed',p.seed]
-      ];
-      tpKv.innerHTML=trows.map(function(r){
-        var v=(r[2]==null||r[2]==='')?'未写':String(r[2]);
-        return '<span class="k">'+r[0]+'</span><span class="v">'+esc(v)+'<em>'+r[1]+'</em></span>';
-      }).join('');
-      tpSnap.innerHTML='tiny 是链路自检，不是最终模型；输出在 <b>'+esc(p.out||'（方案没写）')+'</b>，不写 evolve 的 step-*.pt 快照。';
-      return;
-    }
     var bits=[];
     if(p.model) bits.push(p.model+(p.model_params!=null?(' · '+p.model_params+'M'):''));
     if(p.kind==='production'){
@@ -1547,15 +1526,6 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     tpAccumV.textContent=tpAccumVal()+' 条';
     tpEmaV.textContent=String(tpEmaVal());
     tpValV.textContent=tpValVal()+' 条';
-    if(p&&p.kind==='tiny'){            /* tiny 只吃方案里的 steps/lr/out，这些控件不参与 */
-      tpUpdV.textContent='不生效（方案 '+(p.steps!=null?p.steps:100)+' 步）';
-      tpWkV.textContent='不生效（tiny 不用多进程）';
-      tpWkV.className='tp-val';
-      tpCkV.textContent='不生效';
-      tpHrV.textContent='不生效';
-      tpMbV.textContent='不生效';
-      return;
-    }
     tpMbV.textContent=tpMb.value+' 条/次';
     tpUpdV.textContent=String(tpUpdVal());
     tpWkV.textContent=wk+' 个 · ≈'+(wk*3)+'GB';
@@ -1565,14 +1535,14 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   }
   function tpPaint(){                  /* 命令区 = 当前控件状态的完整可复制版本 */
     tpShowVals();
-    if(window.DEMO){                   /* 演示模式：只展示方案，不拿 tiny 假训练冒充 322M */
+    if(window.DEMO){                   /* 演示模式：只展示方案，不跑假训练 */
       tpStart.disabled=true; tpStart.textContent='演示机不能起322M';
       tpCmd.innerHTML=hlCmd('# 演示模式：这台机器没有 4090 和数据\n'
-        +'# 页面只展示 322M 生产配方，不会跑 tiny 假训练\n'
+        +'# 页面只展示 322M 生产配方\n'
         +'# 去有 4090 和 /data 数据的机器上点「开始训练」\n'
         +'# 真训练入口：python -m scripts.build_l322m_production --recipe plans/evolve/l322m-production.json\n'
         +'# 然后：python -m scripts.run_local_song_baseline --plan <recipe 里的 plan_output>');
-      tpStartNote.textContent='演示机不训练；tiny 自检已移除。';
+      tpStartNote.textContent='演示机不训练。';
       return;
     }
     if(!tpPlan.value){                 /* 没方案就别装成能跑：一条占位命令 + 亮着的按钮最容易骗人 */
@@ -1590,24 +1560,11 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     var p=tpPlanObj();
     var planCk=(p&&p.kind==='production')?p.checkpoint_every_updates:(p?p.light_checkpoint_every:null);
     var diff=(planCk!=null&&planCk!==ck);
-    var isTiny=!!(p&&p.kind==='tiny');
     var isScratch=!!(p&&p.kind==='scratch');
     var isProd=!!(p&&p.kind==='production');
     [tpUpd,tpUpdR,tpWk,tpCk,tpCkR,tpHr,tpMb,tpDev,tpResume,tpSaveOpt,tpNoComp]
-      .forEach(function(el){ el.disabled=isTiny; });
+      .forEach(function(el){ el.disabled=false; });
     if(isScratch){ tpMb.value='1'; tpMb.disabled=true; }
-    if(isTiny){                        /* tiny 只认方案里的 tape/features/steps/lr/out */
-      var tsteps=(p.steps!=null)?p.steps:100;
-      var tlr=(p.lr!=null)?p.lr:0.001;
-      var txt='# tiny 方案：步数/学习率/输出目录来自方案本身；上面的参数控件对本方案不生效\n'
-        +"tmux new -s train -d 'cd "+tpRepo+" && python -m scripts.train_phira_tiny"
-        +" --tape "+(p.tape||'/tmp/t100')
-        +" --features "+(p.features||'/tmp/f100/features')
-        +" --steps "+tsteps+" --lr "+tlr+" --out "+(p.out||'/tmp/train-tiny')
-        +" 2>&1 | tee -a train.log'";
-      tpCmd.innerHTML=hlCmd(txt);
-      return;
-    }
     if(isProd){
       var prodNote='# 生产配方：点「开始训练」后，后端会把上面的参数写成临时 recipe，\n'
         +'# 先生成冻结 exposure/plan（build_l322m_production），再启动生产 baseline。\n'
@@ -1676,7 +1633,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         tpPlan.innerHTML='<option value="">（后端没连上，拿不到计划列表）</option>';
         tpPlanInfoPaint(); tpPaint(); return;
       }
-      tpPlans=(j.plans||[]).filter(function(p){ return p.kind!=='tiny'; });
+      tpPlans=(j.plans||[]);
       tpGotPlans=true;           /* 请求成功就算问过了：空列表是确定结果，不用每 5 秒重试 */
       if(!tpPlans.length){
         tpPlan.innerHTML='<option value="">（plans/evolve 里没有 json 计划）</option>';
@@ -1685,7 +1642,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
         tpPlan.innerHTML=tpPlans.map(function(p){
           var label=p.kind==='production'?'322M 生产配方（从0）':
                     (p.kind==='scratch'?'322M 从0（简化备用）':
-                    (p.model&&/l322m/.test(p.model)?'322M 继续训练':(p.kind==='tiny'?'tiny 1.59M（冒烟自检）':p.name)));
+                    (p.model&&/l322m/.test(p.model)?'322M 继续训练':p.name));
           return '<option value="'+esc(p.name)+'">'+esc(label)+'</option>';
         }).join('');
         var def=null;
@@ -1701,9 +1658,9 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   }
   tpStart.addEventListener('click',function(){
     if(window.DEMO){
-      // 演示机没有 4090/数据，也不再拿 tiny 假训练冒充 322M
+      // 演示机没有 4090/数据，不能跑真 322M
       tpStart.disabled=true; tpStart.textContent='演示机不能起322M';
-      tpStartNote.textContent='这台演示机没有 322M 的 tape/features 和显卡；tiny 自检已从页面移除。去有 4090 和数据的机器上点开始训练。';
+      tpStartNote.textContent='这台演示机没有 322M 的 tape/features 和显卡。去有 4090 和数据的机器上点开始训练。';
       return;
     }
     if(!tpPlan.value){ tpStartNote.textContent='先选方案（后端连上才有列表）'; return; }

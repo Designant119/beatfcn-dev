@@ -246,8 +246,6 @@ def data_items():
         if not isinstance(cfg, dict):
             continue
         kind = cfg.get('kind')
-        if kind == 'tiny':
-            continue
         total += 1
         if kind == 'scratch':
             tape = cfg.get('tape')
@@ -813,17 +811,7 @@ def _train_start(body):
     q = shlex.quote
     kind = known[plan].get('kind')
     home = os.path.expanduser('~')
-    if kind == 'tiny':
-        t = known[plan]
-        cmd = ('cd {repo} && HOME={home} PYTHONPATH={site} {py} -m scripts.train_phira_tiny'
-               ' --tape {tape} --features {feat} --steps {steps} --lr {lr}'
-               ' --out {out}').format(
-            repo=q(REPO), home=q(home), tape=q(t.get('tape') or '/tmp/t100'),
-            feat=q(t.get('features') or '/tmp/f100/features'),
-            steps=int(t.get('steps') or 100), lr=float(t.get('lr') or 1e-3),
-            out=q(t.get('out') or '/tmp/train-tiny'), py=q(sys.executable),
-            site=q(_USER_SITE))
-    elif kind == 'production':
+    if kind == 'production':
         if device != 'cuda':
             return bad('322M 生产配方只能跑 cuda；CPU 跑不动，别选 cpu')
         recipe_src = os.path.join(REPO, 'plans', 'evolve', plan)
@@ -866,7 +854,7 @@ def _train_start(body):
            .format(repo=q(REPO), home=q(home), site=q(_USER_SITE), workers=workers, py=q(sys.executable),
                    plan=q(plan_path),
                    updates=updates, deadline=deadline_ts))
-    if kind not in ('tiny', 'production'):  # tiny/生产配方各自有自己的参数
+    if kind != 'production':  # 生产配方有自己的参数和启动方式
         if flags['resume']:
             cmd += ' --resume'
         if flags['save_optimizer']:
