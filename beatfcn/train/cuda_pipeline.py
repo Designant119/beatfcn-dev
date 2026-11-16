@@ -33,7 +33,6 @@ def decoded_audio_from_receipt(job, raw_index, root, temporary_root):
     if not record.get('verified') or record.get('payload_sha256') != audio:
         raise ValueError('Audio lacks verified raw content identity: ' + audio)
     source = checked_path(root, record['archive'])
-    from beatfcn.ingest.pipeline import decode
     if record['source'] == 'osu':
         original = source
     elif record['source'] == 'phira':

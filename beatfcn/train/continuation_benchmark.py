@@ -352,8 +352,10 @@ def truth_key(job):
 
 
 def _canonical(events, mode, prefix):
+    # Free mania generation never predicts a lane (lane == -1 sentinel); a LineLoc
+    # placeholder keeps score_events/edit_utility lane_blind (as_events convention).
     return tuple(Event(f'{prefix}{i}', e.onset_us, e.end_us, e.type,
-                       LaneLoc(e.lane) if mode == 'mania_4k' else LineLoc('rhythm', 'above', 0.))
+                       LaneLoc(e.lane) if mode == 'mania_4k' and e.lane >= 0 else LineLoc('rhythm', 'above', 0.))
                  for i, e in enumerate(events))
 
 
@@ -371,7 +373,10 @@ def rollout_sources(state, start, end, *, history_us=HISTORY_US, suffix_us=SUFFI
                                         ((lower, human_hi),), _canonical(events, mode, 'h')))
     model_lo = max(lower, fill_start)
     if model_lo < start:
-        events = [e for e in state['generated'] if model_lo <= e.onset_us < start]
+        # encode_reference requires a concrete LaneLoc in mania; the lane value is never
+        # encoded, so the generated -1 sentinel maps to lane 0 for this reference.
+        events = [RhythmEvent(e.onset_us, e.end_us, e.type, e.lane if e.lane >= 0 else 0)
+                  for e in state['generated'] if model_lo <= e.onset_us < start]
         sources.append(VisibleReference(f'generated:{state["job_id"]}', mode, audio, 'model_history',
                                         ((model_lo, start),), _canonical(events, mode, 'g')))
     if state['suffix'] and end == fill_end and fill_end < duration:
@@ -405,7 +410,10 @@ def rollout_jobs(model, features, jobs, *, device, generator, batch_size=8, toke
             start = state['cursor']
             end = min(start + CORE_US, state['fill'][1])
             known = state['visible_events'] + state['generated']
-            carry = tuple(sorted({e for e in known if e.type == 'hold' and e.onset_us < start < e.end_us},
+            # check_no_leak matches carry lanes against reference locations; generated
+            # holds carry the -1 sentinel, which no LaneLoc can represent (lane -> 0).
+            carry = tuple(sorted({RhythmEvent(e.onset_us, e.end_us, e.type, e.lane if e.lane >= 0 else 0)
+                                  for e in known if e.type == 'hold' and e.onset_us < start < e.end_us},
                                  key=lambda e: (e.onset_us, e.lane, e.end_us)))
             request = EventRequest(state['mode'], start, end, state['duration_us'], known_carry=carry)
             sources = rollout_sources(state, start, end, history_us=history_us, suffix_us=suffix_us) \

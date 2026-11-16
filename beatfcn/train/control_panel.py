@@ -86,12 +86,6 @@ def feasible_witness(mode, field, level):
         duration = (0, 2800000, 7200000)[level]
         add(250000, 'hold' if duration else 'tap', 250000 + duration)
         add(7700000, lane=1)
-    elif False:
-        lane = 0
-        for i in range(21):
-            if i > (0, 7, 18)[level]:
-                lane = (lane + 1) % 4
-            add(100000 + i * 300000, lane=lane)
     else:
         count = (0, 5, 11)[level]
         for i in range(20):
