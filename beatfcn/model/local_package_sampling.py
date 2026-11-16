@@ -69,6 +69,10 @@ def sample_package(model, inputs, request, *, seed, output=None,
                     fields = (model.tail_block(condition), model.tail_cell(condition), model.tail_ms(condition))
                     lo = (head - base_us) // 1000 + 1
                     hi = (request.duration_us - base_us) // 1000
+                    if hi >= fields[0].shape[-1] * 2000:
+                        # same TAIL_BLOCKS domain bound as local_group_diffusion; without it
+                        # _sample_tail raises IndexError, not the ValueError callers expect.
+                        raise ValueError('Song exceeds represented native tail domain')
                     if hi < lo:
                         raise ValueError('No legal native-ms hold tail')
                     delta = _sample_tail(*(f.float().cpu().double().numpy() for f in fields), lo, hi, rng)

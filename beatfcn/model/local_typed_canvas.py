@@ -167,6 +167,10 @@ def best_tail(block, cell, ms, onset_us, duration_us):
     if lo > hi:
         raise ValueError('No legal native-ms hold endpoint')
     block, cell, ms = map(np.asarray, (block, cell, ms))
+    if hi >= block.shape[-1] * 2000:
+        # tail tables cover TAIL_BLOCKS blocks of 2000 ms; an endpoint past that would
+        # index them with IndexError, which decode_canvas's except cannot catch.
+        raise ValueError('Song exceeds represented native tail domain')
     low_b, high_b = lo//2000, hi//2000
     pairs = np.add.outer(cell, ms).reshape(-1)
     candidates = []
