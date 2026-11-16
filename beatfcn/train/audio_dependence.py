@@ -93,17 +93,16 @@ def freeze_teacher_panel(panel, *, windows=200, seed=20261101, tape_sha256=None,
     from itertools import zip_longest
     interleaved = [q for group in zip_longest(*(queues[m] for m in sorted(queues))) for q in group if q is not None]
     while len(chosen) < windows and any(depth < len(q) for qs in queues.values() for q in qs):
-        for mode in ('*',):
-            for queue in interleaved:
-                if depth < len(queue) and len(chosen) < windows:
-                    index = queue[depth]
-                    donor = find_donor(panel, index, candidates, seed)
-                    if donor is None:
-                        skipped['no_matched_foreign_window'] += 1
-                        continue
-                    roll = roll_choices_s[int(_rank(seed, 'roll', index), 16) % len(roll_choices_s)]
-                    chosen.append(dict(_identity(panel, index), foreign_index=donor,
-                        foreign_audio_sha256=panel.records[donor]['audio_sha256'], roll_s=roll))
+        for queue in interleaved:
+            if depth < len(queue) and len(chosen) < windows:
+                index = queue[depth]
+                donor = find_donor(panel, index, candidates, seed)
+                if donor is None:
+                    skipped['no_matched_foreign_window'] += 1
+                    continue
+                roll = roll_choices_s[int(_rank(seed, 'roll', index), 16) % len(roll_choices_s)]
+                chosen.append(dict(_identity(panel, index), foreign_index=donor,
+                    foreign_audio_sha256=panel.records[donor]['audio_sha256'], roll_s=roll))
         depth += 1
     return dict(schema='audio-dependence-panel-v1', tape_sha256=tape_sha256, seed=seed, windows=chosen,
         conditions=list(CONDITIONS), cell_us=cell_us, controls='unconditional: encode_controls({}) + unspecified 100 ms curve (= fully dropped training sample)',
