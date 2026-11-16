@@ -48,11 +48,11 @@ def decide_nonempty_counts(logp,*,rng=None):
 
 
 class GroupedChartProcess(CanonicalPackageCanvas):
-    def __init__(self,config,*,density_reference,history_dropout=.1):
+    def __init__(self,config,*,density_reference,history_dropout=.1,history_content=True):
         super().__init__(config,density_reference=density_reference)
         d=config.d
         self.history_dropout=history_dropout
-        self.history_content=True
+        self.history_content=history_content
         self.chart_gru=nn.GRUCell(d,128)
         self.chart_start=nn.Parameter(torch.randn(128)*.02)
         self.chart_query=nn.Linear(128+d,128)
