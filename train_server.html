@@ -359,7 +359,7 @@
       <tr><td class="mono">02</td><td>看环境装没装通</td><td>LIVE 模式下全自动</td><td id="st2"><span class="s none">未开始</span></td></tr>
       <tr><td class="mono">03</td><td>打开 Linux（导系统）</td><td>二十分钟左右</td><td id="st3"><span class="s none">未开始</span></td></tr>
       <tr><td class="mono">04</td><td>确认数据在盘上</td><td>LIVE 模式自己数</td><td id="st4"><span class="s none">未开始</span></td></tr>
-      <tr><td class="mono">05</td><td>开始训，然后不用管</td><td>一到两天</td><td id="st5"><span class="s none">未开始</span></td></tr>
+      <tr><td class="mono">05</td><td>削一刀再蒸馏，然后不用管</td><td>一夜 6-10 小时</td><td id="st5"><span class="s none">未开始</span></td></tr>
     </table>
 
     <div class="flag" id="autoNote"><span class="k">关于"自动检查"</span>
@@ -482,7 +482,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   <!-- ===== 04 数据 ===== -->
   <section class="view" id="v-l4">
     <div class="vhead"><span class="sid">04</span><h2>数据</h2><span class="vtag">数文件</span></div>
-    <p class="hint">一个训练方案跑起来只要两样东西：<b>起始权重</b>（.pt）和 <b>数据集</b>（exposure-*.json）。下面按 05 页那些方案里写的路径，挨个查这两样在不在。</p>
+    <p class="hint">一个训练方案跑起来要两样东西：<b>起始权重</b>（.pt）和 <b>数据集</b>（exposure-*.json）。<b>蒸馏方案还要第三样：老师权重</b>（完整 r5 的 .pt，和手术源是同一个文件）。下面按 05 页那些方案里写的路径，挨个查这些在不在。</p>
 
     <!-- 谱面下载 -->
     <div class="tpanel">
@@ -570,18 +570,18 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
 
   <!-- ===== 05 训练 ===== -->
   <section class="view" id="v-l5">
-    <div class="vhead"><span class="sid">05</span><h2>开跑，然后不用管</h2><span class="vtag">1-2 天</span></div>
-    <p class="hint">一跑一两天。调好下面的参数，点「开始训练」；命令随控件实时生成，也可以自己复制去跑。训练跑在 tmux 的 <b>train</b> 会话里，关窗口不停，回来 <code class="mono">tmux attach -t train</code>。</p>
+    <div class="vhead"><span class="sid">05</span><h2>削一刀再蒸馏，然后不用管</h2><span class="vtag">6-10 小时</span></div>
+    <p class="hint">不是从头训了。<b>先拿 r5 权重削成小模型，再让完整 r5 当老师带 2400 步</b>，一夜跑完（6-10 小时）。调好下面的参数，点「开始训练」；命令随控件实时生成，也可以自己复制去跑。训练跑在 tmux 的 <b>train</b> 会话里，关窗口不停，回来 <code class="mono">tmux attach -t train</code>。</p>
 
     <div class="tpanel">
       <div class="tp-h">TRAIN PARAMS / 训练设置（照着中文选就行，括号里是原参数名）</div>
 
       <div class="tp-model">
-        <b>当前模型：BeatFCN l322m · 约 322M 可训练参数</b>
-        <small>默认方案是 <b>322M 生产配方（从0随机初始化）</b>，不读旧 checkpoint；旧权重丢了就用它重起一条 322M。</small>
-        <small>训练不是简化脚本：用的是生产 baseline 的 native counterfactual exposure、own-target 条件、EMA、held-out teacher 诊断、checkpoint/light checkpoint。下面的学习率、warmup、EMA、累积条数都能在网页上改。</small>
-        <small>16 层 decoder 约 277M（FFN 201M + self/cross attention 76M），3 个 encoder 约 45M，embedding/适配约 6M。<b>MERT-v2 632M 是冻结前端，单独算，不在 322M 里。</b></small>
-        <small>4090 24G：一次塞 <b>1 条</b> + 开梯度检查点；4 条以上容易爆显存。页面只按 322M 走。</small>
+        <b>现在跑的是压缩档：从 r5 削一刀，再让老师带一遍</b>
+        <small>三个档位：<b>132.8M</b>（层数 16→8 + 每层 FFN 4096→1792，主攻档）、<b>189.5M</b>（只砍层数，保底档）、<b>322M</b>（从头随机初始化，留着当对照）。</small>
+        <small>压缩不是重新发明模型：先拿现成的 r5 权重做手术出初始权重，再让完整 r5 当老师盯着学生的每一步输出（这叫蒸馏），2400 步把落下的补回来。</small>
+        <small>16 层 decoder 约 277M（FFN 201M + self/cross attention 76M），3 个 encoder 约 45M，embedding/适配约 6M。<b>MERT-v2 632M 是冻结前端，单独算，不在这些数里。</b></small>
+        <small>4090 24G：<b>132M/189M 一次塞 4 条更划算</b>（显存吃得少）；322M 从头训才需要塞 1 条 + 开梯度检查点。</small>
       </div>
 
       <div class="tp-row tp-planrow">

@@ -849,10 +849,29 @@ def _train_start(body):
             repo=q(REPO), home=q(home), site=q(_USER_SITE), py=q(sys.executable),
             plan=q(plan_path), updates=updates, deadline=deadline_ts)
     else:
-        cmd = ('cd {repo} && HOME={home} PYTHONPATH={site} BEATFCN_MAX_LOADER_WORKERS={workers} {py} -m scripts.evolve_finetune '
-           '--plan {plan} --updates {updates} --deadline-unix {deadline}'
-           .format(repo=q(REPO), home=q(home), site=q(_USER_SITE), workers=workers, py=q(sys.executable),
-                   plan=q(plan_path),
+        head = ('cd {repo} && HOME={home} PYTHONPATH={site} BEATFCN_MAX_LOADER_WORKERS={workers}'
+                .format(repo=q(REPO), home=q(home), site=q(_USER_SITE), workers=workers))
+        surgery = ''
+        init_path = known[plan].get('init')
+        spec_surgery = None
+        try:
+            with open(os.path.join(REPO, 'plans', 'evolve', plan), encoding='utf-8') as f:
+                raw = json.load(f)
+            spec_surgery = raw.get('surgery') if isinstance(raw, dict) else None
+        except Exception:
+            spec_surgery = None
+        # 真手术方案（有 depth/ffn 要削）才需要预生成 init；C4 那类 surgery=null、
+        # init 直接指 r5 本体的方案不能去跑 evolve_surgery，它会在 spec['surgery'] 上崩。
+        if (isinstance(spec_surgery, dict) and isinstance(init_path, str)
+                and init_path.startswith('/') and not os.path.isfile(init_path)):
+            # 蒸馏类方案必须先有手术后的初始权重：evolve_finetune 只读 spec['init']，
+            # 发现没有它就 torch.load 报 FileNotFound，不会自己先削一刀。
+            surgery = ' {py} -m scripts.evolve_surgery --plan {plan} 2>&1 | tee -a {log} &&'.format(
+                py=q(sys.executable), plan=q(plan_path), log=q(os.path.join(REPO, 'train.log')))
+            ck_note += '；先跑手术生成初始权重 %s' % init_path
+        cmd = (head + surgery +
+           ' {py} -m scripts.evolve_finetune --plan {plan} --updates {updates} --deadline-unix {deadline}'
+           .format(py=q(sys.executable), plan=q(plan_path),
                    updates=updates, deadline=deadline_ts))
     if kind != 'production':  # 生产配方有自己的参数和启动方式
         if flags['resume']:

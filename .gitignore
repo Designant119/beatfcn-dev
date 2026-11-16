@@ -17,5 +17,7 @@ reval_v22_result*.json
 *.log
 demo_cpu/
 runtime/
+runtime-cu121/
+weights/
 data/
 .venv/
