@@ -33,7 +33,7 @@
  "freeze_encoders": false,
  "note_lr": "Peak 3e-5, warmup 100, floor 5e-6 as r4/r5. Cosine spans the fixed 2400-update horizon, so rungs 300/900/2400 are prefixes of one trajectory. A resume without Adam state re-warms over 100 updates.",
  "note_ema": "Decay .99 instead of .999: at .999 a 300-update EMA is close to a flat mean of the whole rung, including the first post-surgery updates.",
- "note_surgery": "从 noteforge 移植版（/data/beatfcn-r5-ported.pt，321.7M，d=896/ffn=3584/encoder 每路 3 层）砍：depth 16->8 + decoder FFN 3584->1792，剩约 176.8M。注意三点：① apply_surgery 不动 encoder，noteforge 的 encoder 占 103.2M（32%），所以砍完是 176.8M 而不是 132.8M；② 这份没有 KD——noteforge 词表 1985 vs beatfcn 1904，teacher.vocab != vocab 会被 evolve_finetune 直接拦下，只能纯监督微调；③ 三个词表层（token_embedding/output/field_embedding）已在 port_noteforge 里重初始化，训练第一步就是从零学写字，loss 起点会明显高于 C10。",
+ "note_surgery": "从 noteforge 移植版（/data/beatfcn-r5-ported.pt，321.7M，d=896/ffn=3584/encoder 每路 3 层）砍：depth 16->8 + decoder FFN 3584->1792，实测 176.6M。注意三点：① apply_surgery 不动 encoder，noteforge 的 encoder 占 103.2M（32%），所以砍完是 176.6M 而不是 132.8M；② 这份没有 KD——noteforge 词表 1985 vs beatfcn 1904，teacher.vocab != vocab 会被 evolve_finetune 直接拦下，只能纯监督微调；③ 三个词表层（token_embedding/output/field_embedding）已在 port_noteforge 里重初始化，训练第一步就是从零学写字，loss 起点会明显高于 C10。",
  "id": "C11-ported-depth8",
  "init": "/data/evolve/init/C11-ported-depth8.pt",
  "out_dir": "/data/evolve/C11-ported-depth8"
