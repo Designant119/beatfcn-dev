@@ -1,0 +1,76 @@
+{
+ "_note": "反推自 scripts/prepare_native_counterfactual_training.py:195-228 与 beatfcn/train/counterfactual_exposure.py:28-39 的默认值。原 /data/round5-level/plan.json 已无法核实（那台 4090 已无关系）。所有值是代码里的默认或硬编码：--accum-steps 默认 4；optimizer 硬编码 weight_decay=.1 betas=[.9,.95]；loss 硬编码 type_weight=.1 z_weight=1e-4 onset_weight=.1，first_token_weight=--first-token-weight 默认 1；counterfactual mix/dropout 用 DEFAULT_TREATMENT_MIX / DEFAULT_CONDITION_DROPOUT；curve_cell_us=2e6、render_cell_us=1e5。config/vocabulary 由 init checkpoint 覆盖，此处留空。",
+ "id": "base-round5-reversed",
+ "steps": 2400,
+ "optimizer_updates": 600,
+ "seed": 20261108,
+ "device": "cuda",
+ "autocast": "bf16",
+ "config": {},
+ "vocabulary": {},
+ "physical_microbatch_requests": 4,
+ "accum_steps": 4,
+ "learning_rate": 3e-5,
+ "optimizer": {
+  "weight_decay": 0.1,
+  "betas": [
+   0.9,
+   0.95
+  ]
+ },
+ "learning_rate_schedule": {
+  "warmup_updates": 30,
+  "minimum_lr": 1e-05,
+  "total_updates": 600
+ },
+ "loss": {
+  "type_weight": 0.1,
+  "z_weight": 0.0001,
+  "first_token_weight": 1.0,
+  "onset_weight": 0.1
+ },
+ "counterfactual": {
+  "format": "counterfactual-exposure-v2",
+  "treatment_mix": [
+   {
+    "name": "native",
+    "multiplier": null,
+    "probability": 0.5
+   },
+   {
+    "name": "x0.5",
+    "multiplier": 0.5,
+    "probability": 0.15
+   },
+   {
+    "name": "x1.5",
+    "multiplier": 1.5,
+    "probability": 0.15
+   },
+   {
+    "name": "x2.0",
+    "multiplier": 2.0,
+    "probability": 0.15
+   },
+   {
+    "name": "x0",
+    "multiplier": 0.0,
+    "probability": 0.05
+   }
+  ],
+  "condition_dropout": {
+   "all_probability": 0.2,
+   "curve_probability": 0.3,
+   "control_probability": 0.3
+  },
+  "curve_cell_us": 2000000,
+  "render_cell_us": 100000
+ },
+ "mode_weights": null,
+ "exposure_song_chunk": 8,
+ "ema": {
+  "decay": 0.999
+ },
+ "light_checkpoint_every": 30,
+ "light_checkpoint_keep": 2
+}

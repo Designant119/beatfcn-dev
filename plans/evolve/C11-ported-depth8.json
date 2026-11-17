@@ -1,6 +1,5 @@
 {
- "base_plan": "/data/round5-level/plan.json",
- "base_plan_sha256": "a38198c389193f26cccb445365ef3ca28b26b6a0fcc3fa34138436aaccc50b7f",
+ "base_plan": "plans/base-plan-round5.json",
  "learning_rate": 3e-05,
  "schedule": {
   "horizon_updates": 2400,
