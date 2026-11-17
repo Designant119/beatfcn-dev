@@ -45,7 +45,8 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from beatfcn.events import controls as C  # noqa: E402,F401
-from beatfcn.model import features as F  # noqa: E402
+from beatfcn.model import features as F  # noqa: E402,F401
+from beatfcn.train.event_conditions import CONTROL_FIELDS as MODEL_CONTROL_FIELDS  # noqa: E402
 from beatfcn.model.full_event_codec import FIELDS as EVENT_FIELDS  # noqa: E402
 from beatfcn.model.full_event_codec import EventVocabulary  # noqa: E402
 from beatfcn.model.full_event_model import FullEventConfig, FullEventModel  # noqa: E402
@@ -54,11 +55,15 @@ SCHEMA = 'beatfcn.port.v1'
 
 # 控制面板的行序两边**完全不同**，不能按位置硬搬：
 #   noteforge: CONTROL_FIELDS = tuple(BAND_EDGES)         -> BAND_EDGES 的插入顺序
-#   beatfcn:   CONTROL_FIELDS = tuple(sorted(BAND_EDGES)) -> 字母序
-# 所以按字段名映射。beatfcn 的字段表直接从代码取，它以后加字段这里自动跟上。
+#   beatfcn:   train/event_conditions.py 的 CONTROL_FIELDS -> 也是 tuple(BAND_EDGES) 插入顺序
+#              model/features.py 的 CONTROL_FIELDS 是 tuple(sorted(...)) 字母序，那是特征工程
+#              那一侧用的，**不是**喂进模型 control_ids 的顺序。
+# 关键：encode_controls() 按 event_conditions.CONTROL_FIELDS 逐行写控制向量，模型
+# control_ids.weight 的每一行就是那个字段的嵌入，所以移植必须对齐**训练序**，
+# 对齐 features.py 的字母序会让七行全部错位（density 读到 chord 的嵌入那种）。
 NOTEFORGE_CONTROLS = ('density_notes_per_second', 'peak_notes_per_second', 'hold_head_ratio',
                       'hold_occupancy_ratio', 'chord_ratio', 'jack_ratio', 'flick_ratio', 'drag_ratio')
-CONTROL_KEEP = tuple(NOTEFORGE_CONTROLS.index(f) for f in F.CONTROL_FIELDS)
+CONTROL_KEEP = tuple(NOTEFORGE_CONTROLS.index(f) for f in MODEL_CONTROL_FIELDS)
 
 # 词表层的对齐规则。两边只差一个已退役的 mania 字段，其余字段名与尺寸完全一致，
 # 所以不整层重初始化，而是按字段名把旧表的行搬到新表位置——除了 mania 的 81 格，
