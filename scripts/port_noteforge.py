@@ -12,13 +12,17 @@ FullEventModel 结构一致，395 个张量里 392 个形状严丝合缝（318,1
 前三个差 81：noteforge 的 mania 字段带 81 格 4-lane pattern，beatfcn 把 lane
 预测整个退役了（lane 归编辑器管）。
 
-control_ids 差的是**行序**，而且两边连排序规则都不同：
-    noteforge: CONTROL_FIELDS = tuple(BAND_EDGES)         -> 插入顺序
-               density / peak / hold_head / hold_occupancy / chord / jack / flick / drag
-    beatfcn:   CONTROL_FIELDS = tuple(sorted(BAND_EDGES)) -> 字母序
-               chord / density / drag / flick / hold_head / hold_occupancy / peak
-所以直接搬会让每个旋钮都读到别人的嵌入。这里按字段名映射（CONTROL_KEEP），
-实算出来是 (4, 0, 7, 6, 2, 3, 1)，jack_ratio 因为已退役被自然丢掉。
+control_ids 差的是**行序**，这里有个踩过的坑（2026-11 真出过事故）：
+    beatfcn 代码里有**两份** CONTROL_FIELDS，顺序并不一样：
+      beatfcn/model/features.py:46       tuple(sorted(BAND_EDGES)) -> 字母序（特征工程那一侧用）
+      beatfcn/train/event_conditions.py:16 tuple(BAND_EDGES)      -> 插入序（训练喂模型用）
+    模型的 control_ids.weight 第 i 行，对应的正是 encode_controls() 写进去的第 i 个字段，
+    而 encode_controls 遍历的是 event_conditions 那份。所以**训练序才是模型口径**。
+
+    如果拿 features.py 那份当基准，会得到 (4, 0, 7, 6, 2, 3, 1)，七行里每一行都
+    读到别人的嵌入（density 拿 chord 的行那种），训出来七个旋钮完全不听话，
+    而且这种错位不会报错、loss 也照常下降，只有训完试用才发现。
+    正确映射是 (0, 1, 2, 3, 4, 6, 7)，只有 jack（源第 5 行）因已退役被丢掉。
 
 用法（在有 r5 权重的那台机器上跑，不要在小内存机器上跑）：
 
