@@ -46,6 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from beatfcn.events import controls as C  # noqa: E402,F401
 from beatfcn.model import features as F  # noqa: E402
+from beatfcn.model.full_event_codec import FIELDS as EVENT_FIELDS  # noqa: E402
 from beatfcn.model.full_event_codec import EventVocabulary  # noqa: E402
 from beatfcn.model.full_event_model import FullEventConfig, FullEventModel  # noqa: E402
 
@@ -58,7 +59,14 @@ SCHEMA = 'beatfcn.port.v1'
 NOTEFORGE_CONTROLS = ('density_notes_per_second', 'peak_notes_per_second', 'hold_head_ratio',
                       'hold_occupancy_ratio', 'chord_ratio', 'jack_ratio', 'flick_ratio', 'drag_ratio')
 CONTROL_KEEP = tuple(NOTEFORGE_CONTROLS.index(f) for f in F.CONTROL_FIELDS)
-REINIT = ('token_embedding.weight', 'output.weight', 'field_embedding.weight')
+
+# 词表层的对齐规则。两边只差一个已退役的 mania 字段，其余字段名与尺寸完全一致，
+# 所以不整层重初始化，而是按字段名把旧表的行搬到新表位置——除了 mania 的 81 格，
+# 1904 格里的每一个都原样继承（前 4 个字段连同后面的 member/kind/tail 一起对齐）。
+NOTEFORGE_FIELDS = ('group', 'head_block', 'head_cell', 'head_ms', 'mania', 'member',
+                    'kind', 'tail_block', 'tail_cell', 'tail_ms')
+VOCAB_LAYERS = ('token_embedding.weight', 'output.weight')
+FIELD_LAYER = 'field_embedding.weight'
 
 
 def load_source(path):
@@ -93,28 +101,62 @@ def compare(saved, controls=7):
     return shape_bad, reord_bad, only_weight, only_model, conf, vocab
 
 
+def noteforge_sizes(vocab_dict):
+    """noteforge 的词表分段（含已退役的 mania 81 格）。"""
+    blocks = vocab_dict['max_duration_ms'] // 2000 + 1
+    return (2, blocks + vocab_dict['max_copy_times'], 50, 40, 81, 2, 4, blocks, 50, 40)
+
+
+def remap_rows(old, src_fields, src_sizes, dst_fields, dst_sizes, pad=2):
+    """按字段名把旧表的行搬到新表位置。
+
+    目标表没有的字段（mania）丢弃；词表层末尾有 2 格 padding，field_embedding
+    没有（pad=0，行数就是字段个数）。
+    """
+    src_off, off = {}, 0
+    for f, s in zip(src_fields, src_sizes):
+        src_off[f] = off
+        off += s
+    new = torch.empty(sum(dst_sizes) + pad, old.shape[1], dtype=old.dtype)
+    dst_off = 0
+    for f, s in zip(dst_fields, dst_sizes):
+        if f not in src_off:
+            raise SystemExit(f'目标字段 {f} 在源词表里不存在，移植规则需要更新')
+        new[dst_off:dst_off + s] = old[src_off[f]:src_off[f] + s]
+        dst_off += s
+    if pad:
+        new[sum(dst_sizes):] = old[sum(src_sizes):sum(src_sizes) + pad]
+    return new
+
+
 def port(saved, seed=20261116, controls=7):
-    """抄一致层 + 重排控制行 + 重初始化词表层；返回 (state, config, vocabulary, report)。"""
+    """抄一致层 + 重排控制行 + 按字段名对齐词表层；返回 (state, config, vocabulary, report)。"""
     shape_bad, reord_bad, only_weight, only_model, conf, vocab = compare(saved, controls)
     if only_weight or only_model:
         raise SystemExit('两边存在单边参数，移植脚本只处理已知差异，请先人工核对：'
                          f'only_weight={only_weight[:5]} only_model={only_model[:5]}')
-    torch.manual_seed(seed)
-    fresh = FullEventModel(conf, vocab)
-    fresh_sd = fresh.state_dict()
-    state, copied, reordered = {}, 0, []
+    src_sizes = noteforge_sizes(dict(saved['vocabulary']))
+    state, copied, reordered, remapped = {}, 0, [], []
     for key, value in saved['model'].items():
         if key in reord_bad:
-            state[key] = value[list(CONTROL_KEEP)].to(torch.float32).clone()
+            state[key] = value[list(CONTROL_KEEP)].clone()
             reordered.append(key)
         elif key in shape_bad:
-            state[key] = fresh_sd[key].detach().to(torch.float32).clone()
+            if key in VOCAB_LAYERS:
+                state[key] = remap_rows(value, NOTEFORGE_FIELDS, src_sizes,
+                                        EVENT_FIELDS, tuple(vocab.sizes))
+            elif key == FIELD_LAYER:
+                state[key] = remap_rows(value, NOTEFORGE_FIELDS, (1,) * len(NOTEFORGE_FIELDS),
+                                        EVENT_FIELDS, (1,) * len(EVENT_FIELDS), pad=0)
+            else:
+                raise SystemExit(f'未知的形状不符层 {key}，移植规则需要更新')
+            remapped.append(f'{key} {tuple(value.shape)} -> {tuple(state[key].shape)}')
         else:
-            state[key] = value.to(torch.float32)
+            # 源权重全是 float32，直接引用 mmap 张量，torch.save 时按需读入，
+            # 不复制一份等大的内存。
+            state[key] = value
             copied += 1
-    del fresh, fresh_sd
-    report = dict(copied_layers=copied, reinit_layers=shape_bad, reordered_layers=reordered,
-                  reinit_parameters=sum(saved['model'][k].numel() for k in shape_bad),
+    report = dict(copied_layers=copied, reord_layers=reordered, remapped_layers=remapped,
                   source_parameters=sum(v.numel() for v in saved['model'].values()))
     return state, conf, vocab, report
 
@@ -152,18 +194,17 @@ def main(argv=None):
                model=state, parameters=sum(v.numel() for v in state.values()),
                provenance=dict(source=str(args.src), source_schema=saved.get('schema'),
                                source_parameters=report['source_parameters'],
-                               reinit_layers=report['reinit_layers'],
-                               reordered_layers=report['reordered_layers'],
-                               reinit_parameters=report['reinit_parameters'], seed=args.seed,
-                               controls=args.controls))
+                               remapped_layers=report['remapped_layers'],
+                               reordered_layers=report['reord_layers'],
+                               controls=args.controls,
+                               note='词表层按字段名对齐：除已退役的 mania 81 格外全部继承'))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     torch.save(out, args.out)
     print(f'已写 {args.out}  参数 {out["parameters"]}')
-    print(f'重来 {len(report["reinit_layers"])} 层 / {report["reinit_parameters"]} 参数；'
-          f'重排 {len(report["reordered_layers"])} 层')
-    for k in report['reinit_layers']:
+    print(f'按字段对齐 {len(report["remapped_layers"])} 层 / 重排 {len(report["reord_layers"])} 层')
+    for k in report['remapped_layers']:
         print(f'  {k}')
-    for k in report['reordered_layers']:
+    for k in report['reord_layers']:
         print(f'  {k}')
     return 0
 
