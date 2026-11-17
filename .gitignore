@@ -23,3 +23,5 @@ data/
 .venv/
 # 便携包说明书（属于交付目录 /home/user/wslbuild/交付/，不属于代码仓库）
 包说明-先看我.txt
+# 试验产物（chart.json 那类，体积大且可重新生成）
+artifacts/
