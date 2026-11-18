@@ -38,10 +38,10 @@ SECTIONS = (
 )
 
 SUPPORT_SLOTS = (
-    (-420.0, -18.0, 45),
-    (330.0, 0.0, 55),
-    (-480.0, 12.0, 40),
-    (460.0, -8.0, 50),
+    (-280.0, -18.0, 210),
+    (250.0, 0.0, 210),
+    (-380.0, 12.0, 200),
+    (330.0, -8.0, 200),
 )
 
 
@@ -112,12 +112,12 @@ def build_show(events, *, bpm=60.0, max_support=4):
     mx = [_ev(0.0, 0.0, 0.0, _beat(dur, bpm), 1)]
 
     # carrying line brightness: dim in quiet parts, bright in the chorus
-    main_alpha = [(0.0, 0, 4), (0.6, 150, 4)]
+    main_alpha = [(0.0, 0, 4), (0.6, 190, 4)]
     for frac, _y, _tilt, _sup in SECTIONS[1:-1]:
         t = frac * dur
-        level = 190 if 0.32 <= frac <= 0.84 else 120
-        main_alpha += [(t - 0.001, 150, 4), (t + 0.10, level, 1)]
-    main_alpha += [(dur - 1.6, 150, 4), (dur, 0, 4)]
+        level = 230 if 0.32 <= frac <= 0.84 else 170
+        main_alpha += [(t - 0.001, 190, 4), (t + 0.10, level, 1)]
+    main_alpha += [(dur - 1.6, 190, 4), (dur, 0, 4)]
     main_alpha = _dedupe(main_alpha)
 
     lines = [{
