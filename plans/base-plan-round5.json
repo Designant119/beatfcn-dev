@@ -1,5 +1,8 @@
 {
- "_note": "反推自 scripts/prepare_native_counterfactual_training.py:195-228 与 beatfcn/train/counterfactual_exposure.py:28-39 的默认值。原 /data/round5-level/plan.json 已无法核实（那台 4090 已无关系）。所有值是代码里的默认或硬编码：--accum-steps 默认 4；optimizer 硬编码 weight_decay=.1 betas=[.9,.95]；loss 硬编码 type_weight=.1 z_weight=1e-4 onset_weight=.1，first_token_weight=--first-token-weight 默认 1；counterfactual mix/dropout 用 DEFAULT_TREATMENT_MIX / DEFAULT_CONDITION_DROPOUT；curve_cell_us=2e6、render_cell_us=1e5。config/vocabulary 由 init checkpoint 覆盖，此处留空。",
+ "_note": "反推自 scripts/prepare_native_counterfactual_training.py:195-228 与 beatfcn/train/counterfactual_exposure.py:28-39 的默认值。原 /data/round5-level/plan.json 已无法核实（那台 4090 已无关系）。所有值是代码里的默认或硬编码：--accum-steps 默认 4；optimizer 硬编码 weight_decay=.1 betas=[.9,.95]；loss 硬编码 type_weight=.1 z_weight=1e-4 onset_weight=.1，first_token_weight=--first-token-weight 默认 1；counterfactual mix/dropout 用 DEFAULT_TREATMENT_MIX / DEFAULT_CONDITION_DROPOUT；curve_cell_us=2e6、render_cell_us=1e5。",
+ "_note_config": "config 留空是对的：evolve_finetune.py:89 的 load_recipe() 会用 recipe['config'] = dict(init_config) 把它整个换成 init 的模型尺寸。",
+ "_note_vocabulary": "vocabulary 留空是错的，这里必须写实。load_recipe() 只覆盖 config，不覆盖 vocabulary；而 evolve_finetune.py:306 会拿 init 的词表和 make_vocabulary(recipe['vocabulary']) 严格比对，不一致就 raise ValueError。母版继承 noteforge 的 tail_query=true / relative_blocks=true（noteforge 自己训练时的布局，也是本仓库 recipe v2 的布局，见 scripts/probe_recipe_v2_overfit.py:67、bench_recipe_v2_step.py:53），留空会被当成默认 false/false，加载当场就被拦下。",
+ "_note_data": "数据契约三件套是必填的，缺一个 build_training_panel 就崩（training_panel.py:14-40）：data_contract_version 不在 (1,2) 直接 ValueError；没有 tape 会 KeyError；v2 还必须显式声明 mel_normalization（none 或带 sha256 的 train-only 统计）。tape / mert_features 的路径沿用 l322m-production.json 的写法，按这个目录结构备数据即可。",
  "id": "base-round5-reversed",
  "steps": 2400,
  "optimizer_updates": 600,
@@ -7,7 +10,14 @@
  "device": "cuda",
  "autocast": "bf16",
  "config": {},
- "vocabulary": {},
+ "vocabulary": {
+  "relative_blocks": true,
+  "tail_query": true
+ },
+ "data_contract_version": 2,
+ "tape": "/data/full-database-v1/native-v2-tape/tape.json",
+ "mert_features": "/data/full-database-v1/mert-graph-diagnostic-v2/features",
+ "mel_normalization": "none",
  "physical_microbatch_requests": 4,
  "accum_steps": 4,
  "learning_rate": 3e-5,
