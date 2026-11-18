@@ -226,15 +226,18 @@ def win_items():
 def data_items():
     """层04：训练真正要的东西在不在——按方案 json 里引用的路径数文件，不看人嘴上说的“导好了”。
 
-    一个方案跑起来只需要两样东西：起始权重（init, .pt）和数据集（exposure, .json）。
+    一个方案跑起来要两样东西：起始权重（init, .pt）和数据集（exposure, .json）。
     这两样在不在，直接决定这个方案能不能开跑，所以逐个文件检查，最后给一行“几个方案齐了”。
+
+    带蒸馏的配方（kd 非 null）还要第三样：老师权重。它不在开跑那一刻读，是训练中段才算
+    蒸馏损失时才读，所以漏查的代价是白等半天才 FileNotFound。这里一并查掉。
     """
     if not os.path.isdir(REPO):
         return [_item('DATA', '数据目录', '', 'none',
                       f'没找到 {REPO}：代码还没拉下来，数据无从检查', 'data')]
     root = (DATA_ROOT or '/data').rstrip('/') or '/data'
     plans_dir = os.path.join(REPO, 'plans', 'evolve')
-    inits, exposures, total, ready = {}, {}, 0, 0
+    inits, exposures, teachers, total, ready = {}, {}, {}, 0, 0
     scratch_notes = []
     production_notes = []
     try:
@@ -253,6 +256,16 @@ def data_items():
             continue
         kind = cfg.get('kind')
         total += 1
+        # 老师权重：只有 kd 不是 null 的蒸馏配方才引用它。和起始权重一样按 basename 归并，
+        # 多个方案共用一个老师就只出一行。
+        kd = cfg.get('kd')
+        teacher = kd.get('teacher') if isinstance(kd, dict) else None
+        ok_teacher = True
+        if isinstance(teacher, str) and teacher:
+            tpath = _repoint(teacher, root)
+            base_t = os.path.basename(tpath)
+            ok_teacher = os.path.isfile(tpath)
+            teachers[base_t] = teachers.get(base_t, True) and ok_teacher
         if kind == 'scratch':
             tape = cfg.get('tape')
             feat = cfg.get('features')
@@ -333,7 +346,7 @@ def data_items():
         exp = (cfg.get('exposure') or {}).get('path') if isinstance(cfg.get('exposure'), dict) else None
         ok_init = isinstance(init, str) and os.path.isfile(_repoint(init, root))
         ok_exp = isinstance(exp, str) and os.path.isfile(_repoint(exp, root))
-        if ok_init and ok_exp:
+        if ok_init and ok_exp and ok_teacher:
             ready += 1
         for path, bucket, good in ((init, inits, ok_init), (exp, exposures, ok_exp)):
             if isinstance(path, str) and path:
@@ -354,6 +367,11 @@ def data_items():
     for base, good in sorted(inits.items()):
         items.append(_item('INIT ' + base, '起始权重', base, 'pass' if good else 'bad',
                            '' if good else '不在：%s 里没有这个文件' % root, 'data'))
+    for base, good in sorted(teachers.items()):
+        items.append(_item('TEACHER ' + base, '老师权重', base, 'pass' if good else 'bad',
+                           '' if good else
+                           '不在：%s 里没有这个文件；蒸馏配方开跑后训到中段才会读它，'
+                           '现在不红就得白等到那时候。' % root, 'data'))
     if total:
         items.append(_item('PLANS', '可开跑的方案', '%d / %d' % (ready, total),
                            'pass' if ready == total else ('warn' if ready else 'bad'),
