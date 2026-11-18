@@ -99,13 +99,21 @@ def macs_per_audio_second(config):
 
 
 def load_checkpoint_model(path, device, *, dtype=torch.float32):
+    """只读加载：eval 模式 + 参数冻结。
+
+    冻结不是可选项：这个函数的每一个调用点都是推理/评估（蒸馏老师、conditional 校准、
+    健康检查、teacher_ce_probe），没有一个需要梯度。以前返回到 .eval() 就打住，参数
+    仍是 requires_grad=True；KD 里 teacher 在 torch.no_grad() 下前向虽然不会累积梯度，
+    但参数挂着可学习标记会让 regional compile 多留一套状态，也误导后来读代码的人以为
+    老师会被一起训。
+    """
     saved = torch.load(path, map_location='cpu', weights_only=False, mmap=True)
     config = FullEventConfig(**saved['config'])
     vocabulary = EventVocabulary(**saved.get('vocabulary', {}))
     model = FullEventModel(config, vocabulary).to(device)
     model.load_state_dict({k: v.to(dtype) for k, v in saved['model'].items()}, strict=True)
     del saved
-    return model.eval()
+    return model.eval().requires_grad_(False)
 
 
 def file_sha(path):
