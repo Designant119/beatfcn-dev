@@ -14,6 +14,7 @@ import torch
 from beatfcn.model.full_event_model import FullEventConfig
 from beatfcn.model.local_typed_canvas import LocalTypedCanvas,canvas_loss
 from beatfcn.model.event_canvas import RhythmEvent
+from beatfcn.model.sample import match_f1
 from beatfcn.train.mert_canvas_features import MertCanvasFeatures
 from beatfcn.train.local_bundle import make_row
 from beatfcn.train.relative_canvas import relative_batch,generate_relative,relative_targets
