@@ -69,7 +69,9 @@ def main():
     print(f'[1] control_ids {len(CONTROL_KEEP)} 行，映射 {tuple(CONTROL_KEEP)} = '
           + ' / '.join(MODEL_CONTROL_FIELDS))
     print(f'    {"通过" if not bad_rows else "失败：" + "、".join(bad_rows)}'
-          f'（源里被丢掉的是 {NOTEFORGE_CONTROLS[5]}，已退役）')
+          f'（源里被丢掉的是 {"、".join(
+              NOTEFORGE_CONTROLS[i] for i in range(len(NOTEFORGE_CONTROLS))
+              if i not in CONTROL_KEEP)}，已退役）')
 
     # 2. field_embedding：按字段名逐行对齐
     bad_fields = []

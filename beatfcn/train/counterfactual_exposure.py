@@ -271,6 +271,7 @@ def exposure_summary(exposure):
     """Realized treatment and dropout frequencies of a frozen exposure."""
     slots = [(step, k) for step in exposure['steps'] for k in range(len(step['indices']))]
     total = len(slots)
+    denom = max(1, total)  # 空 exposure 不该崩，统计值给 0 就行
     treatments = {}
     for step, k in slots:
         treatments[step['treatments'][k]] = treatments.get(step['treatments'][k], 0) + 1
@@ -278,9 +279,9 @@ def exposure_summary(exposure):
     fields = len(CONTROL_FIELDS)
     extra = dict(mode_mix=exposure['mode_mix']) if exposure.get('mode_weights') else {}
     return dict(**extra, requests=total,
-                treatment_fraction={k: v/total for k, v in sorted(treatments.items())},
-                unconditional_fraction=sum(s['unconditional'][k] for s, k in slots)/total,
-                curve_specified_fraction=sum(s['curve_specified'][k] for s, k in slots)/total,
+                treatment_fraction={k: v/denom for k, v in sorted(treatments.items())},
+                unconditional_fraction=sum(s['unconditional'][k] for s, k in slots)/denom,
+                curve_specified_fraction=sum(s['curve_specified'][k] for s, k in slots)/denom,
                 curve_hidden_given_conditional=(sum(not s['curve_specified'][k] for s, k in conditional)
                                                 / max(1, len(conditional))),
                 control_hidden_given_conditional=(1 - sum(len(s['specified_condition_fields'][k])

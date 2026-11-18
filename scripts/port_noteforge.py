@@ -48,8 +48,6 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from beatfcn.events import controls as C  # noqa: E402,F401
-from beatfcn.model import features as F  # noqa: E402,F401
 from beatfcn.train.event_conditions import CONTROL_FIELDS as MODEL_CONTROL_FIELDS  # noqa: E402
 from beatfcn.model.full_event_codec import FIELDS as EVENT_FIELDS  # noqa: E402
 from beatfcn.model.full_event_codec import EventVocabulary  # noqa: E402
