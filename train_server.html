@@ -482,7 +482,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
   <!-- ===== 04 数据 ===== -->
   <section class="view" id="v-l4">
     <div class="vhead"><span class="sid">04</span><h2>数据</h2><span class="vtag">数文件</span></div>
-    <p class="hint">一个训练方案跑起来要两样东西：<b>起始权重</b>（.pt）和 <b>数据集</b>（exposure-*.json）。<b>要蒸馏的话还要第三样：老师权重</b>——那个得等母版训好之后才有（现在手上只有移植版母版，还没练过，当不了老师）。下面按 05 页那些方案里写的路径，挨个查这些在不在。</p>
+    <p class="hint">一个训练方案跑起来要两样东西：<b>起始权重</b>（.pt）和 <b>数据集</b>（exposure-*.json）。<b>要蒸馏的话还要第三样：老师权重</b>——那个得等母版训好之后才有（现在手上只有移植版母版，还没练过，当不了老师）。下面按 05 页那些方案里写的路径，挨个查这些在不在；<b>老师权重单独占一行</b>，缺了当场标红，不会等训到一半才发现。</p>
 
     <!-- 谱面下载 -->
     <div class="tpanel">
@@ -565,7 +565,7 @@ sudo apt update &amp;&amp; sudo apt install -y ffmpeg</pre></div>
     <div class="flag"><span class="k">你要做的</span>别删数据目录里的东西（默认是 <b>/data</b>，换位置就在 run_server.sh 的 DATA_ROOT 里指过去）。盘够不够不用自己算，下面有实测数字。别的不用管。</div>
     <div id="diskLive" style="display:none" class="result on"><div class="rh"><span>盘与数据 · 后端实测</span><span></span></div><div id="diskBody"></div></div>
     <p class="hint">上面每一行都是后端真的去看了那个文件，不是谁口头说“导好了”。数据集和权重全绿、最后一行 <b>可开跑的方案</b> 是满的，就可以进 05 开跑；有红的说明缺文件，红行里写了缺哪个。</p>
-    <div class="chk"><input type="checkbox" checked data-k="d1"><span class="t">数据集和起始权重都 PASS<small>全绿了自动勾，不用你点。</small></span></div>
+    <div class="chk"><input type="checkbox" checked data-k="d1"><span class="t">数据集和起始权重都 PASS<small>全绿了自动勾，不用你点。老师权重那行只做提示，缺了不影响这个勾。</small></span></div>
   </section>
 
   <!-- ===== 05 训练 ===== -->

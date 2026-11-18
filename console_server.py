@@ -368,10 +368,13 @@ def data_items():
         items.append(_item('INIT ' + base, '起始权重', base, 'pass' if good else 'bad',
                            '' if good else '不在：%s 里没有这个文件' % root, 'data'))
     for base, good in sorted(teachers.items()):
+        # 归到 disk 组而不是 data 组，是故意的：前端 group==='data' 会汇总成 04 步的总体状态，
+        # 一条 bad 就把「数据集和起始权重都 PASS」那个勾撤掉。老师权重本来就只在蒸馏方案里
+        # 才要，不能因为它把整套数据的绿灯带红。disk 组只负责显示，不参与那个判定。
         items.append(_item('TEACHER ' + base, '老师权重', base, 'pass' if good else 'bad',
                            '' if good else
                            '不在：%s 里没有这个文件；蒸馏配方开跑后训到中段才会读它，'
-                           '现在不红就得白等到那时候。' % root, 'data'))
+                           '现在不红就得白等到那时候。' % root, 'disk'))
     if total:
         items.append(_item('PLANS', '可开跑的方案', '%d / %d' % (ready, total),
                            'pass' if ready == total else ('warn' if ready else 'bad'),
