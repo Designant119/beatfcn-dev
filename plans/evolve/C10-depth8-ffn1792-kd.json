@@ -21,13 +21,13 @@
   "unconditional_native": true
  },
  "surgery": {
-  "source": "/data/beatfcn-r5-l322m.pt",
+  "source": "/data/beatfcn-r5-ported.pt",
   "depth": 8,
   "pattern": "even",
   "ffn": 1792
  },
  "kd": {
-  "teacher": "/data/beatfcn-r5-l322m.pt",
+  "teacher": "/data/beatfcn-r5-ported.pt",
   "alpha": 0.5,
   "temperature": 2.0
  },
@@ -37,7 +37,8 @@
  "freeze_encoders": false,
  "note_lr": "Peak 3e-5, warmup 100, floor 5e-6 as r4/r5. Cosine spans the fixed 2400-update horizon, so rungs 300/900/2400 are prefixes of one trajectory. A resume without Adam state re-warms over 100 updates.",
  "note_ema": "Decay .99 instead of r5's .999: at .999 a 300-update EMA is close to a flat mean of the whole rung, including the first post-surgery updates.",
- "note_surgery": "Depth 16->8 (even pattern, keeps layers 0 and 15) plus decoder FFN 4096->1792 by unit-norm-product pruning: about 132.8M trainable parameters (40.5% of r5). Encoder FFN is untouched because apply_surgery does not support it. This is the aggressive rung; the fallback chain is ffn 2048 (~139M), then depth 12 + ffn 3072 (~208M), then C3 unchanged (~189.5M).",
+ "note_surgery": "Source is the ported master (beatfcn-r5-ported.pt, 321.6M, vocab 1904): 391 of its 395 tensors came straight from the released noteforge r5, the 3 vocabulary layers are aligned field-by-field, control_ids is reordered to the 7 knobs this repo trains. Depth 16->8 (even pattern, keeps layers 0,2,4,6,9,11,13,15) plus decoder FFN 3584->1792: measured 176,590,855 parameters. Encoder FFN is untouched because apply_surgery does not support it.",
+ "note_kd": "Teacher is the same ported master, uncut (321.6M). Teacher and student therefore share vocabulary 1904 by construction, so evolve_finetune's KD guard passes without any remap. alpha 0.5, T 2.0 as the original C10 intent.",
  "id": "C10-depth8-ffn1792-kd",
  "init": "/data/evolve/init/C10-depth8-ffn1792-kd.pt",
  "out_dir": "/data/evolve/C10-depth8-ffn1792-kd"
