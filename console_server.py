@@ -223,6 +223,30 @@ def win_items():
     return out
 
 
+def _ok_tape(path):
+    """A tape is either one json file or a directory holding *-chart.json entries."""
+    try:
+        if os.path.isfile(path):
+            return True
+        return os.path.isdir(path) and any(n.endswith('-chart.json') for n in os.listdir(path))
+    except OSError:
+        return False
+
+
+def _ok_mert(path):
+    """MERT features live one directory per audio sha, each with L12.npy; sample the first 80."""
+    try:
+        if not os.path.isdir(path):
+            return False
+        for sha in os.listdir(path)[:80]:
+            sub = os.path.join(path, sha)
+            if os.path.isdir(sub) and os.path.isfile(os.path.join(sub, 'L12.npy')):
+                return True
+    except OSError:
+        return False
+    return False
+
+
 def data_items():
     """层04：训练真正要的东西在不在——按方案 json 里引用的路径数文件，不看人嘴上说的“导好了”。
 
@@ -231,6 +255,10 @@ def data_items():
 
     带蒸馏的配方（kd 非 null）还要第三样：老师权重。它不在开跑那一刻读，是训练中段才算
     蒸馏损失时才读，所以漏查的代价是白等半天才 FileNotFound。这里一并查掉。
+
+    还有三样只在开跑之后才被读到的前置：base plan 里写的 tape 和 MERT 特征目录、
+    exposure 里写的 subdivision_tags。它们缺了也是训练中途才崩（build_training_panel
+    和 ensure_exposure 分别在加载模型之后才跑），所以一起提前查。
     """
     if not os.path.isdir(REPO):
         return [_item('DATA', '数据目录', '', 'none',
@@ -238,6 +266,8 @@ def data_items():
     root = (DATA_ROOT or '/data').rstrip('/') or '/data'
     plans_dir = os.path.join(REPO, 'plans', 'evolve')
     inits, exposures, teachers, total, ready = {}, {}, {}, 0, 0
+    tapes, merts, tags = {}, {}, {}
+    contract_cache = {}
     scratch_notes = []
     production_notes = []
     try:
@@ -352,6 +382,32 @@ def data_items():
             if isinstance(path, str) and path:
                 base = os.path.basename(_repoint(path, root))
                 bucket[base] = bucket.get(base, True) and good
+        # base plan 里的 tape / MERT 特征，和 exposure 里的 subdivision_tags，都是训练
+        # 跑到中段才读的前置。缺了不在这里报，就得等模型加载完才 FileNotFound。
+        bp = cfg.get('base_plan')
+        if isinstance(bp, str) and bp:
+            bp_path = bp if bp.startswith('/') else os.path.join(REPO, bp)
+            if bp_path not in contract_cache:
+                try:
+                    with open(bp_path, encoding='utf-8') as f:
+                        contract_cache[bp_path] = json.load(f)
+                except Exception:
+                    contract_cache[bp_path] = {}
+            contract = contract_cache[bp_path]
+        else:
+            contract = {}
+        for field, bucket, check in (('tape', tapes, _ok_tape), ('mert_features', merts, _ok_mert)):
+            value = contract.get(field)
+            if isinstance(value, str) and value:
+                path = _repoint(value, root)
+                base = os.path.basename(path)
+                bucket[base] = bucket.get(base, True) and check(path)
+        exposure_cfg = cfg.get('exposure') if isinstance(cfg.get('exposure'), dict) else {}
+        tags_path = exposure_cfg.get('subdivision_tags')
+        if isinstance(tags_path, str) and tags_path:
+            path = _repoint(tags_path, root)
+            base = os.path.basename(path)
+            tags[base] = tags.get(base, True) and os.path.isfile(path)
     items = []
     for name, tape_dir, ok_tape, feat_dir, ok_feat in scratch_notes:
         items.append(_item('TAPE ' + name, '谱面 tape', name, 'pass' if ok_tape else 'bad',
@@ -367,6 +423,17 @@ def data_items():
     for base, good in sorted(inits.items()):
         items.append(_item('INIT ' + base, '起始权重', base, 'pass' if good else 'bad',
                            '' if good else '不在：%s 里没有这个文件' % root, 'data'))
+    # 这三样同样归 disk 组：它们是训练期才读的前置，缺了会让训练中途崩，
+    # 但不该把「数据集和起始权重都 PASS」那个勾撤掉。
+    for base, good in sorted(tapes.items()):
+        items.append(_item('DATATAPE ' + base, '谱面 tape', base, 'pass' if good else 'bad',
+                           '' if good else '不在：%s 里没有这份 tape；训练加载面板时才读它' % root, 'disk'))
+    for base, good in sorted(merts.items()):
+        items.append(_item('DATAMERT ' + base, 'MERT 特征', base, 'pass' if good else 'bad',
+                           '' if good else '不在：%s 里没有这批特征（每首一个目录，内含 L12.npy）' % root, 'disk'))
+    for base, good in sorted(tags.items()):
+        items.append(_item('DATATAGS ' + base, '分段标签', base, 'pass' if good else 'bad',
+                           '' if good else '不在：%s 里没有这个文件；exposure 要现场生成时才读它' % root, 'disk'))
     for base, good in sorted(teachers.items()):
         # 归到 disk 组而不是 data 组，是故意的：前端 group==='data' 会汇总成 04 步的总体状态，
         # 一条 bad 就把「数据集和起始权重都 PASS」那个勾撤掉。老师权重本来就只在蒸馏方案里
