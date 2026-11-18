@@ -957,6 +957,10 @@ def _train_start(body):
                 .format(repo=q(REPO), home=q(home), site=q(_USER_SITE), workers=workers))
         surgery = ''
         init_path = known[plan].get('init')
+        # 「init 在不在」必须按实际数据根去判。方案里写的是 /data/...，而 DATA_ROOT 可以
+        # 指到别处；那时临时方案已经被 _repoint 过、init 其实就在 root 下，拿原方案的
+        # /data 路径去 isfile 会判成「没有」，白跑一次 evolve_surgery。
+        resolved_init = _repoint(init_path, root) if isinstance(init_path, str) else init_path
         spec_surgery = None
         try:
             with open(os.path.join(REPO, 'plans', 'evolve', plan), encoding='utf-8') as f:
@@ -966,8 +970,8 @@ def _train_start(body):
             spec_surgery = None
         # 真手术方案（有 depth/ffn 要削）才需要预生成 init；C4 那类 surgery=null、
         # init 直接指 r5 本体的方案不能去跑 evolve_surgery，它会在 spec['surgery'] 上崩。
-        if (isinstance(spec_surgery, dict) and isinstance(init_path, str)
-                and init_path.startswith('/') and not os.path.isfile(init_path)):
+        if (isinstance(spec_surgery, dict) and isinstance(resolved_init, str)
+                and resolved_init.startswith('/') and not os.path.isfile(resolved_init)):
             # 蒸馏类方案必须先有手术后的初始权重：evolve_finetune 只读 spec['init']，
             # 发现没有它就 torch.load 报 FileNotFound，不会自己先削一刀。
             surgery = ' {py} -m scripts.evolve_surgery --plan {plan} 2>&1 | tee -a {log} &&'.format(
