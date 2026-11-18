@@ -107,20 +107,26 @@ def _torch_probe():
         "    import torch\n"
         "    print(torch.__version__)\n"
         "    print('yes' if torch.cuda.is_available() else 'no')\n"
+        "    build = torch.version.cuda\n"
+        "    print('cpu' if build is None else str(build))\n"
         "except Exception as e:\n"
         "    print('ERR:' + type(e).__name__)\n"
         "    sys.exit(0)\n"
     )
     try:
+        # 隔离 ~/.local（user site），否则用户目录里装过的 torch 会盖掉包里这份
+        env = dict(os.environ, PYTHONNOUSERSITE='1')
         out = subprocess.run([sys.executable, '-c', probe], capture_output=True,
-                             text=True, timeout=90)
+                             text=True, timeout=90, env=env)
         lines = (out.stdout or '').strip().splitlines()
     except Exception:
         lines = []
     if not lines or lines[0].startswith('ERR:'):
-        hit = ('__missing__', None)
+        hit = ('__missing__', None, None)
     else:
-        hit = (lines[0], (lines[1].lower() == 'yes') if len(lines) > 1 else None)
+        hit = (lines[0],
+               (lines[1].lower() == 'yes') if len(lines) > 1 else None,
+               (lines[2].strip() if len(lines) > 2 else None))
     _cache['torch'] = (now, hit)
     return hit
 
@@ -141,7 +147,7 @@ def _torch_nowait():
             _torch_probing = False
 
         threading.Thread(target=_done, daemon=True).start()
-    return ('__pending__', None)
+    return ('__pending__', None, None)
 
 
 def _ps(script, timeout=25):
@@ -462,7 +468,7 @@ def env_items():
                        'pass' if sys.version_info >= (3, 10) else 'warn',
                        '' if sys.version_info >= (3, 10) else '版本偏老', 'sw'))
 
-    tver, tcuda = _torch_nowait()
+    tver, tcuda, tcuda_build = _torch_nowait()
     if tver == '__pending__':
         items.append(_item('TORCH', 'torch', '检测中', 'none', '首次 import 慢，十几秒后自动出结果', 'sw'))
         items.append(_item('CUDATORCH', 'CUDA 可用', '', 'none', '等 torch 检测完成', 'sw'))
@@ -470,11 +476,21 @@ def env_items():
         items.append(_item('TORCH', 'torch', '', 'bad', '没装：pip install -r requirements-fc.txt', 'sw'))
         items.append(_item('CUDATORCH', 'CUDA 可用', '', 'none', '先装 torch', 'sw'))
     else:
-        items.append(_item('TORCH', 'torch', tver, 'pass', '', 'sw'))
+        cpu_build = str(tver).endswith('+cpu') or tcuda_build in ('cpu', '', None)
+        if cpu_build:
+            items.append(_item('TORCH', 'torch', tver, 'bad',
+                               '★ 这是 CPU 版，装了也用不上显卡，换 CUDA 版', 'sw'))
+        else:
+            items.append(_item('TORCH', 'torch', tver, 'pass', '', 'sw'))
         if tcuda is True:
-            items.append(_item('CUDATORCH', 'CUDA 可用', 'True', 'pass', '', 'sw'))
+            items.append(_item('CUDATORCH', 'CUDA 可用', 'True', 'pass',
+                               'CUDA ' + str(tcuda_build) if tcuda_build not in ('cpu', None) else '', 'sw'))
+        elif tcuda is False and cpu_build:
+            items.append(_item('CUDATORCH', 'CUDA 可用', 'False', 'bad',
+                               'torch 是 CPU 版，不是没显卡', 'sw'))
         elif tcuda is False:
-            items.append(_item('CUDATORCH', 'CUDA 可用', 'False', 'bad', 'torch 看不到显卡', 'sw'))
+            items.append(_item('CUDATORCH', 'CUDA 可用', 'False', 'warn',
+                               'CUDA ' + str(tcuda_build) + ' 版，但这台没显卡或驱动没进来', 'sw'))
         else:
             items.append(_item('CUDATORCH', 'CUDA 可用', '', 'none', '没读到', 'sw'))
 
